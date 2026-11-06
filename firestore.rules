@@ -1,0 +1,458 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ========================================================
+    // HELPER FUNCTIONS & ROLE RESOLUTION
+    // ========================================================
+
+    function isAuthenticated() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    function isUser(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Helper: Safely check user role with exists() guard to prevent missing-doc evaluation crashes
+    function hasUserRole(allowedRoles) {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in allowedRoles &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'active';
+    }
+
+    // Super Admin: Requires authenticated user, existing user profile, active status, and super_admin role in Firestore.
+    // Stale custom claims alone cannot grant Super Admin access.
+    function isSuperAdmin() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'active' &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_admin';
+    }
+
+    // Check if user is Fest Admin for a specific fest:
+    // Requires active profile with admin/fest_admin role and matching festId,
+    // OR a valid active fest_memberships document with admin role and matching fest ownership.
+    // Stale token claims alone cannot independently grant admin privileges.
+    // Preserves legitimate Super Admin access through the verified isSuperAdmin() helper.
+    function isFestAdmin(festId) {
+      return isSuperAdmin() || (
+        isAuthenticated() &&
+        festId != null &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'active' &&
+        (
+          (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'fest_admin'] &&
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.festId == festId) ||
+          (exists(/databases/$(database)/documents/fest_memberships/$(request.auth.uid + '_' + festId)) &&
+           get(/databases/$(database)/documents/fest_memberships/$(request.auth.uid + '_' + festId)).data.role == 'admin' &&
+           get(/databases/$(database)/documents/fest_memberships/$(request.auth.uid + '_' + festId)).data.status == 'active' &&
+           get(/databases/$(database)/documents/fest_memberships/$(request.auth.uid + '_' + festId)).data.festId == festId)
+        )
+      );
+    }
+
+    // Check if user is Team Leader for a specific team in a fest:
+    // Requires active user status, consistent profile team link, and matching team document
+    function isTeamLeader(festId, teamId) {
+      return isFestAdmin(festId) || (
+        isAuthenticated() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'team_leader' &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'active' &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.festId == festId &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.linkedTeamId == teamId &&
+        exists(/databases/$(database)/documents/teams/$(teamId)) &&
+        get(/databases/$(database)/documents/teams/$(teamId)).data.festId == festId &&
+        get(/databases/$(database)/documents/teams/$(teamId)).data.teamLeaderId == request.auth.uid
+      );
+    }
+
+    // ========================================================
+    // 1. FESTS
+    // ========================================================
+    match /fests/{festId} {
+      // Publicly viewable fests
+      allow read: if true;
+      allow create, delete: if isSuperAdmin();
+      allow update: if isFestAdmin(festId);
+    }
+
+    // ========================================================
+    // 2. USERS
+    // ========================================================
+    match /users/{userId} {
+      // User can read their own profile; Super Admin platform-wide; Fest Admin only for users belonging to their fest
+      allow read: if isUser(userId) ||
+        isSuperAdmin() ||
+        (isAuthenticated() && resource.data.festId != null && isFestAdmin(resource.data.festId));
+      
+      // User profile creation:
+      // - Super Admin can create accounts platform-wide with any role
+      // - Fest Admin can create accounts only for their authorized fest, but CANNOT create administrative roles (super_admin, admin, fest_admin)
+      // - Individual authenticated user can self-create their initial participant profile
+      allow create: if isSuperAdmin() ||
+        (
+          isAuthenticated() &&
+          request.resource.data.festId != null &&
+          isFestAdmin(request.resource.data.festId) &&
+          (!('role' in request.resource.data) || !(request.resource.data.role in ['super_admin', 'admin', 'fest_admin']))
+        ) ||
+        (
+          isUser(userId) &&
+          request.resource.data.uid == userId &&
+          (!('role' in request.resource.data) || request.resource.data.role == 'participant')
+        );
+
+      // User profile update:
+      // - Super Admin can update any user profile and grant/revoke administrative roles
+      // - Fest Admin can update users in their authorized fest, CANNOT move users between fests, CANNOT modify administrative users, and CANNOT promote anyone to super_admin, admin, or fest_admin
+      // - Individual user can update only non-sensitive profile fields; cannot alter role, status, fest, team, or verification
+      allow update: if isSuperAdmin() ||
+        (
+          isAuthenticated() &&
+          resource.data.festId != null &&
+          isFestAdmin(resource.data.festId) &&
+          (!('festId' in request.resource.data) || request.resource.data.festId == resource.data.festId) &&
+          (!('role' in resource.data) || !(resource.data.role in ['super_admin', 'admin', 'fest_admin'])) &&
+          (!('role' in request.resource.data) || !(request.resource.data.role in ['super_admin', 'admin', 'fest_admin']))
+        ) ||
+        (
+          isUser(userId) &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status', 'uid', 'phone', 'phoneVerified']) &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['festId', 'linkedTeamId', 'teamId', 'approvalStatus', 'invitationStatus'])
+        );
+
+      // Deletions: Super Admin platform-wide; Fest Admin only for non-administrative users in their fest
+      allow delete: if isSuperAdmin() ||
+        (
+          isAuthenticated() &&
+          resource.data.festId != null &&
+          isFestAdmin(resource.data.festId) &&
+          (!('role' in resource.data) || !(resource.data.role in ['super_admin', 'admin', 'fest_admin']))
+        );
+    }
+
+    // ========================================================
+    // 3. FEST MEMBERSHIPS
+    // ========================================================
+    match /fest_memberships/{membershipId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        isFestAdmin(resource.data.festId)
+      );
+      // Only Super Admin can grant or revoke admin membership; Fest Admin can manage non-admin members
+      allow create: if isSuperAdmin() || (
+        isAuthenticated() &&
+        isFestAdmin(request.resource.data.festId) &&
+        (!('role' in request.resource.data) || !(request.resource.data.role in ['admin', 'super_admin', 'fest_admin']))
+      );
+      allow update: if isSuperAdmin() || (
+        isAuthenticated() &&
+        isFestAdmin(resource.data.festId) &&
+        request.resource.data.festId == resource.data.festId &&
+        (!('role' in resource.data) || !(resource.data.role in ['admin', 'super_admin', 'fest_admin'])) &&
+        (!('role' in request.resource.data) || !(request.resource.data.role in ['admin', 'super_admin', 'fest_admin']))
+      );
+      allow delete: if isSuperAdmin() || (
+        isAuthenticated() &&
+        isFestAdmin(resource.data.festId) &&
+        (!('role' in resource.data) || !(resource.data.role in ['admin', 'super_admin', 'fest_admin']))
+      );
+    }
+
+    // ========================================================
+    // 4. TEAMS
+    // ========================================================
+    match /teams/{teamId} {
+      allow read: if true; // Public leaderboard & teams view
+      allow create: if isAuthenticated() && isFestAdmin(request.resource.data.festId);
+      allow update: if isAuthenticated() && (
+        (isFestAdmin(resource.data.festId) && request.resource.data.festId == resource.data.festId) || (
+          isTeamLeader(resource.data.festId, teamId) &&
+          request.resource.data.festId == resource.data.festId &&
+          // Team Leader cannot reassign team leader ID, change festId, change status, or tamper with medals/scores
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['teamLeaderId', 'festId', 'status']) &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['id', 'points', 'goldMedals', 'silverMedals', 'bronzeMedals'])
+        )
+      );
+      // Deletions use existing document data
+      allow delete: if isAuthenticated() && isFestAdmin(resource.data.festId);
+    }
+
+    // ========================================================
+    // 5. TEAM LEADER INVITATIONS
+    // ========================================================
+    match /team_leader_invitations/{invitationId} {
+      allow read: if isAuthenticated() && (
+        isFestAdmin(resource.data.festId) ||
+        resource.data.phone == request.auth.token.phone_number
+      );
+      allow create: if isAuthenticated() && isFestAdmin(request.resource.data.festId);
+      allow update: if isAuthenticated() && (
+        (isFestAdmin(resource.data.festId) && request.resource.data.festId == resource.data.festId) ||
+        (
+          resource.data.phone == request.auth.token.phone_number &&
+          resource.data.status == 'pending_verification' &&
+          request.resource.data.status == 'activated' &&
+          request.resource.data.activatedUserId == request.auth.uid &&
+          request.resource.data.festId == resource.data.festId &&
+          request.resource.data.teamId == resource.data.teamId &&
+          request.resource.data.phone == resource.data.phone &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'activatedUserId', 'activatedAt'])
+        )
+      );
+      // Deletions use existing document data
+      allow delete: if isAuthenticated() && isFestAdmin(resource.data.festId);
+    }
+
+    // ========================================================
+    // 6. PARTICIPANTS
+    // ========================================================
+    match /participants/{participantId} {
+      allow read: if true; // Public live scores, participant name & chest badges
+
+      // Self-Registration: Creates participant record with 'pending_approval' only
+      allow create: if isAuthenticated() && (
+        isFestAdmin(request.resource.data.festId) ||
+        (isTeamLeader(request.resource.data.festId, request.resource.data.teamId) && request.resource.data.registrationSource == 'team_leader_invitation') ||
+        (request.resource.data.registrationSource == 'self_registration' &&
+         request.resource.data.approvalStatus == 'pending_approval' &&
+         request.resource.data.userId == request.auth.uid)
+      );
+
+      // Updates:
+      // - Fest Admin: scoped to authorized fest and cannot move participants between fests
+      // - Team Leader: scoped to their authorized team and fest; cannot change festId or teamId
+      // - Participant: can update personal profile only (not status, team, role, or ID)
+      allow update: if isAuthenticated() && (
+        (isFestAdmin(resource.data.festId) && request.resource.data.festId == resource.data.festId) ||
+        (
+          isTeamLeader(resource.data.festId, resource.data.teamId) &&
+          request.resource.data.festId == resource.data.festId &&
+          request.resource.data.teamId == resource.data.teamId
+        ) ||
+        (
+          isUser(resource.data.userId) &&
+          request.resource.data.festId == resource.data.festId &&
+          request.resource.data.teamId == resource.data.teamId &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['approvalStatus', 'teamId', 'festId', 'id', 'userId', 'registeredProgrammes']) &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status'])
+        )
+      );
+
+      // Deletions use existing document data
+      allow delete: if isAuthenticated() && isFestAdmin(resource.data.festId);
+    }
+
+    // ========================================================
+    // 7. PROGRAMMES
+    // ========================================================
+    match /programmes/{programmeId} {
+      allow read: if true; // Public competition schedule & rules
+      allow create: if isAuthenticated() && isFestAdmin(request.resource.data.festId);
+      allow update: if isAuthenticated() && isFestAdmin(resource.data.festId) &&
+        request.resource.data.festId == resource.data.festId;
+      allow delete: if isAuthenticated() && isFestAdmin(resource.data.festId);
+    }
+
+    // ========================================================
+    // 8. PROGRAMME ASSIGNMENTS
+    // ========================================================
+    match /programme_assignments/{assignmentId} {
+      allow read: if isAuthenticated() && (
+        isFestAdmin(resource.data.festId) ||
+        isTeamLeader(resource.data.festId, resource.data.teamId) ||
+        resource.data.participantIds.hasAny([request.auth.uid])
+      );
+
+      allow create: if isAuthenticated() && (
+        isFestAdmin(request.resource.data.festId) ||
+        isTeamLeader(request.resource.data.festId, request.resource.data.teamId)
+      );
+
+      allow update: if isAuthenticated() && (
+        (isFestAdmin(resource.data.festId) && request.resource.data.festId == resource.data.festId) ||
+        (
+          isTeamLeader(resource.data.festId, resource.data.teamId) &&
+          request.resource.data.festId == resource.data.festId &&
+          request.resource.data.teamId == resource.data.teamId
+        )
+      );
+
+      allow delete: if isAuthenticated() && (
+        isFestAdmin(resource.data.festId) ||
+        isTeamLeader(resource.data.festId, resource.data.teamId)
+      );
+    }
+
+    // ========================================================
+    // 9. SCORES & RESULTS
+    // ========================================================
+    match /scores/{scoreId} {
+      allow read: if isAuthenticated() && (
+        isFestAdmin(resource.data.festId) ||
+        resource.data.judgeId == request.auth.uid ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         resource.data.judgeId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.linkedJudgeId)
+      );
+
+      // Score submission:
+      // - Fest Admin for the fest
+      // - Or assigned Judge for the specified programme in this fest
+      allow create: if isAuthenticated() && (
+        isFestAdmin(request.resource.data.festId) || (
+          exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'active' &&
+          (
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'judge' ||
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.linkedJudgeId != null
+          ) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.festId == request.resource.data.festId &&
+          (
+            request.resource.data.judgeId == request.auth.uid ||
+            request.resource.data.judgeId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.linkedJudgeId
+          ) &&
+          exists(/databases/$(database)/documents/programmes/$(request.resource.data.programmeId)) &&
+          get(/databases/$(database)/documents/programmes/$(request.resource.data.programmeId)).data.festId == request.resource.data.festId &&
+          (
+            !('assignedJudgeIds' in get(/databases/$(database)/documents/programmes/$(request.resource.data.programmeId)).data) ||
+            get(/databases/$(database)/documents/programmes/$(request.resource.data.programmeId)).data.assignedJudgeIds.hasAny([
+              request.auth.uid,
+              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.linkedJudgeId
+            ])
+          )
+        )
+      );
+
+      // Score correction / updates:
+      // - Fest Admin: scoped to fest, cannot change festId or programmeId
+      // - Judge: can only update their own score sheet, cannot alter judgeId, festId, programmeId, participantId, or teamId
+      allow update: if isAuthenticated() && (
+        (
+          isFestAdmin(resource.data.festId) &&
+          request.resource.data.festId == resource.data.festId &&
+          request.resource.data.programmeId == resource.data.programmeId
+        ) || (
+          (
+            resource.data.judgeId == request.auth.uid ||
+            (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             resource.data.judgeId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.linkedJudgeId)
+          ) &&
+          request.resource.data.festId == resource.data.festId &&
+          request.resource.data.programmeId == resource.data.programmeId &&
+          request.resource.data.judgeId == resource.data.judgeId &&
+          (!('participantId' in resource.data) || request.resource.data.participantId == resource.data.participantId) &&
+          (!('teamId' in resource.data) || request.resource.data.teamId == resource.data.teamId)
+        )
+      );
+
+      allow delete: if isAuthenticated() && isFestAdmin(resource.data.festId);
+    }
+
+    match /results/{resultId} {
+      // Public can read published results; admins can read unpublished drafts
+      allow read: if resource.data.published == true || (
+        isAuthenticated() && isFestAdmin(resource.data.festId)
+      );
+      allow create: if isAuthenticated() && isFestAdmin(request.resource.data.festId);
+      allow update: if isAuthenticated() && isFestAdmin(resource.data.festId) &&
+        request.resource.data.festId == resource.data.festId;
+      allow delete: if isAuthenticated() && isFestAdmin(resource.data.festId);
+    }
+
+    // ========================================================
+    // 10. NOTIFICATIONS
+    // ========================================================
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && (
+        resource.data.recipientUserId == request.auth.uid ||
+        isFestAdmin(resource.data.festId)
+      );
+      allow create: if isAuthenticated() && (
+        isFestAdmin(request.resource.data.festId) || isSuperAdmin()
+      );
+      allow update: if isAuthenticated() && (
+        (isFestAdmin(resource.data.festId) && request.resource.data.festId == resource.data.festId) ||
+        (
+          resource.data.recipientUserId == request.auth.uid &&
+          request.resource.data.festId == resource.data.festId &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'readAt'])
+        )
+      );
+      allow delete: if isAuthenticated() && (
+        isFestAdmin(resource.data.festId) || isSuperAdmin()
+      );
+    }
+
+    // ========================================================
+    // 11. AUDIT LOGS (Immutable, server-protected & client-whitelisted)
+    // ========================================================
+    match /audit_logs/{logId} {
+      allow read: if isAuthenticated() && isFestAdmin(resource.data.festId);
+      // Sensitive actions (e.g. PUBLISH_RESULTS, RESOLVE_COMPLAINT, Team Leader lifecycle) are server-generated via Cloud Functions Admin SDK.
+      // Client-generated audit entries are strictly limited to authorized Fest Admins for explicitly whitelisted non-privileged operations
+      allow create: if isAuthenticated() &&
+        isFestAdmin(request.resource.data.festId) &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.festId is string &&
+        request.resource.data.action in [
+          'USER_LOGIN', 'USER_LOGOUT', 'UPDATE_PROFILE', 'SUBMIT_REGISTRATION',
+          'UPDATE_SETTINGS', 'VIEW_REPORT', 'EXPORT_REPORT', 'CREATE_ANNOUNCEMENT'
+        ];
+      allow update, delete: if false; // Strict audit immutability
+    }
+
+    // ========================================================
+    // 12. COMPLAINTS & APPEALS (Team Isolation & Status Protection)
+    // ========================================================
+    match /complaints/{complaintId} {
+      allow read: if isAuthenticated() && (
+        isFestAdmin(resource.data.festId) ||
+        isTeamLeader(resource.data.festId, resource.data.teamId)
+      );
+      allow create: if isAuthenticated() && (
+        isFestAdmin(request.resource.data.festId) ||
+        isTeamLeader(request.resource.data.festId, request.resource.data.teamId)
+      );
+      // Updates:
+      // - Fest Admin: can review, calibrate score, and resolve complaints in their fest; cannot move fests
+      // - Team Leader: can only update allowed description/evidence fields while status is submitted/more_info_required;
+      //   CANNOT resolve, cannot change status, cannot change festId or teamId
+      allow update: if isAuthenticated() && (
+        (isFestAdmin(resource.data.festId) && request.resource.data.festId == resource.data.festId) ||
+        (
+          isTeamLeader(resource.data.festId, resource.data.teamId) &&
+          request.resource.data.festId == resource.data.festId &&
+          request.resource.data.teamId == resource.data.teamId &&
+          resource.data.status in ['submitted', 'more_info_required'] &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'description', 'evidence', 'remarks', 'updatedAt', 'title', 'category'
+          ])
+        )
+      );
+      allow delete: if isAuthenticated() && isFestAdmin(resource.data.festId);
+    }
+
+    // ========================================================
+    // 13. ANNOUNCEMENTS
+    // ========================================================
+    match /announcements/{announcementId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isFestAdmin(request.resource.data.festId);
+      allow update: if isAuthenticated() && isFestAdmin(resource.data.festId) &&
+        request.resource.data.festId == resource.data.festId;
+      allow delete: if isAuthenticated() && isFestAdmin(resource.data.festId);
+    }
+
+    // ========================================================
+    // 14. FEST SETTINGS
+    // ========================================================
+    match /fest_settings/{festId} {
+      allow read: if true;
+      allow create, update: if isAuthenticated() && isFestAdmin(festId);
+      allow delete: if isAuthenticated() && isSuperAdmin();
+    }
+  }
+}

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FestFlow — Participant Competitor Portal & Schedule</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script>
+      // If user double-clicked this file in Windows File Explorer (file://), redirect to local dev server
+      if (window.location.protocol === 'file:') {
+        window.location.href = 'http://localhost:5173/participant.html';
+      }
+    </script>
+  </head>
+  <body class="bg-white text-slate-900 antialiased font-sans">
+    <div id="root">
+      <!-- Fallback container in case file is opened over file:// directly without web server -->
+      <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 580px; margin: 80px auto; padding: 32px; border: 1px solid #e2e8f0; border-radius: 12px; text-align: center; background: #ffffff; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+        <div style="width: 44px; height: 44px; background: #0f172a; color: #fff; font-weight: bold; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px; font-size: 18px;">
+          PT
+        </div>
+        <h2 style="font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 8px;">FestFlow Participant Portal</h2>
+        <p style="font-size: 13px; color: #64748b; margin: 0 0 24px; line-height: 1.6;">
+          You opened this file directly from the filesystem (<code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">file://</code>). Modern React web applications must run through the local development server.
+        </p>
+        <div style="margin-bottom: 20px;">
+          <a href="http://localhost:5173/participant.html" style="display: inline-block; padding: 10px 22px; background: #0f172a; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 13px;">
+            Open http://localhost:5173/participant.html &rarr;
+          </a>
+        </div>
+        <p style="font-size: 11px; color: #94a3b8; margin: 0;">
+          Ensure dev server is running with <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">npm run dev</code>
+        </p>
+      </div>
+    </div>
+    <script type="module" src="/src/participant.tsx"></script>
+  </body>
+</html>
+
