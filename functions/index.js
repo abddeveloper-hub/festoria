@@ -1074,6 +1074,262 @@ async function resolveComplaintHandler(request, deps = {}) {
 }
 
 /**
+ * Helper: Verify caller is an active Super Admin.
+ */
+async function verifySuperAdminAuth(request, deps = {}) {
+  const currentDb = deps.db || db;
+  if (!request.auth || !request.auth.uid) {
+    throw new HttpsError('unauthenticated', 'User must be authenticated.');
+  }
+  const callerUid = request.auth.uid;
+  const userDoc = await currentDb.collection('users').doc(callerUid).get();
+  if (!userDoc.exists) {
+    throw new HttpsError('permission-denied', 'Caller account profile not found.');
+  }
+  const userData = userDoc.data();
+  if (userData.status !== 'active') {
+    throw new HttpsError('permission-denied', 'Caller account is suspended or inactive.');
+  }
+  if (userData.role !== 'super_admin') {
+    throw new HttpsError('permission-denied', 'Permission denied: Super Administrator privileges required.');
+  }
+  return {
+    uid: callerUid,
+    name: userData.name || 'Super Admin',
+    role: 'super_admin'
+  };
+}
+
+/**
+ * Trusted Handler: Super Admin approval of a Fest Application.
+ * Atomically provisions the Fest document, updates the applicant's role to 'admin' scoped to the fest,
+ * writes the fest_memberships document, updates the request status, sets custom claims, and appends an immutable platform audit log.
+ */
+async function approveFestApplicationHandler(request, deps = {}) {
+  const currentDb = deps.db || db;
+  const currentAuth = deps.auth || auth;
+
+  const superAdminCaller = await verifySuperAdminAuth(request, deps);
+  const { requestId, approvalNote } = request.data || {};
+
+  if (!requestId || typeof requestId !== 'string' || !requestId.trim()) {
+    throw new HttpsError('invalid-argument', 'Missing or invalid requestId.');
+  }
+
+  const cleanRequestId = requestId.trim();
+  const requestRef = currentDb.collection('fest_requests').doc(cleanRequestId);
+  
+  let allocatedFestId = '';
+  let applicantUid = '';
+
+  await currentDb.runTransaction(async (transaction) => {
+    const requestSnap = await transaction.get(requestRef);
+    if (!requestSnap.exists) {
+      throw new HttpsError('not-found', `Fest application ${cleanRequestId} not found.`);
+    }
+
+    const appData = requestSnap.data();
+    const validStatuses = ['pending', 'submitted', 'under_review', 'more_info_required'];
+    if (!validStatuses.includes(appData.status)) {
+      throw new HttpsError('failed-precondition', `Application is already in status '${appData.status}'. Only pending applications can be approved.`);
+    }
+
+    applicantUid = appData.requestingAdminId;
+    if (!applicantUid) {
+      throw new HttpsError('failed-precondition', 'Application record is missing requestingAdminId.');
+    }
+
+    // Allocate next sequential Fest ID
+    const festsSnap = await transaction.get(currentDb.collection('fests'));
+    const festCount = festsSnap.size + 1;
+    allocatedFestId = `FEST-${String(festCount).padStart(2, '0')}`;
+
+    const nowIso = new Date().toISOString();
+    const nowServer = FieldValue.serverTimestamp();
+
+    // 1. Create the new Fest record
+    const festRef = currentDb.collection('fests').doc(allocatedFestId);
+    transaction.set(festRef, {
+      id: allocatedFestId,
+      name: appData.festName,
+      edition: appData.edition || '2026',
+      tagline: `${appData.festName} ${appData.edition || '2026'}`,
+      description: appData.description || '',
+      institution: appData.institution || '',
+      category: appData.category || 'Cultural & Arts',
+      venue: appData.venue || appData.institutionAddress || 'Main Campus Auditorium & Grounds',
+      startDate: appData.startDate,
+      endDate: appData.endDate,
+      adminId: applicantUid,
+      adminName: appData.contactPersonName || appData.requestingAdminName,
+      adminEmail: appData.requestingAdminEmail || '',
+      adminPhone: appData.requestingAdminPhone || '',
+      status: 'setup',
+      publicPagePublished: false,
+      publicUrl: `/fests/${allocatedFestId.toLowerCase()}`,
+      expectedParticipants: Number(appData.expectedParticipants) || 500,
+      plannedProgrammesCount: Number(appData.plannedProgrammesCount) || 20,
+      createdAt: nowIso,
+      approvedAt: nowIso,
+      approvedBy: superAdminCaller.name,
+      completionPercentage: 15,
+      serverCreatedAt: nowServer
+    });
+
+    // 2. Provision or update Fest Admin User Profile
+    const userRef = currentDb.collection('users').doc(applicantUid);
+    const existingUserSnap = await transaction.get(userRef);
+    const baseUserData = existingUserSnap.exists ? existingUserSnap.data() : {};
+
+    transaction.set(userRef, {
+      ...baseUserData,
+      id: applicantUid,
+      name: appData.contactPersonName || appData.requestingAdminName || baseUserData.name || 'Fest Admin',
+      email: appData.requestingAdminEmail || baseUserData.email || '',
+      phone: appData.requestingAdminPhone || baseUserData.phone || '',
+      phoneVerified: true,
+      role: 'admin',
+      festId: allocatedFestId,
+      status: 'active',
+      updatedAt: nowServer
+    }, { merge: true });
+
+    // 3. Create Fest Membership document
+    const membershipRef = currentDb.collection('fest_memberships').doc(`${applicantUid}_${allocatedFestId}`);
+    transaction.set(membershipRef, {
+      id: `${applicantUid}_${allocatedFestId}`,
+      userId: applicantUid,
+      festId: allocatedFestId,
+      role: 'admin',
+      status: 'active',
+      assignedAt: nowIso,
+      assignedBy: superAdminCaller.uid
+    });
+
+    // 4. Update Fest Request document to 'approved'
+    const existingHistory = appData.history || [];
+    const historyEntry = {
+      date: nowIso,
+      actor: superAdminCaller.name,
+      action: 'Approved Fest Request',
+      note: approvalNote ? approvalNote.trim() : 'Proposal met platform criteria and was authorized.'
+    };
+
+    transaction.update(requestRef, {
+      status: 'approved',
+      allocatedFestId,
+      approvedAt: nowIso,
+      approvedBy: superAdminCaller.name,
+      reviewNotes: approvalNote ? approvalNote.trim() : (appData.reviewNotes || ''),
+      history: [historyEntry, ...existingHistory],
+      updatedAt: nowServer
+    });
+
+    // 5. Append immutable platform audit log
+    const auditLogRef = currentDb.collection('platform_audit_logs').doc();
+    transaction.set(auditLogRef, {
+      id: auditLogRef.id,
+      actorId: superAdminCaller.uid,
+      actorName: superAdminCaller.name,
+      actorRole: 'super_admin',
+      action: 'APPROVE_FEST_REQUEST',
+      targetType: 'fest_request',
+      targetId: cleanRequestId,
+      details: `Approved application ${cleanRequestId} for "${appData.festName}". Provisioned fest record ${allocatedFestId} and assigned Fest Admin privileges to ${appData.contactPersonName || appData.requestingAdminName} (${applicantUid}).`,
+      beforeValue: appData.status,
+      afterValue: 'approved',
+      timestamp: nowIso,
+      serverTimestamp: nowServer
+    });
+  });
+
+  // Assign Custom User Claims on Firebase Auth
+  try {
+    if (applicantUid && currentAuth.setCustomUserClaims) {
+      await currentAuth.setCustomUserClaims(applicantUid, {
+        role: 'admin',
+        festId: allocatedFestId
+      });
+    }
+  } catch (claimErr) {
+    console.warn('[CloudFunctions] Failed setting custom claims (Firestore authoritative profile will enforce RBAC):', claimErr);
+  }
+
+  return {
+    success: true,
+    festId: allocatedFestId,
+    message: `Application ${cleanRequestId} approved successfully. Fest ${allocatedFestId} initialized.`
+  };
+}
+
+/**
+ * Trusted Handler: Super Admin rejection of a Fest Application.
+ */
+async function rejectFestApplicationHandler(request, deps = {}) {
+  const currentDb = deps.db || db;
+  const superAdminCaller = await verifySuperAdminAuth(request, deps);
+  const { requestId, rejectionReason, note } = request.data || {};
+
+  if (!requestId || typeof requestId !== 'string' || !requestId.trim()) {
+    throw new HttpsError('invalid-argument', 'Missing or invalid requestId.');
+  }
+  if (!rejectionReason || typeof rejectionReason !== 'string' || !rejectionReason.trim()) {
+    throw new HttpsError('invalid-argument', 'Rejection reason is mandatory.');
+  }
+
+  const cleanRequestId = requestId.trim();
+  const requestRef = currentDb.collection('fest_requests').doc(cleanRequestId);
+
+  await currentDb.runTransaction(async (transaction) => {
+    const requestSnap = await transaction.get(requestRef);
+    if (!requestSnap.exists) {
+      throw new HttpsError('not-found', `Fest application ${cleanRequestId} not found.`);
+    }
+
+    const appData = requestSnap.data();
+    const nowIso = new Date().toISOString();
+    const nowServer = FieldValue.serverTimestamp();
+
+    const existingHistory = appData.history || [];
+    const historyEntry = {
+      date: nowIso,
+      actor: superAdminCaller.name,
+      action: 'Rejected Fest Request',
+      note: `Reason: ${rejectionReason.trim()}${note ? ` | Note: ${note.trim()}` : ''}`
+    };
+
+    transaction.update(requestRef, {
+      status: 'rejected',
+      rejectionReason: rejectionReason.trim(),
+      reviewNotes: note ? note.trim() : (appData.reviewNotes || ''),
+      history: [historyEntry, ...existingHistory],
+      updatedAt: nowServer
+    });
+
+    const auditLogRef = currentDb.collection('platform_audit_logs').doc();
+    transaction.set(auditLogRef, {
+      id: auditLogRef.id,
+      actorId: superAdminCaller.uid,
+      actorName: superAdminCaller.name,
+      actorRole: 'super_admin',
+      action: 'REJECT_FEST_REQUEST',
+      targetType: 'fest_request',
+      targetId: cleanRequestId,
+      details: `Declined application ${cleanRequestId} for "${appData.festName}". Reason: ${rejectionReason.trim()}`,
+      beforeValue: appData.status,
+      afterValue: 'rejected',
+      timestamp: nowIso,
+      serverTimestamp: nowServer
+    });
+  });
+
+  return {
+    success: true,
+    message: `Application ${cleanRequestId} rejected.`
+  };
+}
+
+/**
  * Callable Cloud Functions (v2)
  */
 exports.createTeamLeaderInvite = onCall(async (request) => {
@@ -1100,16 +1356,27 @@ exports.resolveComplaint = onCall(async (request) => {
   return await resolveComplaintHandler(request);
 });
 
+exports.approveFestApplication = onCall(async (request) => {
+  return await approveFestApplicationHandler(request);
+});
+
+exports.rejectFestApplication = onCall(async (request) => {
+  return await rejectFestApplicationHandler(request);
+});
+
 /**
  * Unit & Security Test Harness Exports
  */
 exports._handlers = {
   normalizePhone,
   verifyAdminAuth,
+  verifySuperAdminAuth,
   createTeamLeaderInviteHandler,
   verifyAndActivateTeamLeaderHandler,
   reassignTeamLeaderHandler,
   toggleTeamLeaderStatusHandler,
   publishResultsHandler,
-  resolveComplaintHandler
+  resolveComplaintHandler,
+  approveFestApplicationHandler,
+  rejectFestApplicationHandler
 };

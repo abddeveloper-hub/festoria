@@ -550,6 +550,55 @@ export async function verifyFirebasePhoneOtp(
 }
 
 /**
+ * Verify applicant's phone OTP specifically for Fest Application submission.
+ * Keeps user authenticated in Firebase Auth so authenticated Firestore writes to fest_requests succeed.
+ */
+export async function verifyApplicantPhoneVerification(
+  phone: string,
+  otpCode: string
+): Promise<{ success: boolean; message: string; uid?: string; phone?: string }> {
+  const normalized = normalizePhoneNumber(phone);
+  const firebaseAuth = auth || getFirebaseAuth();
+
+  if (!isFirebaseConfigured || !firebaseAuth) {
+    return {
+      success: false,
+      message: 'Firebase Authentication is not configured.'
+    };
+  }
+
+  if (!activeConfirmationResult) {
+    return {
+      success: false,
+      message: 'No active phone verification session found. Please request an OTP code first.'
+    };
+  }
+
+  try {
+    const userCredential = await activeConfirmationResult.confirm(otpCode);
+    const firebaseUser = userCredential.user;
+    const uid = firebaseUser.uid;
+    const authenticatedPhone = normalizePhoneNumber(firebaseUser.phoneNumber || normalized);
+    activeConfirmationResult = null;
+
+    return {
+      success: true,
+      message: 'Phone number verified successfully.',
+      uid,
+      phone: authenticatedPhone
+    };
+  } catch (err: any) {
+    console.warn('[Firebase Auth] Applicant confirmation code error:', err);
+    return {
+      success: false,
+      message: err.message?.includes('invalid-verification-code')
+        ? 'Invalid verification code. Please check and re-enter.'
+        : err.message || 'Verification failed.'
+    };
+  }
+}
+
+/**
  * Sign out user from Firebase and clear active session.
  */
 export async function signOutUser(): Promise<void> {

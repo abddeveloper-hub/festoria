@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useFest } from '../context/FestContext';
 import { Badge } from '../components/common/Badge';
 import { PhoneAuthModal } from '../components/common/PhoneAuthModal';
+import { OrganiseFestModal } from '../components/public/OrganiseFestModal';
 import { Role } from '../types';
 import {
   Sparkles,
@@ -43,6 +44,7 @@ export const PublicPage: React.FC = () => {
   const [activeTabSection, setActiveTabSection] = useState<'overview' | 'results' | 'schedule' | 'teams' | 'bulletin' | 'gallery'>('overview');
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authRole, setAuthRole] = useState<Role | 'participant' | 'auto'>('auto');
+  const [organiseModalOpen, setOrganiseModalOpen] = useState(false);
 
   const openAuth = (role: Role | 'participant' | 'auto') => {
     setAuthRole(role);
@@ -139,6 +141,15 @@ export const PublicPage: React.FC = () => {
 
         {/* Visible Sign-In Options */}
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setOrganiseModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-900 text-xs font-semibold hover:bg-amber-100 hover:border-amber-400 transition-colors shadow-2xs"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+            <span>Organise a Fest</span>
+          </button>
+
           <button
             type="button"
             onClick={() => openAuth('participant')}
@@ -255,6 +266,23 @@ export const PublicPage: React.FC = () => {
                     </div>
                   </div>
                   <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-700 transition-colors" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setOrganiseModalOpen(true)}
+                  className="w-full flex items-center justify-between px-3.5 py-2.5 bg-linear-to-r from-amber-50/80 to-white border border-amber-200 rounded-lg text-xs font-semibold text-slate-800 hover:border-amber-400 hover:bg-amber-50 transition-colors shadow-2xs group"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-md bg-amber-100 text-amber-800 flex items-center justify-center font-bold">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-700" />
+                    </div>
+                    <div className="text-left">
+                      <div className="text-slate-900 font-bold group-hover:text-black">Organise a Fest / Become Admin</div>
+                      <div className="text-[10px] text-slate-500 font-normal">Apply to host your institution festival</div>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-amber-400 group-hover:text-amber-700 transition-colors" />
                 </button>
 
                 <div className="grid grid-cols-2 gap-2 pt-1">
@@ -592,6 +620,13 @@ export const PublicPage: React.FC = () => {
           <div className="flex items-center gap-4 text-slate-600">
             <span>Email: {settings.contactEmail}</span>
             <span>Tel: {settings.contactPhone}</span>
+            <button
+              type="button"
+              onClick={() => setOrganiseModalOpen(true)}
+              className="text-amber-800 font-semibold hover:underline"
+            >
+              Organise a Fest
+            </button>
             <a
               href="/admin.html"
               onClick={(e) => {
@@ -613,6 +648,12 @@ export const PublicPage: React.FC = () => {
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
         defaultRole={authRole}
+      />
+
+      {/* Organise a Fest / Application Modal */}
+      <OrganiseFestModal
+        isOpen={organiseModalOpen}
+        onClose={() => setOrganiseModalOpen(false)}
       />
     </div>
   );

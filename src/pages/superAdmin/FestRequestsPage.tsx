@@ -200,6 +200,7 @@ export const FestRequestsPage: React.FC = () => {
               className="bg-transparent font-medium focus:outline-none cursor-pointer"
             >
               <option value="all">All Statuses ({festRequests.length})</option>
+              <option value="pending">Pending</option>
               <option value="submitted">Submitted</option>
               <option value="under_review">Under Review</option>
               <option value="more_info_required">More Info Required</option>
@@ -289,6 +290,8 @@ export const FestRequestsPage: React.FC = () => {
                           ? 'bg-amber-50 text-amber-800 border border-amber-200'
                           : req.status === 'under_review'
                           ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                          : req.status === 'pending'
+                          ? 'bg-blue-50 text-blue-700 border border-blue-200'
                           : 'bg-slate-100 text-slate-700 border border-slate-200'
                       }`}>
                         {req.status.replace('_', ' ')}
@@ -351,7 +354,11 @@ export const FestRequestsPage: React.FC = () => {
                       ? 'bg-rose-100 text-rose-800'
                       : selectedRequest.status === 'more_info_required'
                       ? 'bg-amber-100 text-amber-800'
-                      : 'bg-indigo-100 text-indigo-800'
+                      : selectedRequest.status === 'under_review'
+                      ? 'bg-indigo-100 text-indigo-800'
+                      : selectedRequest.status === 'pending'
+                      ? 'bg-blue-100 text-blue-800'
+                      : 'bg-slate-100 text-slate-800'
                   }`}>
                     {selectedRequest.status.replace('_', ' ')}
                   </span>
@@ -384,7 +391,7 @@ export const FestRequestsPage: React.FC = () => {
                   </div>
                   <div>
                     <span className="text-slate-400 text-[11px] block">Venue & Campus</span>
-                    <span className="font-medium text-slate-900">{selectedRequest.venue}</span>
+                    <span className="font-medium text-slate-900">{selectedRequest.institutionAddress || selectedRequest.venue}</span>
                   </div>
                   <div>
                     <span className="text-slate-400 text-[11px] block">Proposed Dates</span>
@@ -411,8 +418,8 @@ export const FestRequestsPage: React.FC = () => {
                 </h4>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div>
-                    <span className="text-slate-400 text-[11px] block">Admin Name</span>
-                    <span className="font-medium text-slate-900">{selectedRequest.requestingAdminName}</span>
+                    <span className="text-slate-400 text-[11px] block">Contact Person</span>
+                    <span className="font-medium text-slate-900">{selectedRequest.contactPersonName || selectedRequest.requestingAdminName}</span>
                   </div>
                   <div>
                     <span className="text-slate-400 text-[11px] block">Registered Email</span>
@@ -423,8 +430,8 @@ export const FestRequestsPage: React.FC = () => {
                     <span className="font-medium text-slate-900">{selectedRequest.requestingAdminPhone}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 text-[11px] block">Account Verification</span>
-                    <span className="font-medium text-emerald-700">Verified Platform User</span>
+                    <span className="text-slate-400 text-[11px] block">Verification Status</span>
+                    <span className="font-medium text-emerald-700">Firebase Phone Verified</span>
                   </div>
                 </div>
               </div>
@@ -435,6 +442,19 @@ export const FestRequestsPage: React.FC = () => {
                   <FileText className="w-4 h-4 text-slate-500" />
                   Supporting Institutional Documents
                 </h4>
+                {selectedRequest.supportingDocumentUrl && (
+                  <div className="pt-1">
+                    <a
+                      href={selectedRequest.supportingDocumentUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 underline font-medium"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>{selectedRequest.supportingDocumentUrl}</span>
+                    </a>
+                  </div>
+                )}
                 {selectedRequest.supportingDocs && selectedRequest.supportingDocs.length > 0 ? (
                   <div className="flex flex-wrap gap-2 pt-1">
                     {selectedRequest.supportingDocs.map((doc, idx) => (
@@ -444,7 +464,7 @@ export const FestRequestsPage: React.FC = () => {
                       </div>
                     ))}
                   </div>
-                ) : (
+                ) : !selectedRequest.supportingDocumentUrl && (
                   <p className="text-slate-400 italic">No external documents attached.</p>
                 )}
               </div>

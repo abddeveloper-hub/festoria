@@ -29,7 +29,8 @@ import {
   Complaint,
   ActivityLog,
   FestSettings,
-  TeamLeaderInvitation
+  TeamLeaderInvitation,
+  FestRequest
 } from '../types';
 import { StorageService } from '../services/storage';
 
@@ -912,4 +913,171 @@ export function subscribeToLeaderboardResults(
       unsubscribeFirestore();
     }
   };
+}
+
+// ==========================================
+// 14. FEST REQUESTS & GOVERNANCE PIPELINE
+// ==========================================
+
+/**
+ * Checks if a pending or under-review fest application already exists for this institution or phone number.
+ */
+export async function checkDuplicateFestApplication(
+  institutionName: string,
+  phone?: string
+): Promise<{ isDuplicate: boolean; existingRequest?: FestRequest }> {
+  const normInst = institutionName.trim().toLowerCase();
+  const normPhone = phone ? phone.trim().replace(/\D/g, '') : '';
+
+  // 1. Check live Firestore
+  if (isFirebaseConfigured && db) {
+    try {
+      const snap = await getDocs(collection(db, 'fest_requests'));
+      for (const d of snap.docs) {
+        const req = d.data() as FestRequest;
+        const activeStatuses = ['pending', 'submitted', 'under_review', 'more_info_required'];
+        if (activeStatuses.includes(req.status)) {
+          if (req.institution && req.institution.trim().toLowerCase() === normInst) {
+            return { isDuplicate: true, existingRequest: req };
+          }
+          if (normPhone && req.requestingAdminPhone) {
+            const reqPhone = req.requestingAdminPhone.replace(/\D/g, '');
+            if (reqPhone.length >= 10 && normPhone.endsWith(reqPhone.slice(-10))) {
+              return { isDuplicate: true, existingRequest: req };
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[Firestore] checkDuplicateFestApplication error:', e);
+    }
+  }
+
+  // 2. Check Local Storage fallback
+  const localRequests = StorageService.getFestRequests();
+  for (const req of localRequests) {
+    const activeStatuses = ['pending', 'submitted', 'under_review', 'more_info_required'];
+    if (activeStatuses.includes(req.status)) {
+      if (req.institution && req.institution.trim().toLowerCase() === normInst) {
+        return { isDuplicate: true, existingRequest: req };
+      }
+      if (normPhone && req.requestingAdminPhone) {
+        const reqPhone = req.requestingAdminPhone.replace(/\D/g, '');
+        if (reqPhone.length >= 10 && normPhone.endsWith(reqPhone.slice(-10))) {
+          return { isDuplicate: true, existingRequest: req };
+        }
+      }
+    }
+  }
+
+  return { isDuplicate: false };
+}
+
+/**
+ * Submits a new Fest Application to Firestore collection `fest_requests`.
+ */
+export async function submitFestApplication(application: FestRequest): Promise<{ success: boolean; id: string; message: string }> {
+  // 1. Save to Local Storage for immediate responsive UI
+  const existing = StorageService.getFestRequests();
+  const filtered = existing.filter((r) => r.id !== application.id);
+  StorageService.saveFestRequests([application, ...filtered]);
+
+  // 2. Save to authoritative Cloud Firestore
+  if (isFirebaseConfigured && db) {
+    try {
+      await setDoc(doc(db, 'fest_requests', application.id), {
+        ...application,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+      return {
+        success: true,
+        id: application.id,
+        message: 'Fest application submitted successfully.'
+      };
+    } catch (e: any) {
+      console.error('[Firestore] submitFestApplication error:', e);
+      return {
+        success: false,
+        id: application.id,
+        message: e.message || 'Failed to persist application to Firestore.'
+      };
+    }
+  }
+
+  return {
+    success: true,
+    id: application.id,
+    message: 'Application recorded successfully.'
+  };
+}
+
+/**
+ * Fetches all fest requests from Firestore or local storage.
+ */
+export async function fetchFestRequests(): Promise<FestRequest[]> {
+  if (isFirebaseConfigured && db) {
+    try {
+      const snap = await getDocs(collection(db, 'fest_requests'));
+      if (!snap.empty) {
+        const list = snap.docs.map((d) => d.data() as FestRequest);
+        list.sort((a, b) => new Date(b.submissionDate).getTime() - new Date(a.submissionDate).getTime());
+        return list;
+      }
+    } catch (e) {
+      console.warn('[Firestore] fetchFestRequests error:', e);
+    }
+  }
+  return StorageService.getFestRequests();
+}
+
+/**
+ * Approves a fest application via trusted Cloud Function.
+ */
+export async function approveFestApplicationViaCloudFunction(
+  requestId: string,
+  approvalNote?: string
+): Promise<{ success: boolean; festId?: string; message: string }> {
+  if (isFirebaseConfigured && app) {
+    try {
+      const functions = getFunctions(app);
+      const callApprove = httpsCallable<
+        { requestId: string; approvalNote?: string },
+        { success: boolean; festId?: string; message: string }
+      >(functions, 'approveFestApplication');
+
+      const result = await callApprove({ requestId, approvalNote });
+      return result.data;
+    } catch (e: any) {
+      console.warn('[CloudFunctions] approveFestApplication failed:', e);
+      return { success: false, message: e.message || 'Approval function execution failed.' };
+    }
+  }
+  return { success: false, message: 'Cloud functions not available.' };
+}
+
+/**
+ * Rejects a fest application via trusted Cloud Function.
+ */
+export async function rejectFestApplicationViaCloudFunction(
+  requestId: string,
+  rejectionReason: string,
+  note?: string
+): Promise<{ success: boolean; message: string }> {
+  if (isFirebaseConfigured && app) {
+    try {
+      const functions = getFunctions(app);
+      const callReject = httpsCallable<
+        { requestId: string; rejectionReason: string; note?: string },
+        { success: boolean; message: string }
+      >(functions, 'rejectFestApplication');
+
+      const result = await callReject({ requestId, rejectionReason, note });
+      return result.data;
+    } catch (e: any) {
+      console.warn('[CloudFunctions] rejectFestApplication failed:', e);
+      return { success: false, message: e.message || 'Rejection function execution failed.' };
+    }
+  }
+  return { success: false, message: 'Cloud functions not available.' };
 }

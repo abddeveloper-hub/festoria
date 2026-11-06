@@ -70,7 +70,11 @@ import {
   saveFestSettingsToFirestore,
   seedFirestoreIfEmpty,
   publishResultsViaCloudFunction,
-  resolveComplaintViaCloudFunction
+  resolveComplaintViaCloudFunction,
+  fetchFestRequests,
+  submitFestApplication,
+  approveFestApplicationViaCloudFunction,
+  rejectFestApplicationViaCloudFunction
 } from '../firebase/firestoreService';
 
 export type NavigationTab =
@@ -492,13 +496,14 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     try {
       setFirebaseStatus(prev => ({ ...prev, status: 'loading' }));
       await seedFirestoreIfEmpty();
-      const [fsFests, fsTeams, fsParticipants, fsProgrammes, fsScores, fsResults] = await Promise.all([
+      const [fsFests, fsTeams, fsParticipants, fsProgrammes, fsScores, fsResults, fsFestRequests] = await Promise.all([
         fetchFests(),
         fetchTeams(),
         fetchParticipants(),
         fetchProgrammes(),
         fetchScores(),
-        fetchResults()
+        fetchResults(),
+        fetchFestRequests()
       ]);
       if (fsFests.length > 0) setFests(fsFests);
       if (fsTeams.length > 0) setTeams(fsTeams);
@@ -506,6 +511,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       if (fsProgrammes.length > 0) setProgrammes(fsProgrammes);
       if (fsScores.length > 0) setScores(fsScores);
       if (fsResults.length > 0) setResults(fsResults);
+      if (fsFestRequests.length > 0) setFestRequests(fsFestRequests);
       setFirebaseStatus({
         isConfigured: true,
         projectId: 'festoria-cd375',
@@ -1172,6 +1178,13 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     const now = new Date().toISOString().replace('T', ' ').slice(0, 16);
     const nowDate = new Date().toISOString().slice(0, 10);
 
+    // Trigger trusted backend Cloud Function for privileged provisioning
+    if (isFirebaseConfigured) {
+      approveFestApplicationViaCloudFunction(requestId, approvalNote).catch((err) => {
+        console.warn('[FestContext] Cloud Function approveFestApplication error:', err);
+      });
+    }
+
     const historyEntry: RequestHistoryEntry = {
       date: now,
       actor: currentUser.name,
@@ -1265,6 +1278,13 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     const req = festRequests.find((r) => r.id === requestId);
     if (!req) return;
     const now = new Date().toISOString().replace('T', ' ').slice(0, 16);
+
+    // Trigger trusted backend Cloud Function
+    if (isFirebaseConfigured) {
+      rejectFestApplicationViaCloudFunction(requestId, reason, note).catch((err) => {
+        console.warn('[FestContext] Cloud Function rejectFestApplication error:', err);
+      });
+    }
 
     const historyEntry: RequestHistoryEntry = {
       date: now,
@@ -1425,6 +1445,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     };
 
     setFestRequests((prev) => [newReq, ...prev]);
+    submitFestApplication(newReq);
 
     const notif: PlatformNotification = {
       id: `NOTIF-${Date.now().toString().slice(-5)}`,

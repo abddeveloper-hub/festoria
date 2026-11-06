@@ -454,5 +454,30 @@ service cloud.firestore {
       allow create, update: if isAuthenticated() && isFestAdmin(festId);
       allow delete: if isAuthenticated() && isSuperAdmin();
     }
+
+    // ========================================================
+    // 15. FEST REQUESTS (Become a Fest Admin / Organise a Fest)
+    // ========================================================
+    match /fest_requests/{requestId} {
+      // Super Admin can view all; applicants can inspect their own application
+      allow read: if isSuperAdmin() || (
+        isAuthenticated() && resource.data.requestingAdminId == request.auth.uid
+      );
+      // Authenticated users can submit a pending application for themselves
+      allow create: if isAuthenticated() &&
+        request.resource.data.requestingAdminId == request.auth.uid &&
+        request.resource.data.status in ['pending', 'submitted'];
+      // Only Super Admin can approve, reject, or request information
+      allow update, delete: if isSuperAdmin();
+    }
+
+    // ========================================================
+    // 16. PLATFORM AUDIT LOGS (Immutable Super Admin Trail)
+    // ========================================================
+    match /platform_audit_logs/{logId} {
+      allow read: if isSuperAdmin();
+      allow create: if isSuperAdmin();
+      allow update, delete: if false; // Strict immutability
+    }
   }
 }

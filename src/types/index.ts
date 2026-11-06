@@ -310,6 +310,7 @@ export type FestLifecycleStatus =
   | 'cancelled';
 
 export type FestRequestStatus = 
+  | 'pending'
   | 'draft' 
   | 'submitted' 
   | 'under_review' 
@@ -358,6 +359,8 @@ export interface FestRequest {
   edition: string;
   description: string;
   institution: string;
+  institutionAddress?: string;
+  contactPersonName?: string;
   category: string;
   venue: string;
   startDate: string;
@@ -376,6 +379,8 @@ export interface FestRequest {
   rejectionReason?: string;
   moreInfoMessage?: string;
   supportingDocs?: string[];
+  supportingDocumentUrl?: string;
+  allocatedFestId?: string;
   history: RequestHistoryEntry[];
 }
 
