@@ -529,9 +529,22 @@ export const CreateFestModal: React.FC<CreateFestModalProps> = ({
 
         {/* Global Error Banner */}
         {errorMessage && (
-          <div className="mx-6 mt-4 p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2.5">
-            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-            <div className="flex-1 font-medium leading-relaxed">{errorMessage}</div>
+          <div className="mx-6 mt-4 p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex flex-col gap-2">
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+              <div className="flex-1 font-medium leading-relaxed">{errorMessage}</div>
+            </div>
+            {errorMessage.includes('Firebase Console') && (
+              <a
+                href="https://console.firebase.google.com/project/festoria-cd375/authentication/providers"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-6.5 inline-flex items-center gap-1 text-[11px] font-bold text-rose-900 underline hover:text-black"
+              >
+                <span>Open Firebase Console Sign-in Providers</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            )}
           </div>
         )}
 

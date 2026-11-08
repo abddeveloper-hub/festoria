@@ -114,6 +114,12 @@ export async function signInWithCredentials(
     }
   } catch (authErr: any) {
     console.warn('[Firebase Auth] Sign in failed:', authErr);
+    if (authErr.code === 'auth/operation-not-allowed' || authErr.message?.includes('operation-not-allowed')) {
+      return {
+        success: false,
+        message: 'Email/Password sign-in is disabled in your Firebase Console (project: festoria-cd375). Please enable "Email/Password" under Authentication > Sign-in method in the Firebase Console.'
+      };
+    }
     if (
       authErr.code === 'auth/invalid-credential' ||
       authErr.code === 'auth/user-not-found' ||
@@ -481,6 +487,12 @@ export async function registerParticipantWithCredentials(
       await updateProfile(cred.user, { displayName: name.trim() });
     } catch {}
   } catch (createErr: any) {
+    if (createErr.code === 'auth/operation-not-allowed' || createErr.message?.includes('operation-not-allowed')) {
+      return {
+        success: false,
+        message: 'Email/Password registration is disabled in your Firebase Console (project: festoria-cd375). Please enable "Email/Password" in the Firebase Console under Authentication > Sign-in method.'
+      };
+    }
     if (createErr.code === 'auth/email-already-in-use') {
       return { success: false, message: 'An account with this email address already exists. Please sign in instead.' };
     }
@@ -606,6 +618,12 @@ export async function registerOrganizerWithCredentials(data: {
       await updateProfile(cred.user, { displayName: name.trim() });
     } catch {}
   } catch (err: any) {
+    if (err.code === 'auth/operation-not-allowed' || err.message?.includes('operation-not-allowed')) {
+      return {
+        success: false,
+        message: 'Email/Password registration is disabled in your Firebase Console (project: festoria-cd375). Please enable "Email/Password" in the Firebase Console under Authentication > Sign-in method.'
+      };
+    }
     if (err.code === 'auth/email-already-in-use') {
       return { success: false, message: 'An account with this email address already exists. Please sign in.' };
     }
@@ -664,6 +682,12 @@ export async function sendPasswordReset(identifier: string): Promise<PasswordRes
         message: `Password reset email dispatched to ${clean.toLowerCase()}. Please check your inbox and spam folder.`
       };
     } catch (err: any) {
+      if (err.code === 'auth/operation-not-allowed' || err.message?.includes('operation-not-allowed')) {
+        return {
+          success: false,
+          message: 'Password reset is disabled in your Firebase Console (project: festoria-cd375). Please enable "Email/Password" in the Firebase Console under Authentication > Sign-in method.'
+        };
+      }
       // Return generic message to prevent account enumeration
       return {
         success: true,

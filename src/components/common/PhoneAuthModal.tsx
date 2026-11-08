@@ -28,7 +28,8 @@ import {
   Users,
   Sparkles,
   KeyRound,
-  ArrowLeft
+  ArrowLeft,
+  ExternalLink
 } from 'lucide-react';
 
 interface AuthModalProps {
@@ -316,9 +317,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         <div className="p-6 overflow-y-auto space-y-4">
           {/* Error Message Banner */}
           {errorMessage && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2.5 text-xs text-red-700 animate-in fade-in duration-150">
-              <AlertCircle className="w-4 h-4 shrink-0 text-red-600 mt-0.5" />
-              <div className="leading-relaxed font-medium">{errorMessage}</div>
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex flex-col gap-2 text-xs text-red-700 animate-in fade-in duration-150">
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 shrink-0 text-red-600 mt-0.5" />
+                <div className="leading-relaxed font-medium">{errorMessage}</div>
+              </div>
+              {errorMessage.includes('Firebase Console') && (
+                <a
+                  href="https://console.firebase.google.com/project/festoria-cd375/authentication/providers"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-6.5 inline-flex items-center gap-1 text-[11px] font-bold text-red-800 underline hover:text-red-950"
+                >
+                  <span>Open Firebase Console Sign-in Providers</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              )}
             </div>
           )}
 

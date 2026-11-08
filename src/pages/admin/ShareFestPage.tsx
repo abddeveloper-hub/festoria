@@ -1067,3 +1067,4 @@ export const ShareFestPage: React.FC = () => {
     </div>
   );
 };
+

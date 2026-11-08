@@ -402,9 +402,22 @@ export const InvitationAcceptPage: React.FC<InvitationAcceptPageProps> = ({ toke
                 </div>
 
                 {formError && (
-                  <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-lg text-xs text-rose-300 flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
-                    <span>{formError}</span>
+                  <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-lg text-xs text-rose-300 flex flex-col gap-2">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
+                      <span className="leading-relaxed">{formError}</span>
+                    </div>
+                    {formError.includes('Firebase Console') && (
+                      <a
+                        href="https://console.firebase.google.com/project/festoria-cd375/authentication/providers"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="ml-6 inline-flex items-center gap-1 text-[11px] font-bold text-rose-300 underline hover:text-white"
+                      >
+                        <span>Open Firebase Console Sign-in Providers</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
                   </div>
                 )}
 
