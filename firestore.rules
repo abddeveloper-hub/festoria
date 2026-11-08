@@ -101,7 +101,7 @@ service cloud.firestore {
         ) ||
         (
           isUser(userId) &&
-          request.resource.data.uid == userId &&
+          (('id' in request.resource.data && request.resource.data.id == userId) || ('uid' in request.resource.data && request.resource.data.uid == userId)) &&
           (!('role' in request.resource.data) || request.resource.data.role == 'participant')
         );
 
@@ -466,9 +466,17 @@ service cloud.firestore {
       // Authenticated users can submit a pending application for themselves
       allow create: if isAuthenticated() &&
         request.resource.data.requestingAdminId == request.auth.uid &&
-        request.resource.data.status in ['pending', 'submitted'];
-      // Only Super Admin can approve, reject, or request information
-      allow update, delete: if isSuperAdmin();
+        request.resource.data.status in ['pending', 'submitted', 'PENDING'];
+      // Super Admin can approve, reject, or request information; applicants can provide clarification if requested
+      allow update: if isSuperAdmin() || (
+        isAuthenticated() &&
+        resource.data.requestingAdminId == request.auth.uid &&
+        resource.data.status in ['more_info_required', 'MORE_INFORMATION_REQUIRED'] &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'additionalMessage', 'supportingDocumentUrl', 'supportingDocs', 'history', 'updatedAt'
+        ])
+      );
+      allow delete: if isSuperAdmin();
     }
 
     // ========================================================
@@ -478,6 +486,20 @@ service cloud.firestore {
       allow read: if isSuperAdmin();
       allow create: if isSuperAdmin();
       allow update, delete: if false; // Strict immutability
+    }
+
+    // ========================================================
+    // 17. FEST PUBLIC PAGES (Public Media & Content Management)
+    // ========================================================
+    match /fest_public_pages/{pageId} {
+      // Published pages viewable by public; Draft pages viewable only by authorized Fest Admin or Super Admin
+      allow read: if pageId.matches('.*_published$') ||
+        isSuperAdmin() ||
+        (isAuthenticated() && resource.data.festId != null && isFestAdmin(resource.data.festId));
+
+      // Only authorized Fest Admin for this fest (or Super Admin) can create/update/delete
+      allow write: if isSuperAdmin() ||
+        (isAuthenticated() && request.resource.data.festId != null && isFestAdmin(request.resource.data.festId));
     }
   }
 }

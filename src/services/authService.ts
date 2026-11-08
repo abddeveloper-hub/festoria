@@ -1,10 +1,10 @@
 // ============================================================================
-// FestFlow Phone Number Utilities & Account Eligibility Verification
-// Pure production utility module — all OTP generation and verification
-// are delegated directly to authoritative Firebase Phone Authentication.
+// FestFlow Authentication Utilities & Account Verification
+// Supports Password Authentication via Registered Email OR Registered Mobile.
+// Zero SMS OTP. Native Firebase Auth with secure server-side phone lookup.
 // ============================================================================
 
-import { User, Participant, Role } from '../types';
+import { User, Participant, Role, ParticipantCategory } from '../types';
 
 export interface AuthCheckResult {
   exists: boolean;
@@ -15,6 +15,48 @@ export interface AuthCheckResult {
   accountStatus: 'active' | 'pending_verification' | 'suspended' | 'inactive' | 'not_found';
 }
 
+export interface SignInCredentials {
+  identifier: string; // Registered email OR registered mobile number
+  password: string;
+  intendedRole?: Role | 'participant' | 'auto';
+}
+
+export interface SignInResult {
+  success: boolean;
+  message: string;
+  role?: Role | 'participant';
+  user?: User;
+  participant?: Participant;
+  isNewUser?: boolean;
+}
+
+export interface RegistrationCredentials {
+  name: string;
+  email: string;
+  phone: string;
+  password: string;
+  confirmPassword?: string;
+  college?: string;
+  classOrDivision?: string;
+  category?: ParticipantCategory;
+  requestedTeamId?: string;
+  festId?: string;
+}
+
+export interface RegistrationResult {
+  success: boolean;
+  message: string;
+  userId?: string;
+  participantId?: string;
+  user?: User;
+}
+
+export interface PasswordResetResult {
+  success: boolean;
+  message: string;
+}
+
+// Backward-compatibility aliases for legacy test suites
 export interface RequestOtpResult {
   success: boolean;
   message: string;
@@ -86,7 +128,26 @@ export function maskPhoneNumber(phone: string): string {
 }
 
 /**
- * Checks if a given phone number belongs to an existing User or Participant.
+ * Masks an email address for privacy display: e.g. "j***n@college.edu"
+ */
+export function maskEmail(email: string): string {
+  if (!email || !email.includes('@')) return 'your registered email';
+  const [local, domain] = email.split('@');
+  if (local.length <= 2) {
+    return `${local[0]}***@${domain}`;
+  }
+  return `${local[0]}***${local[local.length - 1]}@${domain}`;
+}
+
+/**
+ * Checks if an input string is an email address.
+ */
+export function isEmailIdentifier(identifier: string): boolean {
+  return typeof identifier === 'string' && identifier.includes('@');
+}
+
+/**
+ * Checks if a given phone number belongs to an existing User or Participant (in-memory lookup).
  */
 export function checkAccountEligibility(
   phone: string,
@@ -98,7 +159,6 @@ export function checkAccountEligibility(
     return { exists: false, isVerified: false, accountStatus: 'not_found' };
   }
 
-  // 1. Look in Users collection (Admin, Super Admin, Team Leader, Judges)
   const matchedUser = users.find((u) => u.phone && normalizePhoneNumber(u.phone) === normalized);
   if (matchedUser) {
     const status = matchedUser.status === 'suspended' ? 'suspended' : matchedUser.status === 'inactive' ? 'inactive' : 'active';
@@ -111,7 +171,6 @@ export function checkAccountEligibility(
     };
   }
 
-  // 2. Look in Participants collection
   const matchedParticipant = participants.find(
     (p) => p.phone && normalizePhoneNumber(p.phone) === normalized
   );

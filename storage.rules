@@ -1,0 +1,35 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isAuthenticated() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    function isSuperAdmin() {
+      return isAuthenticated() &&
+        (request.auth.token.role == 'super_admin' || request.auth.token.admin == true);
+    }
+
+    function isAuthorizedFestAdmin(festId) {
+      return isSuperAdmin() || (
+        isAuthenticated() &&
+        (request.auth.token.role == 'admin' || request.auth.token.role == 'fest_admin') &&
+        request.auth.token.festId == festId
+      );
+    }
+
+    // Individual Fest Media: Hero videos, PNG logos, and main photos
+    match /fests/{festId}/{allPaths=**} {
+      // Public visitors can view and stream published media without signing in
+      allow read: if true;
+
+      // Only the authorized Fest Admin for this fest (or Super Admin) can write, replace, or delete
+      // Enforce file size limit (50MB maximum)
+      allow write: if isAuthorizedFestAdmin(festId) &&
+        request.resource.size < 50 * 1024 * 1024;
+
+      allow delete: if isAuthorizedFestAdmin(festId);
+    }
+  }
+}

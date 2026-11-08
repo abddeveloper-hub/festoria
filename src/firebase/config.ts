@@ -1,6 +1,7 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth, connectAuthEmulator } from 'firebase/auth';
 import { getFirestore, Firestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { getStorage, FirebaseStorage, connectStorageEmulator } from 'firebase/storage';
 import { getAnalytics, isSupported, Analytics } from 'firebase/analytics';
 
 // Environment-configured Firebase credentials for project festoria-cd375
@@ -24,6 +25,7 @@ export const isFirebaseConfigured = Boolean(
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 let db: Firestore | null = null;
+export let storage: FirebaseStorage | null = null;
 let analytics: Analytics | null = null;
 export let firebaseInitError: Error | null = null;
 
@@ -47,6 +49,12 @@ if (isFirebaseConfigured) {
       db = getFirestore(app);
     } catch (dbError) {
       console.error('[Firebase] Failed to initialize Cloud Firestore:', dbError);
+    }
+
+    try {
+      storage = getStorage(app);
+    } catch (storageError) {
+      console.error('[Firebase] Failed to initialize Firebase Storage:', storageError);
     }
 
     // Initialize Analytics only in supported browser environments
@@ -113,6 +121,19 @@ export function getFirebaseDb(): Firestore | null {
     return db;
   } catch (e: any) {
     console.error('[Firebase] getFirebaseDb fallback failed:', e);
+    return null;
+  }
+}
+
+export function getFirebaseStorage(): FirebaseStorage | null {
+  if (storage) return storage;
+  if (!isFirebaseConfigured) return null;
+  try {
+    const targetApp = app || (getApps().length > 0 ? getApp() : initializeApp(firebaseConfig));
+    storage = getStorage(targetApp);
+    return storage;
+  } catch (e: any) {
+    console.error('[Firebase] getFirebaseStorage fallback failed:', e);
     return null;
   }
 }

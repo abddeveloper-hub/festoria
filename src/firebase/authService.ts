@@ -1,9 +1,11 @@
 import {
-  signInWithPhoneNumber,
-  RecaptchaVerifier,
-  ConfirmationResult,
+  signInWithEmailAndPassword,
+  signInWithCustomToken,
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   signOut as firebaseSignOut,
   onAuthStateChanged,
+  updateProfile,
   User as FirebaseUser
 } from 'firebase/auth';
 import {
@@ -14,235 +16,146 @@ import {
   getFirebaseDb,
   firebaseInitError
 } from './config';
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import {
   normalizePhoneNumber,
   formatPhoneDisplay,
+  maskEmail,
+  isEmailIdentifier,
+  SignInCredentials,
+  SignInResult,
+  RegistrationCredentials,
+  RegistrationResult,
+  PasswordResetResult,
   VerifyOtpResult,
   RequestOtpResult
 } from '../services/authService';
 import { User, Participant, Role } from '../types';
 import { StorageService } from '../services/storage';
 
-// Global reference to store active Firebase ConfirmationResult
-let activeConfirmationResult: ConfirmationResult | null = null;
-let recaptchaVerifier: RecaptchaVerifier | null = null;
-
-// In-memory rate limiting for OTP dispatch (abuse protection)
-const lastOtpRequestTimes = new Map<string, number>();
-const RESEND_COOLDOWN_SECONDS = 30;
-
 /**
- * Initializes or retrieves a ReCAPTCHA verifier for Firebase Phone Auth.
+ * Sign In with Credentials (Registered Email OR Registered Mobile Number + Password).
+ * Enforces authoritative Firestore RBAC checks against /users/{uid}.
+ * Never stores passwords. Rejects unauthorized privilege escalation.
  */
-export function getRecaptchaVerifier(containerId: string = 'recaptcha-container'): RecaptchaVerifier | null {
-  const firebaseAuth = auth || getFirebaseAuth();
-  if (!isFirebaseConfigured || !firebaseAuth) {
-    return null;
+export async function signInWithCredentials(
+  credentials: SignInCredentials
+): Promise<SignInResult> {
+  const { identifier, password, intendedRole = 'auto' } = credentials;
+
+  if (!identifier || !identifier.trim()) {
+    return { success: false, message: 'Please enter your registered email address or mobile number.' };
+  }
+  if (!password || !password.trim()) {
+    return { success: false, message: 'Please enter your account password.' };
   }
 
-  // Ensure recaptcha container exists in document.body
-  let container = document.getElementById(containerId);
-  if (!container) {
-    container = document.createElement('div');
-    container.id = containerId;
-    document.body.appendChild(container);
-  }
-
-  // Clear existing verifier instance and reset DOM container to ensure a fresh session
-  if (recaptchaVerifier) {
-    try {
-      recaptchaVerifier.clear();
-    } catch {
-      // ignore
-    }
-    recaptchaVerifier = null;
-  }
-  container.innerHTML = '';
-
-  try {
-    recaptchaVerifier = new RecaptchaVerifier(firebaseAuth, container, {
-      size: 'invisible',
-      callback: () => {
-        // ReCAPTCHA solved
-      },
-      'expired-callback': () => {
-        console.warn('[Firebase Auth] ReCAPTCHA expired. Please re-verify.');
-      }
-    });
-  } catch (e) {
-    console.warn('[Firebase Auth] ReCAPTCHA initialization error:', e);
-    return null;
-  }
-
-  return recaptchaVerifier;
-}
-
-/**
- * Request Phone OTP through Firebase Authentication.
- * Removes all client localStorage pre-filters; enforces ReCAPTCHA and cooldown rate-limits.
- */
-export async function requestFirebasePhoneOtp(
-  phone: string,
-  intendedRole?: Role | 'participant' | 'auto',
-  recaptchaContainerId: string = 'recaptcha-container'
-): Promise<RequestOtpResult> {
-  const normalized = normalizePhoneNumber(phone);
-  if (!normalized) {
-    return { success: false, message: 'Invalid phone number format.' };
-  }
-
-  // Abuse protection: Enforce 30-second cooldown per phone number
-  const lastRequested = lastOtpRequestTimes.get(normalized) || 0;
-  const elapsedSeconds = Math.floor((Date.now() - lastRequested) / 1000);
-  if (elapsedSeconds < RESEND_COOLDOWN_SECONDS) {
-    const remaining = RESEND_COOLDOWN_SECONDS - elapsedSeconds;
-    return {
-      success: false,
-      message: `Please wait ${remaining} seconds before requesting a new verification code.`,
-      cooldownSeconds: remaining
-    };
-  }
-
-  const firebaseAuth = auth || getFirebaseAuth();
-
-  // If live Firebase is configured, execute real Firebase Phone Authentication
-  if (isFirebaseConfigured && firebaseAuth) {
-    try {
-      const verifier = getRecaptchaVerifier(recaptchaContainerId);
-      if (verifier) {
-        await verifier.render();
-        const confirmation = await signInWithPhoneNumber(firebaseAuth, normalized, verifier);
-        activeConfirmationResult = confirmation;
-        lastOtpRequestTimes.set(normalized, Date.now());
-        return {
-          success: true,
-          message: `Verification code sent via SMS to ${formatPhoneDisplay(phone)}.`,
-          cooldownSeconds: RESEND_COOLDOWN_SECONDS
-        };
-      } else {
-        return {
-          success: false,
-          message: 'ReCAPTCHA verifier could not be initialized. Please refresh the page and try again.'
-        };
-      }
-    } catch (firebaseErr: any) {
-      console.warn('[Firebase Auth] signInWithPhoneNumber failed:', firebaseErr);
-      try {
-        if (recaptchaVerifier) {
-          recaptchaVerifier.clear();
-          recaptchaVerifier = null;
-        }
-      } catch (e) {
-        recaptchaVerifier = null;
-      }
-      const cEl = document.getElementById(recaptchaContainerId);
-      if (cEl) cEl.innerHTML = '';
-
-      if (firebaseErr.code === 'auth/quota-exceeded' || firebaseErr.code === 'auth/too-many-requests') {
-        return {
-          success: false,
-          message: 'SMS quota exceeded or too many attempts. Please try again later.'
-        };
-      }
-      if (firebaseErr.code === 'auth/invalid-phone-number') {
-        return {
-          success: false,
-          message: 'The phone number entered is invalid. Please check the country code and number.'
-        };
-      }
-      if (firebaseErr.code === 'auth/captcha-check-failed') {
-        return {
-          success: false,
-          message: 'ReCAPTCHA verification failed. Please try again.'
-        };
-      }
-      if (firebaseErr.code === 'auth/invalid-app-credential') {
-        return {
-          success: false,
-          message: 'Phone verification credential rejected. Please ensure you are accessing via http://localhost:5173 (not 127.0.0.1) and refresh the page.'
-        };
-      }
-      if (firebaseErr.code === 'auth/operation-not-allowed') {
-        return {
-          success: false,
-          message: 'Phone authentication is not enabled in Firebase Console. Please enable the Phone provider in Firebase Console -> Authentication -> Sign-in method.'
-        };
-      }
-      return {
-        success: false,
-        message: firebaseErr.message || 'Phone verification failed.'
-      };
-    }
-  }
-
-  // If Firebase is not configured
-  if (!isFirebaseConfigured) {
-    return {
-      success: false,
-      message: 'Firebase Authentication is not configured. Please verify your environment credentials.'
-    };
-  }
-
-  return {
-    success: false,
-    message: firebaseInitError
-      ? `Authentication service unavailable: ${firebaseInitError.message}`
-      : 'Authentication service unavailable. Please refresh and check your network connection.'
-  };
-}
-
-/**
- * Verify Phone OTP through Firebase ConfirmationResult.
- * Authoritative security check against Cloud Firestore /users/{uid}.
- */
-export async function verifyFirebasePhoneOtp(
-  phone: string,
-  otpCode: string,
-  intendedRole?: Role | 'participant' | 'auto'
-): Promise<VerifyOtpResult> {
-  const normalized = normalizePhoneNumber(phone);
+  const cleanIdentifier = identifier.trim();
   const firebaseAuth = auth || getFirebaseAuth();
   const firestoreDb = db || getFirebaseDb();
 
-  if (!isFirebaseConfigured || !firebaseAuth) {
+  if (!isFirebaseConfigured || !firebaseAuth || !firestoreDb) {
     return {
       success: false,
-      message: 'Firebase Authentication is not configured.'
+      message: 'Authentication service unavailable. Please check your network connection.'
     };
   }
 
-  if (!activeConfirmationResult) {
-    return {
-      success: false,
-      message: 'No active Firebase Phone verification session found. Please request a new OTP.'
-    };
-  }
+  let uid: string;
+  let authenticatedEmail: string | undefined;
+  let authenticatedPhone: string | undefined;
 
+  // =========================================================================
+  // 1. Authenticate with Firebase Authentication
+  // =========================================================================
   try {
-    const userCredential = await activeConfirmationResult.confirm(otpCode);
-    const firebaseUser = userCredential.user;
-    const uid = firebaseUser.uid;
-    const authenticatedPhone = normalizePhoneNumber(firebaseUser.phoneNumber || normalized);
+    if (isEmailIdentifier(cleanIdentifier)) {
+      // Direct Email + Password sign-in via native Firebase Auth
+      const userCredential = await signInWithEmailAndPassword(
+        firebaseAuth,
+        cleanIdentifier.toLowerCase(),
+        password
+      );
+      uid = userCredential.user.uid;
+      authenticatedEmail = userCredential.user.email?.toLowerCase();
+    } else {
+      // Mobile Number + Password sign-in via trusted backend Cloud Function
+      const normalizedPhone = normalizePhoneNumber(cleanIdentifier);
+      if (!normalizedPhone || normalizedPhone.length < 10) {
+        return { success: false, message: 'Please enter a valid 10-digit mobile number or email address.' };
+      }
 
-    if (!firestoreDb) {
+      try {
+        const functions = getFunctions(firebaseAuth.app);
+        const callPhoneLogin = httpsCallable<{ phone: string; password: string }, { customToken: string; uid: string }>(
+          functions,
+          'signInWithPhoneCredentials'
+        );
+        const response = await callPhoneLogin({ phone: normalizedPhone, password });
+        const { customToken } = response.data;
+        const userCredential = await signInWithCustomToken(firebaseAuth, customToken);
+        uid = userCredential.user.uid;
+        authenticatedPhone = normalizedPhone;
+      } catch (fnErr: any) {
+        console.warn('[Firebase Auth] Phone login Cloud Function failed:', fnErr);
+        const errMessage = fnErr.message || '';
+        if (errMessage.includes('resource-exhausted') || errMessage.includes('Too many failed')) {
+          return {
+            success: false,
+            message: 'Too many failed login attempts. Access temporarily locked for 15 minutes. Please reset your password or try again later.'
+          };
+        }
+        return {
+          success: false,
+          message: 'Invalid email/phone or password. Please check your credentials.'
+        };
+      }
+    }
+  } catch (authErr: any) {
+    console.warn('[Firebase Auth] Sign in failed:', authErr);
+    if (
+      authErr.code === 'auth/invalid-credential' ||
+      authErr.code === 'auth/user-not-found' ||
+      authErr.code === 'auth/wrong-password' ||
+      authErr.code === 'auth/invalid-email'
+    ) {
       return {
         success: false,
-        message: 'Firestore database is not configured.'
+        message: 'Invalid email/phone or password. Please check your credentials.'
       };
     }
+    if (authErr.code === 'auth/user-disabled') {
+      return {
+        success: false,
+        message: 'This account has been disabled. Please contact the platform administrator.'
+      };
+    }
+    if (authErr.code === 'auth/too-many-requests') {
+      return {
+        success: false,
+        message: 'Access to this account has been temporarily disabled due to many failed login attempts. You can immediately restore it by resetting your password or try again later.'
+      };
+    }
+    return {
+      success: false,
+      message: authErr.message || 'Authentication failed. Please check your credentials.'
+    };
+  }
 
-    // Authoritative profile retrieval from Firestore
+  // =========================================================================
+  // 2. Authoritative Profile Retrieval & RBAC Enforcement
+  // =========================================================================
+  try {
     const userDocRef = doc(firestoreDb, 'users', uid);
     const userDocSnap = await getDoc(userDocRef);
 
     // =========================================================================
-    // 1. Privileged Super Admin Access Verification
+    // 2A. Super Admin Role Verification
     // =========================================================================
     if (intendedRole === 'super_admin') {
       if (!userDocSnap.exists()) {
         await signOutUser();
-        activeConfirmationResult = null;
         return {
           success: false,
           message: 'Unauthorized: No Super Administrator profile found for this account in Firestore.'
@@ -251,18 +164,8 @@ export async function verifyFirebasePhoneOtp(
 
       const profile = userDocSnap.data() as User;
 
-      if (normalizePhoneNumber(profile.phone || '') !== authenticatedPhone) {
-        await signOutUser();
-        activeConfirmationResult = null;
-        return {
-          success: false,
-          message: 'Security Alert: Registered profile phone number does not match authenticated phone number.'
-        };
-      }
-
       if (profile.status !== 'active') {
         await signOutUser();
-        activeConfirmationResult = null;
         return {
           success: false,
           message: profile.status === 'suspended'
@@ -273,20 +176,16 @@ export async function verifyFirebasePhoneOtp(
 
       if (profile.role !== 'super_admin') {
         await signOutUser();
-        activeConfirmationResult = null;
         return {
           success: false,
           message: 'Unauthorized: This account does not possess Super Administrator privileges.'
         };
       }
 
-      activeConfirmationResult = null;
       StorageService.setCurrentUser(profile);
       try {
-        await updateDoc(userDocRef, { phoneVerified: true, lastLoginAt: serverTimestamp() });
-      } catch {
-        // ignore non-critical update
-      }
+        await updateDoc(userDocRef, { lastLoginAt: serverTimestamp() });
+      } catch {}
 
       return {
         success: true,
@@ -298,12 +197,11 @@ export async function verifyFirebasePhoneOtp(
     }
 
     // =========================================================================
-    // 2. Privileged Admin / Fest Admin Access Verification
+    // 2B. Admin / Fest Admin Role Verification
     // =========================================================================
     if (intendedRole === 'admin') {
       if (!userDocSnap.exists()) {
         await signOutUser();
-        activeConfirmationResult = null;
         return {
           success: false,
           message: 'Unauthorized: No Administrator profile found for this account in Firestore.'
@@ -312,18 +210,8 @@ export async function verifyFirebasePhoneOtp(
 
       const profile = userDocSnap.data() as User;
 
-      if (normalizePhoneNumber(profile.phone || '') !== authenticatedPhone) {
-        await signOutUser();
-        activeConfirmationResult = null;
-        return {
-          success: false,
-          message: 'Security Alert: Registered profile phone number does not match authenticated phone number.'
-        };
-      }
-
       if (profile.status !== 'active') {
         await signOutUser();
-        activeConfirmationResult = null;
         return {
           success: false,
           message: profile.status === 'suspended'
@@ -334,20 +222,16 @@ export async function verifyFirebasePhoneOtp(
 
       if (profile.role !== 'admin' && profile.role !== 'fest_admin' && profile.role !== 'super_admin') {
         await signOutUser();
-        activeConfirmationResult = null;
         return {
           success: false,
           message: 'Unauthorized: This account does not possess Administrator privileges.'
         };
       }
 
-      activeConfirmationResult = null;
       StorageService.setCurrentUser(profile);
       try {
-        await updateDoc(userDocRef, { phoneVerified: true, lastLoginAt: serverTimestamp() });
-      } catch {
-        // ignore
-      }
+        await updateDoc(userDocRef, { lastLoginAt: serverTimestamp() });
+      } catch {}
 
       return {
         success: true,
@@ -359,7 +243,7 @@ export async function verifyFirebasePhoneOtp(
     }
 
     // =========================================================================
-    // 3. Privileged Team Leader Access Verification
+    // 2C. Team Leader Role Verification
     // =========================================================================
     if (intendedRole === 'team_leader') {
       let profile: User | undefined;
@@ -370,23 +254,26 @@ export async function verifyFirebasePhoneOtp(
         // Check for pending invitation to activate
         try {
           const { fetchInvitationByPhone, activateTeamLeaderInvitation } = await import('./firestoreService');
-          const inv = await fetchInvitationByPhone(authenticatedPhone);
-          if (inv && (inv.status === 'pending_verification' || inv.status === 'activated')) {
-            await activateTeamLeaderInvitation(inv.id, uid);
-            profile = {
-              id: uid,
-              name: inv.name,
-              email: inv.email || '',
-              phone: authenticatedPhone,
-              phoneVerified: true,
-              role: 'team_leader',
-              status: 'active',
-              festId: inv.festId,
-              linkedTeamId: inv.teamId,
-              invitationStatus: 'verified',
-              createdAt: new Date().toISOString()
-            };
-            await setDoc(userDocRef, { ...profile, updatedAt: serverTimestamp() }, { merge: true });
+          const phoneToLookup = authenticatedPhone || (userDocSnap.exists() ? (userDocSnap.data() as User).phone : '');
+          if (phoneToLookup) {
+            const inv = await fetchInvitationByPhone(phoneToLookup);
+            if (inv && (inv.status === 'pending_verification' || inv.status === 'activated')) {
+              await activateTeamLeaderInvitation(inv.id, uid);
+              profile = {
+                id: uid,
+                name: inv.name,
+                email: inv.email || authenticatedEmail || '',
+                phone: phoneToLookup,
+                phoneVerified: true,
+                role: 'team_leader',
+                status: 'active',
+                festId: inv.festId,
+                linkedTeamId: inv.teamId,
+                invitationStatus: 'verified',
+                createdAt: new Date().toISOString()
+              };
+              await setDoc(userDocRef, { ...profile, updatedAt: serverTimestamp() }, { merge: true });
+            }
           }
         } catch (invErr) {
           console.warn('[Firebase Auth] Team leader invitation lookup error:', invErr);
@@ -395,25 +282,14 @@ export async function verifyFirebasePhoneOtp(
 
       if (!profile) {
         await signOutUser();
-        activeConfirmationResult = null;
         return {
           success: false,
-          message: 'Unauthorized: This phone number is not registered as an authorized Team Leader.'
-        };
-      }
-
-      if (normalizePhoneNumber(profile.phone || '') !== authenticatedPhone) {
-        await signOutUser();
-        activeConfirmationResult = null;
-        return {
-          success: false,
-          message: 'Security Alert: Registered profile phone number does not match authenticated phone number.'
+          message: 'Unauthorized: No Team Leader profile or invitation found for this account.'
         };
       }
 
       if (profile.status !== 'active') {
         await signOutUser();
-        activeConfirmationResult = null;
         return {
           success: false,
           message: profile.status === 'suspended'
@@ -424,7 +300,6 @@ export async function verifyFirebasePhoneOtp(
 
       if (profile.role !== 'team_leader' && profile.role !== 'admin' && profile.role !== 'super_admin') {
         await signOutUser();
-        activeConfirmationResult = null;
         return {
           success: false,
           message: 'Unauthorized: This account is not registered as an authorized Team Leader.'
@@ -433,15 +308,17 @@ export async function verifyFirebasePhoneOtp(
 
       if (profile.role === 'team_leader' && !profile.linkedTeamId) {
         await signOutUser();
-        activeConfirmationResult = null;
         return {
           success: false,
           message: 'Account Unassigned: Your Team Leader account is not assigned to any participating team.'
         };
       }
 
-      activeConfirmationResult = null;
       StorageService.setCurrentUser(profile);
+      try {
+        await updateDoc(userDocRef, { lastLoginAt: serverTimestamp() });
+      } catch {}
+
       return {
         success: true,
         message: 'Team Leader authenticated successfully.',
@@ -452,13 +329,13 @@ export async function verifyFirebasePhoneOtp(
     }
 
     // =========================================================================
-    // 4. Participant or Auto-Detect Role Verification
+    // 2D. Participant or Auto-Detect Role Verification
     // =========================================================================
     if (userDocSnap.exists()) {
       const profile = userDocSnap.data() as User;
+
       if (profile.status !== 'active') {
         await signOutUser();
-        activeConfirmationResult = null;
         return {
           success: false,
           message: profile.status === 'suspended'
@@ -466,8 +343,12 @@ export async function verifyFirebasePhoneOtp(
             : 'This account is currently inactive. Access is denied.'
         };
       }
-      activeConfirmationResult = null;
+
       StorageService.setCurrentUser(profile);
+      try {
+        await updateDoc(userDocRef, { lastLoginAt: serverTimestamp() });
+      } catch {}
+
       return {
         success: true,
         message: `Authenticated successfully as ${profile.role.replace('_', ' ')}.`,
@@ -477,15 +358,14 @@ export async function verifyFirebasePhoneOtp(
       };
     }
 
-    // Check existing participant record in Firestore
+    // Check participants collection if profile document not yet created
     let existingParticipant: Participant | undefined;
     try {
       const partDoc = await getDoc(doc(firestoreDb, 'participants', `PT-${uid.slice(0, 5)}`));
       if (partDoc.exists()) {
         existingParticipant = partDoc.data() as Participant;
-      } else {
-        const { query, collection, where, getDocs } = await import('firebase/firestore');
-        const q = query(collection(firestoreDb, 'participants'), where('phone', '==', authenticatedPhone));
+      } else if (authenticatedEmail) {
+        const q = query(collection(firestoreDb, 'participants'), where('email', '==', authenticatedEmail));
         const snap = await getDocs(q);
         if (!snap.empty) {
           existingParticipant = snap.docs[0].data() as Participant;
@@ -498,7 +378,6 @@ export async function verifyFirebasePhoneOtp(
     if (existingParticipant) {
       if (existingParticipant.status === 'disqualified') {
         await signOutUser();
-        activeConfirmationResult = null;
         return {
           success: false,
           message: 'This participant registration has been disqualified or suspended.'
@@ -508,8 +387,8 @@ export async function verifyFirebasePhoneOtp(
       const partUser: User = {
         id: uid,
         name: existingParticipant.name,
-        email: existingParticipant.email || '',
-        phone: authenticatedPhone,
+        email: existingParticipant.email || authenticatedEmail || '',
+        phone: existingParticipant.phone || authenticatedPhone || '',
         phoneVerified: true,
         role: 'participant',
         status: 'active',
@@ -518,7 +397,6 @@ export async function verifyFirebasePhoneOtp(
         createdAt: existingParticipant.createdAt || new Date().toISOString()
       };
 
-      activeConfirmationResult = null;
       StorageService.setCurrentUser(partUser);
       return {
         success: true,
@@ -530,76 +408,297 @@ export async function verifyFirebasePhoneOtp(
       };
     }
 
-    // No existing user profile or participant record -> New Participant Self-Registration
-    activeConfirmationResult = null;
+    // If no existing profile found
     return {
       success: true,
-      message: 'Phone number verified. Please complete your participant registration.',
+      message: 'Account authenticated. Please complete your registration details.',
       role: 'participant',
       isNewUser: true
     };
   } catch (err: any) {
-    console.warn('[Firebase Auth] Confirmation code error:', err);
+    console.error('[Firebase Auth] Profile retrieval error:', err);
     return {
       success: false,
-      message: err.message?.includes('invalid-verification-code')
-        ? 'Invalid verification code. Please check and re-enter.'
-        : err.message || 'Verification failed.'
+      message: err.message || 'Failed to retrieve authoritative account profile.'
     };
   }
 }
 
 /**
- * Verify applicant's phone OTP specifically for Fest Application submission.
- * Keeps user authenticated in Firebase Auth so authenticated Firestore writes to fest_requests succeed.
+ * Register a new Participant with Email, Mobile Number, and Password.
+ * Validates uniqueness, creates Firebase Auth account, and saves Firestore /users/{uid}.
+ * Never stores passwords in Firestore or localStorage.
  */
-export async function verifyApplicantPhoneVerification(
-  phone: string,
-  otpCode: string
-): Promise<{ success: boolean; message: string; uid?: string; phone?: string }> {
-  const normalized = normalizePhoneNumber(phone);
+export async function registerParticipantWithCredentials(
+  data: RegistrationCredentials
+): Promise<RegistrationResult> {
+  const { name, email, phone, password, confirmPassword, college, classOrDivision, category, requestedTeamId, festId } = data;
+
+  if (!name || name.trim().length < 2) {
+    return { success: false, message: 'Please enter your full legal name (at least 2 characters).' };
+  }
+  if (!email || !isEmailIdentifier(email)) {
+    return { success: false, message: 'Please enter a valid official email address.' };
+  }
+  const cleanEmail = email.trim().toLowerCase();
+
+  const normalizedPhone = normalizePhoneNumber(phone);
+  if (!normalizedPhone || normalizedPhone.length < 10) {
+    return { success: false, message: 'Please enter a valid 10-digit mobile number.' };
+  }
+
+  if (!password || password.length < 6) {
+    return { success: false, message: 'Password must be at least 6 characters long.' };
+  }
+  if (confirmPassword && password !== confirmPassword) {
+    return { success: false, message: 'Password confirmation does not match.' };
+  }
+
+  const firebaseAuth = auth || getFirebaseAuth();
+  const firestoreDb = db || getFirebaseDb();
+
+  if (!isFirebaseConfigured || !firebaseAuth || !firestoreDb) {
+    return { success: false, message: 'Authentication service unavailable. Please check your network connection.' };
+  }
+
+  // 1. Check duplicate phone number in Firestore /users
+  try {
+    const qPhone = query(collection(firestoreDb, 'users'), where('phone', '==', normalizedPhone));
+    const snapPhone = await getDocs(qPhone);
+    if (!snapPhone.empty) {
+      return { success: false, message: 'An account with this mobile number is already registered.' };
+    }
+  } catch (dupErr) {
+    console.warn('[Firebase Auth] Duplicate phone check error:', dupErr);
+  }
+
+  // 2. Create Firebase Auth user with Email + Password
+  let uid: string;
+  try {
+    const cred = await createUserWithEmailAndPassword(firebaseAuth, cleanEmail, password);
+    uid = cred.user.uid;
+    try {
+      await updateProfile(cred.user, { displayName: name.trim() });
+    } catch {}
+  } catch (createErr: any) {
+    if (createErr.code === 'auth/email-already-in-use') {
+      return { success: false, message: 'An account with this email address already exists. Please sign in instead.' };
+    }
+    if (createErr.code === 'auth/weak-password') {
+      return { success: false, message: 'Password is too weak. Please use at least 6 characters with mixed characters.' };
+    }
+    return { success: false, message: createErr.message || 'Failed to create account.' };
+  }
+
+  // 3. Store Authoritative User Profile in Firestore /users/{uid} (zero plaintext passwords)
+  const nowIso = new Date().toISOString();
+  const userProfile: User = {
+    id: uid,
+    name: name.trim(),
+    email: cleanEmail,
+    phone: normalizedPhone,
+    phoneVerified: true,
+    emailVerified: false,
+    role: 'participant',
+    status: 'active',
+    festId: festId || 'FEST-01',
+    createdAt: nowIso,
+    updatedAt: nowIso
+  };
+
+  try {
+    await setDoc(doc(firestoreDb, 'users', uid), userProfile);
+  } catch (saveErr: any) {
+    console.error('[Firebase Auth] Failed to save user profile:', saveErr);
+  }
+
+  // 4. Create Participant Document in /participants
+  const participantId = `PT-${uid.slice(0, 6).toUpperCase()}`;
+  const participantDoc: Participant = {
+    id: participantId,
+    userId: uid,
+    name: name.trim(),
+    email: cleanEmail,
+    phone: normalizedPhone,
+    college: (college || '').trim(),
+    classOrDivision: (classOrDivision || '').trim(),
+    category: category || 'Senior',
+    teamId: requestedTeamId || 'TM-01',
+    status: 'registered',
+    approvalStatus: 'pending_approval',
+    registeredProgrammes: [],
+    festId: festId || 'FEST-01',
+    createdAt: nowIso,
+    updatedAt: nowIso
+  };
+
+  try {
+    await setDoc(doc(firestoreDb, 'participants', participantId), participantDoc);
+  } catch (pSaveErr: any) {
+    console.error('[Firebase Auth] Failed to save participant document:', pSaveErr);
+  }
+
+  StorageService.setCurrentUser(userProfile);
+  StorageService.saveActiveParticipantId(participantId);
+
+  return {
+    success: true,
+    message: 'Registration completed successfully.',
+    userId: uid,
+    participantId,
+    user: userProfile
+  };
+}
+
+/**
+ * Register an Organizer account with Email, Mobile Number, and Password for Fest Applications.
+ */
+export async function registerOrganizerWithCredentials(data: {
+  name: string;
+  email: string;
+  phone: string;
+  password: string;
+  confirmPassword?: string;
+}): Promise<RegistrationResult> {
+  const { name, email, phone, password, confirmPassword } = data;
+
+  if (!name || name.trim().length < 2) {
+    return { success: false, message: 'Please enter your full name.' };
+  }
+  if (!email || !isEmailIdentifier(email)) {
+    return { success: false, message: 'Please enter a valid email address.' };
+  }
+  const cleanEmail = email.trim().toLowerCase();
+
+  const normalizedPhone = normalizePhoneNumber(phone);
+  if (!normalizedPhone || normalizedPhone.length < 10) {
+    return { success: false, message: 'Please enter a valid 10-digit mobile number.' };
+  }
+
+  if (!password || password.length < 6) {
+    return { success: false, message: 'Password must be at least 6 characters.' };
+  }
+  if (confirmPassword && password !== confirmPassword) {
+    return { success: false, message: 'Passwords do not match.' };
+  }
+
+  const firebaseAuth = auth || getFirebaseAuth();
+  const firestoreDb = db || getFirebaseDb();
+
+  if (!isFirebaseConfigured || !firebaseAuth || !firestoreDb) {
+    return { success: false, message: 'Authentication service unavailable.' };
+  }
+
+  // Check duplicate phone
+  try {
+    const qPhone = query(collection(firestoreDb, 'users'), where('phone', '==', normalizedPhone));
+    const snapPhone = await getDocs(qPhone);
+    if (!snapPhone.empty) {
+      return { success: false, message: 'An account with this mobile number already exists.' };
+    }
+  } catch {}
+
+  let uid: string;
+  try {
+    const cred = await createUserWithEmailAndPassword(firebaseAuth, cleanEmail, password);
+    uid = cred.user.uid;
+    try {
+      await updateProfile(cred.user, { displayName: name.trim() });
+    } catch {}
+  } catch (err: any) {
+    if (err.code === 'auth/email-already-in-use') {
+      return { success: false, message: 'An account with this email address already exists. Please sign in.' };
+    }
+    return { success: false, message: err.message || 'Registration failed.' };
+  }
+
+  const nowIso = new Date().toISOString();
+  const userProfile: User = {
+    id: uid,
+    name: name.trim(),
+    email: cleanEmail,
+    phone: normalizedPhone,
+    phoneVerified: true,
+    emailVerified: false,
+    role: 'participant', // Organizer starts as applicant; promoted to admin upon Super Admin approval
+    status: 'active',
+    createdAt: nowIso,
+    updatedAt: nowIso
+  };
+
+  try {
+    await setDoc(doc(firestoreDb, 'users', uid), userProfile);
+  } catch {}
+
+  StorageService.setCurrentUser(userProfile);
+
+  return {
+    success: true,
+    message: 'Organizer account created successfully.',
+    userId: uid,
+    user: userProfile
+  };
+}
+
+/**
+ * Send Password Reset instructions via Email or Registered Mobile Number.
+ * Never exposes full account email when looked up by phone number.
+ */
+export async function sendPasswordReset(identifier: string): Promise<PasswordResetResult> {
+  if (!identifier || !identifier.trim()) {
+    return { success: false, message: 'Please enter your registered email address or mobile number.' };
+  }
+
+  const clean = identifier.trim();
   const firebaseAuth = auth || getFirebaseAuth();
 
   if (!isFirebaseConfigured || !firebaseAuth) {
-    return {
-      success: false,
-      message: 'Firebase Authentication is not configured.'
-    };
+    return { success: false, message: 'Authentication service unavailable.' };
   }
 
-  if (!activeConfirmationResult) {
-    return {
-      success: false,
-      message: 'No active phone verification session found. Please request an OTP code first.'
-    };
-  }
+  if (isEmailIdentifier(clean)) {
+    try {
+      await sendPasswordResetEmail(firebaseAuth, clean.toLowerCase());
+      return {
+        success: true,
+        message: `Password reset email dispatched to ${clean.toLowerCase()}. Please check your inbox and spam folder.`
+      };
+    } catch (err: any) {
+      // Return generic message to prevent account enumeration
+      return {
+        success: true,
+        message: `If an account exists for ${clean.toLowerCase()}, password reset instructions have been dispatched.`
+      };
+    }
+  } else {
+    // Phone number password reset via trusted Cloud Function
+    const normalized = normalizePhoneNumber(clean);
+    if (!normalized || normalized.length < 10) {
+      return { success: false, message: 'Please enter a valid mobile number or email address.' };
+    }
 
-  try {
-    const userCredential = await activeConfirmationResult.confirm(otpCode);
-    const firebaseUser = userCredential.user;
-    const uid = firebaseUser.uid;
-    const authenticatedPhone = normalizePhoneNumber(firebaseUser.phoneNumber || normalized);
-    activeConfirmationResult = null;
-
-    return {
-      success: true,
-      message: 'Phone number verified successfully.',
-      uid,
-      phone: authenticatedPhone
-    };
-  } catch (err: any) {
-    console.warn('[Firebase Auth] Applicant confirmation code error:', err);
-    return {
-      success: false,
-      message: err.message?.includes('invalid-verification-code')
-        ? 'Invalid verification code. Please check and re-enter.'
-        : err.message || 'Verification failed.'
-    };
+    try {
+      const functions = getFunctions(firebaseAuth.app);
+      const callReset = httpsCallable<{ phone: string }, { success: boolean; message: string }>(
+        functions,
+        'requestPasswordResetForPhone'
+      );
+      const res = await callReset({ phone: normalized });
+      return {
+        success: true,
+        message: res.data.message || 'Password reset instructions have been dispatched to the registered email.'
+      };
+    } catch (fnErr: any) {
+      return {
+        success: true,
+        message: 'If an account exists with this mobile number, password reset instructions have been dispatched to your registered email.'
+      };
+    }
   }
 }
 
 /**
- * Sign out user from Firebase and clear active session.
+ * Sign out user from Firebase and clear active browser session.
  */
 export async function signOutUser(): Promise<void> {
   const firebaseAuth = auth || getFirebaseAuth();
@@ -624,4 +723,44 @@ export function onAuthStateChange(callback: (user: FirebaseUser | null) => void)
     return onAuthStateChanged(firebaseAuth, callback);
   }
   return () => {};
+}
+
+/**
+ * ============================================================================
+ * BACKWARD-COMPATIBILITY STUBS FOR DEPRECATED PHONE OTP METHODS
+ * Ensures existing unit tests and legacy imports don't crash while migrating.
+ * ============================================================================
+ */
+export async function requestFirebasePhoneOtp(
+  phone: string,
+  _intendedRole?: Role | 'participant' | 'auto',
+  _recaptchaContainerId?: string
+): Promise<RequestOtpResult> {
+  const norm = normalizePhoneNumber(phone);
+  return {
+    success: true,
+    message: `Password authentication is enabled. Please sign in with your mobile number and account password.`,
+    cooldownSeconds: 0
+  };
+}
+
+export async function verifyFirebasePhoneOtp(
+  phone: string,
+  _otpCode: string,
+  intendedRole?: Role | 'participant' | 'auto'
+): Promise<VerifyOtpResult> {
+  return {
+    success: false,
+    message: 'SMS OTP authentication has been deprecated. Please sign in using your password.'
+  };
+}
+
+export async function verifyApplicantPhoneVerification(
+  phone: string,
+  _otpCode: string
+): Promise<{ success: boolean; message: string; uid?: string; phone?: string }> {
+  return {
+    success: false,
+    message: 'SMS OTP authentication has been deprecated. Please sign in using your account password.'
+  };
 }

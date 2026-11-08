@@ -103,7 +103,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
     },
     {
       id: 'public',
-      label: 'Public Page',
+      label: 'Public Page Management',
       icon: Globe,
     },
     {

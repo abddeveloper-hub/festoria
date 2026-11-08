@@ -1129,7 +1129,10 @@ async function approveFestApplicationHandler(request, deps = {}) {
     }
 
     const appData = requestSnap.data();
-    const validStatuses = ['pending', 'submitted', 'under_review', 'more_info_required'];
+    const validStatuses = [
+      'pending', 'submitted', 'under_review', 'more_info_required',
+      'PENDING', 'UNDER_REVIEW', 'MORE_INFORMATION_REQUIRED'
+    ];
     if (!validStatuses.includes(appData.status)) {
       throw new HttpsError('failed-precondition', `Application is already in status '${appData.status}'. Only pending applications can be approved.`);
     }
@@ -1152,6 +1155,7 @@ async function approveFestApplicationHandler(request, deps = {}) {
     transaction.set(festRef, {
       id: allocatedFestId,
       name: appData.festName,
+      shortName: appData.shortName || '',
       edition: appData.edition || '2026',
       tagline: `${appData.festName} ${appData.edition || '2026'}`,
       description: appData.description || '',
@@ -1160,6 +1164,9 @@ async function approveFestApplicationHandler(request, deps = {}) {
       venue: appData.venue || appData.institutionAddress || 'Main Campus Auditorium & Grounds',
       startDate: appData.startDate,
       endDate: appData.endDate,
+      registrationStartDate: appData.registrationStartDate || appData.startDate,
+      registrationEndDate: appData.registrationEndDate || appData.endDate,
+      logoUrl: appData.logoUrl || '',
       adminId: applicantUid,
       adminName: appData.contactPersonName || appData.requestingAdminName,
       adminEmail: appData.requestingAdminEmail || '',
@@ -1176,7 +1183,26 @@ async function approveFestApplicationHandler(request, deps = {}) {
       serverCreatedAt: nowServer
     });
 
-    // 2. Provision or update Fest Admin User Profile
+    // 2. Create initial fest configuration in /fest_settings
+    const settingsRef = currentDb.collection('fest_settings').doc(allocatedFestId);
+    transaction.set(settingsRef, {
+      festId: allocatedFestId,
+      festName: appData.festName,
+      festEdition: appData.edition || '2026',
+      tagline: `${appData.festName} ${appData.edition || '2026'}`,
+      description: appData.description || '',
+      organizer: appData.institution || '',
+      venue: appData.venue || appData.institutionAddress || 'Main Campus Auditorium & Grounds',
+      startDate: appData.startDate,
+      endDate: appData.endDate,
+      contactEmail: appData.requestingAdminEmail || '',
+      contactPhone: appData.requestingAdminPhone || '',
+      logoUrl: appData.logoUrl || '',
+      createdAt: nowIso,
+      updatedAt: nowServer
+    });
+
+    // 3. Provision or update Fest Admin User Profile
     const userRef = currentDb.collection('users').doc(applicantUid);
     const existingUserSnap = await transaction.get(userRef);
     const baseUserData = existingUserSnap.exists ? existingUserSnap.data() : {};
@@ -1194,7 +1220,7 @@ async function approveFestApplicationHandler(request, deps = {}) {
       updatedAt: nowServer
     }, { merge: true });
 
-    // 3. Create Fest Membership document
+    // 4. Create Fest Membership document
     const membershipRef = currentDb.collection('fest_memberships').doc(`${applicantUid}_${allocatedFestId}`);
     transaction.set(membershipRef, {
       id: `${applicantUid}_${allocatedFestId}`,
@@ -1206,17 +1232,18 @@ async function approveFestApplicationHandler(request, deps = {}) {
       assignedBy: superAdminCaller.uid
     });
 
-    // 4. Update Fest Request document to 'approved'
+    // 5. Update Fest Request document to 'approved' and 'workspace_created'
     const existingHistory = appData.history || [];
     const historyEntry = {
       date: nowIso,
       actor: superAdminCaller.name,
-      action: 'Approved Fest Request',
-      note: approvalNote ? approvalNote.trim() : 'Proposal met platform criteria and was authorized.'
+      action: 'Approved Fest Request & Created Workspace',
+      note: approvalNote ? approvalNote.trim() : 'Proposal authorized. Admin workspace provisioned.'
     };
 
     transaction.update(requestRef, {
       status: 'approved',
+      workspaceStatus: 'workspace_created',
       allocatedFestId,
       approvedAt: nowIso,
       approvedBy: superAdminCaller.name,
@@ -1225,7 +1252,22 @@ async function approveFestApplicationHandler(request, deps = {}) {
       updatedAt: nowServer
     });
 
-    // 5. Append immutable platform audit log
+    // 6. Notify the organizer
+    const notifRef = currentDb.collection('notifications').doc();
+    transaction.set(notifRef, {
+      id: notifRef.id,
+      userId: applicantUid,
+      festId: allocatedFestId,
+      title: `Fest Application Approved: ${appData.festName}`,
+      message: `Your application ${cleanRequestId} has been approved. Workspace ${allocatedFestId} has been initialized with Admin privileges.`,
+      type: 'success',
+      category: 'fest_approval',
+      read: false,
+      createdAt: nowIso,
+      serverCreatedAt: nowServer
+    });
+
+    // 7. Append immutable platform audit log
     const auditLogRef = currentDb.collection('platform_audit_logs').doc();
     transaction.set(auditLogRef, {
       id: auditLogRef.id,
@@ -1235,7 +1277,7 @@ async function approveFestApplicationHandler(request, deps = {}) {
       action: 'APPROVE_FEST_REQUEST',
       targetType: 'fest_request',
       targetId: cleanRequestId,
-      details: `Approved application ${cleanRequestId} for "${appData.festName}". Provisioned fest record ${allocatedFestId} and assigned Fest Admin privileges to ${appData.contactPersonName || appData.requestingAdminName} (${applicantUid}).`,
+      details: `Approved application ${cleanRequestId} for "${appData.festName}". Provisioned workspace ${allocatedFestId} and assigned Fest Admin privileges to ${appData.contactPersonName || appData.requestingAdminName} (${applicantUid}).`,
       beforeValue: appData.status,
       afterValue: 'approved',
       timestamp: nowIso,
@@ -1330,6 +1372,435 @@ async function rejectFestApplicationHandler(request, deps = {}) {
 }
 
 /**
+ * Trusted Handler: Super Admin requests additional information on an application.
+ */
+async function requestMoreInfoFestApplicationHandler(request, deps = {}) {
+  const currentDb = deps.db || db;
+  const superAdminCaller = await verifySuperAdminAuth(request, deps);
+  const { requestId, moreInfoMessage } = request.data || {};
+
+  if (!requestId || typeof requestId !== 'string' || !requestId.trim()) {
+    throw new HttpsError('invalid-argument', 'Missing or invalid requestId.');
+  }
+  if (!moreInfoMessage || typeof moreInfoMessage !== 'string' || !moreInfoMessage.trim()) {
+    throw new HttpsError('invalid-argument', 'Clarification or more information details are mandatory.');
+  }
+
+  const cleanRequestId = requestId.trim();
+  const requestRef = currentDb.collection('fest_requests').doc(cleanRequestId);
+
+  await currentDb.runTransaction(async (transaction) => {
+    const requestSnap = await transaction.get(requestRef);
+    if (!requestSnap.exists) {
+      throw new HttpsError('not-found', `Fest application ${cleanRequestId} not found.`);
+    }
+
+    const appData = requestSnap.data();
+    const nowIso = new Date().toISOString();
+    const nowServer = FieldValue.serverTimestamp();
+
+    const existingHistory = appData.history || [];
+    const historyEntry = {
+      date: nowIso,
+      actor: superAdminCaller.name,
+      action: 'Requested More Information',
+      note: moreInfoMessage.trim()
+    };
+
+    transaction.update(requestRef, {
+      status: 'more_info_required',
+      moreInfoMessage: moreInfoMessage.trim(),
+      history: [historyEntry, ...existingHistory],
+      updatedAt: nowServer
+    });
+
+    if (appData.requestingAdminId) {
+      const notifRef = currentDb.collection('notifications').doc();
+      transaction.set(notifRef, {
+        id: notifRef.id,
+        userId: appData.requestingAdminId,
+        title: `Information Requested: ${appData.festName}`,
+        message: `The Super Administrator has requested additional information regarding application ${cleanRequestId}: "${moreInfoMessage.trim()}"`,
+        type: 'warning',
+        category: 'fest_request_info',
+        read: false,
+        createdAt: nowIso,
+        serverCreatedAt: nowServer
+      });
+    }
+
+    const auditLogRef = currentDb.collection('platform_audit_logs').doc();
+    transaction.set(auditLogRef, {
+      id: auditLogRef.id,
+      actorId: superAdminCaller.uid,
+      actorName: superAdminCaller.name,
+      actorRole: 'super_admin',
+      action: 'REQUEST_MORE_INFO_FEST_APPLICATION',
+      targetType: 'fest_request',
+      targetId: cleanRequestId,
+      details: `Requested more info on application ${cleanRequestId} for "${appData.festName}": ${moreInfoMessage.trim()}`,
+      beforeValue: appData.status,
+      afterValue: 'more_info_required',
+      timestamp: nowIso,
+      serverTimestamp: nowServer
+    });
+  });
+
+  return {
+    success: true,
+    message: `Information request logged for ${cleanRequestId}.`
+  };
+}
+
+/**
+ * ============================================================================
+ * SECURE PASSWORD AUTHENTICATION HANDLERS
+ * ============================================================================
+ */
+
+// In-memory rate limiting map for phone login attempts
+// Key: normalizedPhone -> { attempts: number, firstAttemptAt: number }
+const phoneLoginAttempts = new Map();
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOGIN_ATTEMPT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+
+/**
+ * Mask email for privacy: e.g. "j***n@college.edu"
+ */
+function maskEmail(email) {
+  if (!email || !email.includes('@')) return 'your registered email';
+  const [local, domain] = email.split('@');
+  if (local.length <= 2) {
+    return `${local[0]}***@${domain}`;
+  }
+  return `${local[0]}***${local[local.length - 1]}@${domain}`;
+}
+
+/**
+ * Handler: Secure Phone Number + Password Authentication
+ * 
+ * 1. Validates and normalizes phone number
+ * 2. Enforces rate limits against brute force & enumeration
+ * 3. Looks up user by phone number using Admin SDK / Firestore (server-side only)
+ * 4. Verifies password using Firebase Identity Toolkit REST API
+ * 5. Returns a Firebase Custom Token for client sign-in
+ * 6. Never exposes email or password to unauthorized callers
+ */
+async function signInWithPhoneCredentialsHandler(request, deps = {}) {
+  const currentDb = deps.db || db;
+  const currentAuth = deps.auth || auth;
+  const currentFetch = deps.fetch || globalThis.fetch;
+
+  const data = request.data || {};
+  const { phone, password } = data;
+
+  if (!phone || typeof phone !== 'string' || !password || typeof password !== 'string') {
+    throw new HttpsError('invalid-argument', 'Phone number and password are required.');
+  }
+
+  const normalizedPhone = normalizePhone(phone);
+  if (!normalizedPhone || normalizedPhone.length < 10) {
+    throw new HttpsError('invalid-argument', 'Invalid phone number format.');
+  }
+
+  // Rate Limiting Check
+  const now = Date.now();
+  const attemptRecord = phoneLoginAttempts.get(normalizedPhone);
+  if (attemptRecord) {
+    if (now - attemptRecord.firstAttemptAt < LOGIN_ATTEMPT_WINDOW_MS) {
+      if (attemptRecord.attempts >= MAX_LOGIN_ATTEMPTS) {
+        throw new HttpsError(
+          'resource-exhausted',
+          'Too many failed login attempts. For security, access has been temporarily locked. Please try again in 15 minutes or reset your password.'
+        );
+      }
+    } else {
+      phoneLoginAttempts.delete(normalizedPhone);
+    }
+  }
+
+  const recordFailedAttempt = () => {
+    const rec = phoneLoginAttempts.get(normalizedPhone) || { attempts: 0, firstAttemptAt: now };
+    rec.attempts += 1;
+    phoneLoginAttempts.set(normalizedPhone, rec);
+  };
+
+  // 1. Locate user by phone number (server-side only, never exposed to client)
+  let targetUid = null;
+  let targetEmail = null;
+
+  try {
+    const authUser = await currentAuth.getUserByPhoneNumber(normalizedPhone);
+    if (authUser) {
+      targetUid = authUser.uid;
+      targetEmail = authUser.email;
+    }
+  } catch {
+    // Continue to Firestore check
+  }
+
+  if (!targetUid || !targetEmail) {
+    try {
+      const userSnap = await currentDb.collection('users')
+        .where('phone', '==', normalizedPhone)
+        .limit(1)
+        .get();
+
+      if (!userSnap.empty) {
+        const uDoc = userSnap.docs[0];
+        targetUid = uDoc.id;
+        const uData = uDoc.data();
+        targetEmail = uData.email;
+      }
+    } catch (fsErr) {
+      console.error('[signInWithPhoneCredentials] Firestore user lookup failed:', fsErr);
+    }
+  }
+
+  if (!targetUid || !targetEmail) {
+    try {
+      const partSnap = await currentDb.collection('participants')
+        .where('phone', '==', normalizedPhone)
+        .limit(1)
+        .get();
+
+      if (!partSnap.empty) {
+        const pData = partSnap.docs[0].data();
+        if (pData.userId && pData.email) {
+          targetUid = pData.userId;
+          targetEmail = pData.email;
+        }
+      }
+    } catch (partFsErr) {
+      console.error('[signInWithPhoneCredentials] Firestore participant lookup failed:', partFsErr);
+    }
+  }
+
+  // Generic rejection prevents account enumeration
+  if (!targetUid || !targetEmail) {
+    recordFailedAttempt();
+    throw new HttpsError('unauthenticated', 'Invalid email/phone or password. Please check your credentials.');
+  }
+
+  // 2. Verify password with Firebase Identity Toolkit REST API
+  const apiKey = process.env.VITE_FIREBASE_API_KEY || process.env.FIREBASE_API_KEY || 'AIzaSyATw_Lna2YpPJR86to1uw3uI9kkwb3HC5U';
+  
+  try {
+    const verifyUrl = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`;
+    const response = await currentFetch(verifyUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: targetEmail,
+        password: password,
+        returnSecureToken: true
+      })
+    });
+
+    const resJson = await response.json();
+    if (!response.ok || resJson.error) {
+      recordFailedAttempt();
+      throw new HttpsError('unauthenticated', 'Invalid email/phone or password. Please check your credentials.');
+    }
+
+    // Success - clear failed attempts
+    phoneLoginAttempts.delete(normalizedPhone);
+
+    // 3. Create Firebase Custom Token for client authentication
+    const customToken = await currentAuth.createCustomToken(targetUid);
+
+    return {
+      success: true,
+      customToken,
+      uid: targetUid,
+      message: 'Authentication successful.'
+    };
+  } catch (err) {
+    if (err instanceof HttpsError) throw err;
+    recordFailedAttempt();
+    throw new HttpsError('unauthenticated', 'Invalid email/phone or password. Please check your credentials.');
+  }
+}
+
+/**
+ * Handler: Secure Password Reset for Phone Number
+ */
+async function requestPasswordResetForPhoneHandler(request, deps = {}) {
+  const currentDb = deps.db || db;
+  const currentAuth = deps.auth || auth;
+
+  const data = request.data || {};
+  const { phone } = data;
+
+  if (!phone || typeof phone !== 'string') {
+    throw new HttpsError('invalid-argument', 'Phone number is required.');
+  }
+
+  const normalizedPhone = normalizePhone(phone);
+  if (!normalizedPhone || normalizedPhone.length < 10) {
+    throw new HttpsError('invalid-argument', 'Invalid phone number format.');
+  }
+
+  let targetEmail = null;
+  try {
+    const authUser = await currentAuth.getUserByPhoneNumber(normalizedPhone);
+    if (authUser && authUser.email) targetEmail = authUser.email;
+  } catch {}
+
+  if (!targetEmail) {
+    try {
+      const snap = await currentDb.collection('users')
+        .where('phone', '==', normalizedPhone)
+        .limit(1)
+        .get();
+      if (!snap.empty) {
+        targetEmail = snap.docs[0].data().email;
+      }
+    } catch {}
+  }
+
+  // Generic success message prevents account enumeration
+  if (!targetEmail) {
+    return {
+      success: true,
+      message: 'If an account exists with this mobile number, password reset instructions have been dispatched to the registered email address.'
+    };
+  }
+
+  try {
+    await currentAuth.generatePasswordResetLink(targetEmail);
+    return {
+      success: true,
+      message: `Password reset instructions have been dispatched to your registered email (${maskEmail(targetEmail)}).`
+    };
+  } catch (resetErr) {
+    console.error('[requestPasswordResetForPhone] Error:', resetErr);
+    return {
+      success: true,
+      message: 'If an account exists with this mobile number, password reset instructions have been dispatched to the registered email address.'
+    };
+  }
+}
+
+/**
+ * Handler: Secure User Registration with Uniqueness Validation
+ */
+async function registerNewUserHandler(request, deps = {}) {
+  const currentDb = deps.db || db;
+  const currentAuth = deps.auth || auth;
+
+  const data = request.data || {};
+  const { name, email, phone, password, role = 'participant', festId, college, category, requestedTeamId } = data;
+
+  if (!name || typeof name !== 'string' || name.trim().length < 2) {
+    throw new HttpsError('invalid-argument', 'Full legal name is required (at least 2 characters).');
+  }
+  if (!email || typeof email !== 'string' || !email.includes('@')) {
+    throw new HttpsError('invalid-argument', 'A valid email address is required.');
+  }
+  const cleanEmail = email.trim().toLowerCase();
+
+  const normalizedPhone = normalizePhone(phone);
+  if (!normalizedPhone || normalizedPhone.length < 10) {
+    throw new HttpsError('invalid-argument', 'A valid 10-digit mobile number is required.');
+  }
+
+  if (!password || typeof password !== 'string' || password.length < 6) {
+    throw new HttpsError('invalid-argument', 'Password must be at least 6 characters long.');
+  }
+
+  // 1. Check unique email in Firebase Auth
+  try {
+    const existingByEmail = await currentAuth.getUserByEmail(cleanEmail);
+    if (existingByEmail) {
+      throw new HttpsError('already-exists', 'An account with this email address already exists.');
+    }
+  } catch (err) {
+    if (err.code !== 'auth/user-not-found' && err instanceof HttpsError) throw err;
+  }
+
+  // 2. Check unique phone in Firestore /users
+  const phoneSnap = await currentDb.collection('users')
+    .where('phone', '==', normalizedPhone)
+    .limit(1)
+    .get();
+
+  if (!phoneSnap.empty) {
+    throw new HttpsError('already-exists', 'An account with this mobile number already exists.');
+  }
+
+  // 3. Prevent privilege escalation: self-registration defaults strictly to participant
+  const assignedRole = 'participant';
+
+  // 4. Create Firebase Auth user
+  let newUser;
+  try {
+    newUser = await currentAuth.createUser({
+      email: cleanEmail,
+      password: password,
+      displayName: name.trim(),
+      phoneNumber: normalizedPhone
+    });
+  } catch (createErr) {
+    if (createErr.code === 'auth/email-already-exists') {
+      throw new HttpsError('already-exists', 'An account with this email address already exists.');
+    }
+    if (createErr.code === 'auth/phone-number-already-exists') {
+      throw new HttpsError('already-exists', 'An account with this mobile number already exists.');
+    }
+    throw new HttpsError('internal', createErr.message || 'Failed to create user account.');
+  }
+
+  // 5. Store user profile in Firestore /users/{uid} (zero plaintext passwords)
+  const nowIso = new Date().toISOString();
+  const userProfile = {
+    id: newUser.uid,
+    name: name.trim(),
+    email: cleanEmail,
+    phone: normalizedPhone,
+    phoneVerified: true,
+    emailVerified: false,
+    role: assignedRole,
+    status: 'active',
+    festId: festId || 'FEST-01',
+    createdAt: nowIso,
+    updatedAt: nowIso
+  };
+
+  await currentDb.collection('users').doc(newUser.uid).set(userProfile);
+
+  // If participant details provided, also create participant record
+  if (college) {
+    const participantId = `PT-${newUser.uid.slice(0, 6).toUpperCase()}`;
+    const participantDoc = {
+      id: participantId,
+      userId: newUser.uid,
+      name: name.trim(),
+      email: cleanEmail,
+      phone: normalizedPhone,
+      college: (college || '').trim(),
+      category: category || 'Senior',
+      teamId: requestedTeamId || 'TM-01',
+      status: 'pending_approval',
+      festId: festId || 'FEST-01',
+      createdAt: nowIso,
+      updatedAt: nowIso
+    };
+    await currentDb.collection('participants').doc(participantId).set(participantDoc);
+  }
+
+  const customToken = await currentAuth.createCustomToken(newUser.uid);
+
+  return {
+    success: true,
+    uid: newUser.uid,
+    customToken,
+    user: userProfile,
+    message: 'Registration completed successfully.'
+  };
+}
+
+/**
  * Callable Cloud Functions (v2)
  */
 exports.createTeamLeaderInvite = onCall(async (request) => {
@@ -1364,11 +1835,28 @@ exports.rejectFestApplication = onCall(async (request) => {
   return await rejectFestApplicationHandler(request);
 });
 
+exports.requestMoreInfoFestApplication = onCall(async (request) => {
+  return await requestMoreInfoFestApplicationHandler(request);
+});
+
+exports.signInWithPhoneCredentials = onCall(async (request) => {
+  return await signInWithPhoneCredentialsHandler(request);
+});
+
+exports.requestPasswordResetForPhone = onCall(async (request) => {
+  return await requestPasswordResetForPhoneHandler(request);
+});
+
+exports.registerNewUser = onCall(async (request) => {
+  return await registerNewUserHandler(request);
+});
+
 /**
  * Unit & Security Test Harness Exports
  */
 exports._handlers = {
   normalizePhone,
+  maskEmail,
   verifyAdminAuth,
   verifySuperAdminAuth,
   createTeamLeaderInviteHandler,
@@ -1378,5 +1866,9 @@ exports._handlers = {
   publishResultsHandler,
   resolveComplaintHandler,
   approveFestApplicationHandler,
-  rejectFestApplicationHandler
+  rejectFestApplicationHandler,
+  requestMoreInfoFestApplicationHandler,
+  signInWithPhoneCredentialsHandler,
+  requestPasswordResetForPhoneHandler,
+  registerNewUserHandler
 };

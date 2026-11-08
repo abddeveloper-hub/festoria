@@ -2,193 +2,160 @@ import React, { useState, useEffect } from 'react';
 import { useFest } from '../../context/FestContext';
 import {
   formatPhoneDisplay,
-  maskPhoneNumber,
   normalizePhoneNumber,
-  checkAccountEligibility,
+  isEmailIdentifier,
 } from '../../services/authService';
 import {
-  requestFirebasePhoneOtp,
-  verifyFirebasePhoneOtp,
+  signInWithCredentials,
+  registerParticipantWithCredentials,
+  sendPasswordReset,
 } from '../../firebase/authService';
 import { Role, ParticipantCategory } from '../../types';
 import {
   X,
-  Phone,
   ShieldCheck,
   ArrowRight,
   AlertCircle,
   CheckCircle2,
   Lock,
-  RefreshCw,
   User,
-  Sparkles,
+  Mail,
+  Phone,
+  Eye,
+  EyeOff,
   Building,
   GraduationCap,
   Users,
-  Info
+  Sparkles,
+  KeyRound,
+  ArrowLeft
 } from 'lucide-react';
 
-interface PhoneAuthModalProps {
+interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   defaultRole?: Role | 'participant' | 'auto';
+  initialMode?: 'signin' | 'register' | 'forgot';
 }
 
-export const PhoneAuthModal: React.FC<PhoneAuthModalProps> = ({
+export const AuthModal: React.FC<AuthModalProps> = ({
   isOpen,
   onClose,
   defaultRole = 'auto',
+  initialMode = 'signin',
 }) => {
   const {
-    users,
-    participants,
     teams,
     switchPortal,
     switchCurrentUser,
     setActiveTeamId,
     setActiveParticipantId,
-    registerParticipantSelf,
     addToast,
   } = useFest();
 
   const [activeRole, setActiveRole] = useState<Role | 'participant' | 'auto'>(defaultRole);
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [otpCode, setOtpCode] = useState('');
-  const [step, setStep] = useState<'phone' | 'otp' | 'register_details'>('phone');
+  const [authMode, setAuthMode] = useState<'signin' | 'register' | 'forgot'>(initialMode);
+
+  // Sign In Form state
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Forgot Password state
+  const [resetIdentifier, setResetIdentifier] = useState('');
+
+  // Register Form state
+  const [regName, setRegName] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPhone, setRegPhone] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [regConfirmPassword, setRegConfirmPassword] = useState('');
+  const [showRegPassword, setShowRegPassword] = useState(false);
+  const [regCollege, setRegCollege] = useState('');
+  const [regClass, setRegClass] = useState('');
+  const [regCategory, setRegCategory] = useState<ParticipantCategory>('Senior');
+  const [regTeamId, setRegTeamId] = useState(teams[0]?.id || 'TM-01');
+
+  // UI status
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [cooldown, setCooldown] = useState(0);
-
-  // Self-Registration Form fields (for Method A)
-  const [regData, setRegData] = useState({
-    name: '',
-    email: '',
-    college: '',
-    classOrDivision: '',
-    category: 'Senior' as ParticipantCategory,
-    requestedTeamId: teams[0]?.id || 'TM-01',
-  });
 
   useEffect(() => {
-    setActiveRole(defaultRole);
-    setStep('phone');
-    setPhoneNumber('');
-    setOtpCode('');
-    setErrorMessage('');
-    setSuccessMessage('');
-  }, [defaultRole, isOpen]);
-
-  // Cooldown countdown timer
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const timer = setInterval(() => {
-      setCooldown((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [cooldown]);
+    if (isOpen) {
+      setActiveRole(defaultRole);
+      setAuthMode(initialMode);
+      setIdentifier('');
+      setPassword('');
+      setResetIdentifier('');
+      setErrorMessage('');
+      setSuccessMessage('');
+      setShowPassword(false);
+      setShowRegPassword(false);
+    }
+  }, [defaultRole, initialMode, isOpen]);
 
   if (!isOpen) return null;
 
-  const handleRequestOtp = async (e: React.FormEvent) => {
+  // --------------------------------------------------------------------------
+  // HANDLER: Sign In (Email OR Mobile + Password)
+  // --------------------------------------------------------------------------
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
     setSuccessMessage('');
 
-    if (!phoneNumber.trim()) {
-      setErrorMessage('Please enter your mobile phone number.');
+    if (!identifier.trim()) {
+      setErrorMessage('Please enter your registered email address or mobile number.');
+      return;
+    }
+    if (!password.trim()) {
+      setErrorMessage('Please enter your account password.');
       return;
     }
 
     setLoading(true);
     try {
-      const result = await requestFirebasePhoneOtp(phoneNumber, activeRole, 'recaptcha-container');
+      const result = await signInWithCredentials({
+        identifier: identifier.trim(),
+        password: password.trim(),
+        intendedRole: activeRole,
+      });
+
       if (result.success) {
-        setStep('otp');
-        setSuccessMessage(result.message);
-        if (result.cooldownSeconds) setCooldown(result.cooldownSeconds);
-      } else {
-        setErrorMessage(result.message);
-      }
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Failed to send verification OTP.');
-    } finally {
-      setLoading(false);
-    }
-  };
+        setSuccessMessage('Authenticated successfully!');
 
-  const handleResendOtp = async () => {
-    if (cooldown > 0) return;
-    setLoading(true);
-    setErrorMessage('');
-    try {
-      const result = await requestFirebasePhoneOtp(phoneNumber, activeRole, 'recaptcha-container');
-      if (result.success) {
-        setSuccessMessage('A new verification code has been dispatched.');
-        if (result.cooldownSeconds) setCooldown(result.cooldownSeconds);
-      } else {
-        setErrorMessage(result.message);
-      }
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Error resending OTP.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage('');
-    setSuccessMessage('');
-
-    if (!otpCode || otpCode.trim().length !== 6) {
-      setErrorMessage('Please enter the complete 6-digit verification code.');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const result = await verifyFirebasePhoneOtp(phoneNumber, otpCode, activeRole);
-      if (result.success) {
-        setSuccessMessage('Phone verified successfully!');
-
-        // If this is a new participant wanting to register
-        if (result.isNewUser || (!result.user && !result.participant)) {
-          setStep('register_details');
-          setLoading(false);
-          return;
+        // Dispatch user session to context
+        if (result.user) {
+          switchCurrentUser(result.user.id, result.user);
         }
 
-        // Existing User / Participant: Dispatch to correct dashboard!
+        // Role-based portal navigation
         if (result.role === 'super_admin') {
-          if (result.user) switchCurrentUser(result.user.id, result.user);
-          addToast('success', 'Authenticated', `Welcome back, ${result.user?.name}!`);
+          addToast('success', 'Authenticated', `Welcome back, Super Administrator ${result.user?.name || ''}!`);
           onClose();
           switchPortal('super_admin');
           return;
         }
 
         if (result.role === 'admin' || result.role === 'fest_admin') {
-          if (result.user) switchCurrentUser(result.user.id, result.user);
-          addToast('success', 'Authenticated', `Welcome back, Fest Administrator ${result.user?.name}!`);
+          addToast('success', 'Authenticated', `Welcome back, Fest Administrator ${result.user?.name || ''}!`);
           onClose();
           switchPortal('fest_admin');
           return;
         }
 
         if (result.role === 'team_leader') {
-          if (result.user) switchCurrentUser(result.user.id, result.user);
           if (result.user?.linkedTeamId) {
             setActiveTeamId(result.user.linkedTeamId);
           }
-          addToast('success', 'Authenticated', `Welcome back, Team Leader ${result.user?.name}!`);
+          addToast('success', 'Authenticated', `Welcome back, Team Leader ${result.user?.name || ''}!`);
           onClose();
           switchPortal('team_leader');
           return;
         }
 
         if (result.role === 'participant') {
-          if (result.user) switchCurrentUser(result.user.id, result.user);
           if (result.participant?.id) {
             setActiveParticipantId(result.participant.id);
           }
@@ -198,59 +165,116 @@ export const PhoneAuthModal: React.FC<PhoneAuthModalProps> = ({
           return;
         }
 
-        // Fallback for judge / other roles
+        // Fallback for general sign in
         onClose();
-        switchPortal('fest_admin');
+        switchPortal('participant');
       } else {
         setErrorMessage(result.message);
       }
     } catch (err: any) {
-      setErrorMessage(err.message || 'OTP verification failed.');
+      setErrorMessage(err.message || 'Authentication failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCompleteRegistration = (e: React.FormEvent) => {
+  // --------------------------------------------------------------------------
+  // HANDLER: Register Participant (Full details + Password)
+  // --------------------------------------------------------------------------
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
+    setSuccessMessage('');
 
-    if (!regData.name.trim()) {
-      setErrorMessage('Please enter your full legal name.');
+    if (!regName.trim() || regName.trim().length < 2) {
+      setErrorMessage('Please enter your full legal name (at least 2 characters).');
       return;
     }
-
-    if (!regData.email.trim() || !regData.email.includes('@')) {
-      setErrorMessage('Please enter a valid email address.');
+    if (!regEmail.trim() || !isEmailIdentifier(regEmail.trim())) {
+      setErrorMessage('Please enter a valid official email address.');
       return;
     }
-
-    if (!regData.college.trim()) {
+    const normPhone = normalizePhoneNumber(regPhone);
+    if (!normPhone || normPhone.length < 10) {
+      setErrorMessage('Please enter a valid 10-digit mobile phone number.');
+      return;
+    }
+    if (!regPassword || regPassword.length < 6) {
+      setErrorMessage('Password must be at least 6 characters long.');
+      return;
+    }
+    if (regPassword !== regConfirmPassword) {
+      setErrorMessage('Password confirmation does not match.');
+      return;
+    }
+    if (!regCollege.trim()) {
       setErrorMessage('Please enter your institution or college name.');
       return;
     }
 
-    const regResult = registerParticipantSelf({
-      name: regData.name.trim(),
-      phone: phoneNumber,
-      email: regData.email.trim(),
-      college: regData.college.trim(),
-      classOrDivision: regData.classOrDivision.trim(),
-      category: regData.category,
-      requestedTeamId: regData.requestedTeamId,
-    });
+    setLoading(true);
+    try {
+      const regResult = await registerParticipantWithCredentials({
+        name: regName.trim(),
+        email: regEmail.trim(),
+        phone: normPhone,
+        password: regPassword,
+        confirmPassword: regConfirmPassword,
+        college: regCollege.trim(),
+        classOrDivision: regClass.trim(),
+        category: regCategory,
+        requestedTeamId: regTeamId,
+      });
 
-    if (regResult.success) {
-      setActiveParticipantId(regResult.participantId);
-      addToast(
-        'success',
-        'Registration Submitted',
-        'Your request has been submitted to the Team Leader for approval.'
-      );
-      onClose();
-      switchPortal('participant');
-    } else {
-      setErrorMessage(regResult.message);
+      if (regResult.success) {
+        if (regResult.user) {
+          switchCurrentUser(regResult.user.id, regResult.user);
+        }
+        if (regResult.participantId) {
+          setActiveParticipantId(regResult.participantId);
+        }
+        addToast(
+          'success',
+          'Registration Submitted',
+          'Your participant registration was created and submitted for team verification.'
+        );
+        onClose();
+        switchPortal('participant');
+      } else {
+        setErrorMessage(regResult.message);
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to complete registration.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --------------------------------------------------------------------------
+  // HANDLER: Password Reset
+  // --------------------------------------------------------------------------
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    if (!resetIdentifier.trim()) {
+      setErrorMessage('Please enter your registered email address or mobile number.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await sendPasswordReset(resetIdentifier.trim());
+      if (res.success) {
+        setSuccessMessage(res.message);
+      } else {
+        setErrorMessage(res.message);
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to request password reset.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -265,16 +289,18 @@ export const PhoneAuthModal: React.FC<PhoneAuthModalProps> = ({
             </div>
             <div>
               <h2 className="text-base font-bold text-slate-900">
-                {step === 'register_details'
-                  ? 'Complete Participant Registration'
-                  : 'FestFlow Secure Sign-In'}
+                {authMode === 'register'
+                  ? 'Participant Registration'
+                  : authMode === 'forgot'
+                  ? 'Reset Your Password'
+                  : 'Festoria Secure Sign-In'}
               </h2>
               <p className="text-xs text-slate-500 font-medium">
-                {step === 'otp'
-                  ? 'Verify 6-digit SMS OTP'
-                  : step === 'register_details'
+                {authMode === 'register'
                   ? 'Official Fest Participant Onboarding'
-                  : 'Phone-number OTP Verification'}
+                  : authMode === 'forgot'
+                  ? 'Account Security & Recovery'
+                  : 'Sign in with your Email or Mobile + Password'}
               </p>
             </div>
           </div>
@@ -287,335 +313,455 @@ export const PhoneAuthModal: React.FC<PhoneAuthModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 overflow-y-auto space-y-5">
-          {/* Role Tabs (Only on initial Phone Step) */}
-          {step === 'phone' && (
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-2">
-                Signing In As:
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-slate-100 rounded-lg border border-slate-200 text-xs font-semibold">
-                <button
-                  type="button"
-                  onClick={() => setActiveRole('participant')}
-                  className={`py-1.5 px-2 rounded text-center transition-all ${
-                    activeRole === 'participant' || activeRole === 'auto'
-                      ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Participant
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveRole('team_leader')}
-                  className={`py-1.5 px-2 rounded text-center transition-all ${
-                    activeRole === 'team_leader'
-                      ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Team Leader
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveRole('admin')}
-                  className={`py-1.5 px-2 rounded text-center transition-all ${
-                    activeRole === 'admin'
-                      ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Admin
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveRole('super_admin')}
-                  className={`py-1.5 px-2 rounded text-center transition-all ${
-                    activeRole === 'super_admin'
-                      ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Super Admin
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Error & Info Alerts */}
+        <div className="p-6 overflow-y-auto space-y-4">
+          {/* Error Message Banner */}
           {errorMessage && (
-            <div className="p-3.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2.5">
-              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-              <div className="flex-1 font-medium">{errorMessage}</div>
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2.5 text-xs text-red-700 animate-in fade-in duration-150">
+              <AlertCircle className="w-4 h-4 shrink-0 text-red-600 mt-0.5" />
+              <div className="leading-relaxed font-medium">{errorMessage}</div>
             </div>
           )}
 
+          {/* Success Message Banner */}
           {successMessage && (
-            <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-              <div className="flex-1 font-medium">{successMessage}</div>
+            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-start gap-2.5 text-xs text-emerald-800 animate-in fade-in duration-150">
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 mt-0.5" />
+              <div className="leading-relaxed font-medium">{successMessage}</div>
             </div>
           )}
 
-          {/* STEP 1: Phone Number Input */}
-          {step === 'phone' && (
-            <form onSubmit={handleRequestOtp} className="space-y-4">
+          {/* ================================================================ */}
+          {/* TAB 1: SIGN IN FORM                                             */}
+          {/* ================================================================ */}
+          {authMode === 'signin' && (
+            <div className="space-y-4">
+              {/* Role Tabs */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  Registered Mobile Number <span className="text-rose-500">*</span>
+                <label className="block text-xs font-semibold text-slate-600 mb-2">
+                  Signing In As:
                 </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                    <Phone className="w-4 h-4" />
-                  </div>
-                  <input
-                    type="tel"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="+91 98765 43210"
-                    className="w-full pl-9 pr-3 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent font-mono placeholder:font-sans placeholder:text-slate-400 text-slate-900"
-                    autoFocus
-                  />
-                </div>
-                <p className="mt-1.5 text-[11px] text-slate-500">
-                  Enter your registered 10-digit mobile number with country code. We will send a secure 6-digit OTP verification code.
-                </p>
-              </div>
-
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 text-white font-semibold text-xs rounded-lg hover:bg-slate-800 transition-colors shadow-xs disabled:opacity-50"
-                >
-                  {loading ? (
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <>
-                      <span>Send Verification Code</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          )}
-
-          {/* STEP 2: OTP Verification Input */}
-          {step === 'otp' && (
-            <form onSubmit={handleVerifyOtp} className="space-y-4">
-              <div className="text-center pb-2">
-                <span className="text-xs text-slate-500">Code dispatched to:</span>
-                <div className="text-sm font-mono font-bold text-slate-900">
-                  {formatPhoneDisplay(phoneNumber)}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStep('phone');
-                    setOtpCode('');
-                  }}
-                  className="text-[11px] text-slate-500 hover:text-slate-900 underline mt-1"
-                >
-                  Change phone number
-                </button>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5 text-center">
-                  Enter 6-Digit OTP <span className="text-rose-500">*</span>
-                </label>
-                <div className="relative max-w-[220px] mx-auto">
-                  <input
-                    type="text"
-                    maxLength={6}
-                    value={otpCode}
-                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                    placeholder="••••••"
-                    className="w-full text-center py-2.5 text-2xl font-mono tracking-widest bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent text-slate-900"
-                    autoFocus
-                  />
-                </div>
-                <p className="text-center mt-2 text-[11px] text-slate-500">
-                  OTP is cryptographically verified. Valid for 5 minutes.
-                </p>
-              </div>
-
-              <div className="flex items-center justify-between text-xs pt-1">
-                <span className="text-slate-500">Didn't receive code?</span>
-                <button
-                  type="button"
-                  onClick={handleResendOtp}
-                  disabled={cooldown > 0 || loading}
-                  className="font-semibold text-slate-900 hover:underline disabled:opacity-50 disabled:no-underline"
-                >
-                  {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend OTP'}
-                </button>
-              </div>
-
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  disabled={loading || otpCode.length !== 6}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 text-white font-semibold text-xs rounded-lg hover:bg-slate-800 transition-colors shadow-xs disabled:opacity-50"
-                >
-                  {loading ? (
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <>
-                      <Lock className="w-4 h-4" />
-                      <span>Verify & Continue</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          )}
-
-          {/* STEP 3: Participant Self-Registration Form (Method A) */}
-          {step === 'register_details' && (
-            <form onSubmit={handleCompleteRegistration} className="space-y-4">
-              <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>
-                  Phone number <strong className="font-mono">{formatPhoneDisplay(phoneNumber)}</strong>{' '}
-                  verified! Please complete your participant details.
-                </span>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Full Legal Name <span className="text-rose-500">*</span>
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                    <User className="w-4 h-4" />
-                  </div>
-                  <input
-                    type="text"
-                    required
-                    value={regData.name}
-                    onChange={(e) => setRegData({ ...regData, name: e.target.value })}
-                    placeholder="e.g. Siddharth Iyer"
-                    className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 text-slate-900"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Email Address <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={regData.email}
-                    onChange={(e) => setRegData({ ...regData, email: e.target.value })}
-                    placeholder="participant@example.com"
-                    className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 text-slate-900"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Participant Category <span className="text-rose-500">*</span>
-                  </label>
-                  <select
-                    value={regData.category}
-                    onChange={(e) =>
-                      setRegData({ ...regData, category: e.target.value as ParticipantCategory })
-                    }
-                    className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 text-slate-900"
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-slate-100 rounded-lg border border-slate-200 text-xs font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => setActiveRole('participant')}
+                    className={`py-1.5 rounded-md transition-all flex items-center justify-center gap-1 ${
+                      activeRole === 'participant'
+                        ? 'bg-white text-slate-900 shadow-2xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
                   >
-                    <option value="Senior">Senior</option>
-                    <option value="Junior">Junior</option>
-                    <option value="Sub-Junior">Sub-Junior</option>
-                    <option value="Open">Open</option>
-                  </select>
+                    <User className="w-3 h-3" />
+                    <span>Participant</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveRole('team_leader')}
+                    className={`py-1.5 rounded-md transition-all flex items-center justify-center gap-1 ${
+                      activeRole === 'team_leader'
+                        ? 'bg-white text-slate-900 shadow-2xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Users className="w-3 h-3" />
+                    <span>Team Leader</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveRole('admin')}
+                    className={`py-1.5 rounded-md transition-all flex items-center justify-center gap-1 ${
+                      activeRole === 'admin'
+                        ? 'bg-white text-slate-900 shadow-2xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Building className="w-3 h-3" />
+                    <span>Fest Admin</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveRole('super_admin')}
+                    className={`py-1.5 rounded-md transition-all flex items-center justify-center gap-1 ${
+                      activeRole === 'super_admin'
+                        ? 'bg-white text-slate-900 shadow-2xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <ShieldCheck className="w-3 h-3" />
+                    <span>Super Admin</span>
+                  </button>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Sign In Form */}
+              <form onSubmit={handleSignIn} className="space-y-3.5">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Institution / College <span className="text-rose-500">*</span>
+                    Email Address or Mobile Number
                   </label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                      <Building className="w-4 h-4" />
-                    </div>
                     <input
                       type="text"
-                      required
-                      value={regData.college}
-                      onChange={(e) => setRegData({ ...regData, college: e.target.value })}
-                      placeholder="e.g. Madras Arts College"
-                      className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 text-slate-900"
+                      placeholder="e.g. name@college.edu or 98401 23001"
+                      value={identifier}
+                      onChange={(e) => setIdentifier(e.target.value)}
+                      disabled={loading}
+                      className="w-full pl-9 pr-3 py-2.5 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900"
                     />
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                      {isEmailIdentifier(identifier) ? (
+                        <Mail className="w-4 h-4" />
+                      ) : (
+                        <Phone className="w-4 h-4" />
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Sign in with either your registered email address or 10-digit mobile number.
+                  </p>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-semibold text-slate-700">
+                      Password
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthMode('forgot');
+                        setResetIdentifier(identifier);
+                        setErrorMessage('');
+                        setSuccessMessage('');
+                      }}
+                      className="text-[11px] text-blue-600 hover:text-blue-800 font-semibold hover:underline"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="Enter your account password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      disabled={loading}
+                      className="w-full pl-9 pr-10 py-2.5 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900"
+                    />
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                      <Lock className="w-4 h-4" />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
                 </div>
+
+                <button
+                  type="submit"
+                  disabled={loading || !identifier.trim() || !password.trim()}
+                  className="w-full py-2.5 bg-slate-900 text-white rounded-lg text-xs font-semibold hover:bg-slate-800 disabled:opacity-50 transition-colors flex items-center justify-center gap-2 shadow-xs"
+                >
+                  {loading ? (
+                    <span>Authenticating...</span>
+                  ) : (
+                    <>
+                      <span>Sign In</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </>
+                  )}
+                </button>
+              </form>
+
+              {/* Registration Link */}
+              <div className="pt-3 border-t border-slate-100 text-center">
+                <p className="text-xs text-slate-600">
+                  New participant?{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMode('register');
+                      setErrorMessage('');
+                      setSuccessMessage('');
+                    }}
+                    className="font-semibold text-slate-900 hover:underline"
+                  >
+                    Create a Participant Account
+                  </button>
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* ================================================================ */}
+          {/* TAB 2: PARTICIPANT REGISTRATION FORM                            */}
+          {/* ================================================================ */}
+          {authMode === 'register' && (
+            <form onSubmit={handleRegister} className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Full Legal Name *
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="e.g. Aditi Sharma"
+                    value={regName}
+                    onChange={(e) => setRegName(e.target.value)}
+                    required
+                    className="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900"
+                  />
+                  <User className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400 pointer-events-none" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Official Email *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="email"
+                      placeholder="name@college.edu"
+                      value={regEmail}
+                      onChange={(e) => setRegEmail(e.target.value)}
+                      required
+                      className="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900"
+                    />
+                    <Mail className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400 pointer-events-none" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Mobile Number *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="tel"
+                      placeholder="98401 23001"
+                      value={regPhone}
+                      onChange={(e) => setRegPhone(e.target.value)}
+                      required
+                      className="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900"
+                    />
+                    <Phone className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400 pointer-events-none" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Password * (Min 6 chars)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showRegPassword ? 'text' : 'password'}
+                      placeholder="Create password"
+                      value={regPassword}
+                      onChange={(e) => setRegPassword(e.target.value)}
+                      required
+                      minLength={6}
+                      className="w-full pl-9 pr-8 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900"
+                    />
+                    <Lock className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400 pointer-events-none" />
+                    <button
+                      type="button"
+                      onClick={() => setShowRegPassword(!showRegPassword)}
+                      className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+                    >
+                      {showRegPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Confirm Password *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showRegPassword ? 'text' : 'password'}
+                      placeholder="Re-enter password"
+                      value={regConfirmPassword}
+                      onChange={(e) => setRegConfirmPassword(e.target.value)}
+                      required
+                      minLength={6}
+                      className="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900"
+                    />
+                    <Lock className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400 pointer-events-none" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    College / Institution *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="e.g. Loyola College"
+                      value={regCollege}
+                      onChange={(e) => setRegCollege(e.target.value)}
+                      required
+                      className="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900"
+                    />
+                    <Building className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400 pointer-events-none" />
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Class / Division
                   </label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                      <GraduationCap className="w-4 h-4" />
-                    </div>
                     <input
                       type="text"
-                      value={regData.classOrDivision}
-                      onChange={(e) =>
-                        setRegData({ ...regData, classOrDivision: e.target.value })
-                      }
-                      placeholder="e.g. BTech III CSE - A"
-                      className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 text-slate-900"
+                      placeholder="e.g. III B.Sc Computer Science"
+                      value={regClass}
+                      onChange={(e) => setRegClass(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900"
                     />
+                    <GraduationCap className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400 pointer-events-none" />
                   </div>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Requested Team <span className="text-rose-500">*</span>
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                    <Users className="w-4 h-4" />
-                  </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Category
+                  </label>
                   <select
-                    value={regData.requestedTeamId}
-                    onChange={(e) => setRegData({ ...regData, requestedTeamId: e.target.value })}
-                    className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 text-slate-900 font-medium"
+                    value={regCategory}
+                    onChange={(e) => setRegCategory(e.target.value as ParticipantCategory)}
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900"
+                  >
+                    <option value="Senior">Senior (Undergraduate/PG)</option>
+                    <option value="Junior">Junior (Higher Secondary)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Select House / Team *
+                  </label>
+                  <select
+                    value={regTeamId}
+                    onChange={(e) => setRegTeamId(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900"
                   >
                     {teams.map((t) => (
                       <option key={t.id} value={t.id}>
-                        {t.name} ({t.code}) — {t.teamLeaderName || 'Leader Assigned'}
+                        {t.name} ({t.code})
                       </option>
                     ))}
                   </select>
                 </div>
-                <p className="mt-1 text-[11px] text-slate-500 flex items-center gap-1">
-                  <Info className="w-3.5 h-3.5 text-slate-400" />
-                  Membership is finalized only after approval by the selected Team Leader.
-                </p>
               </div>
 
-              <div className="pt-3">
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-2.5 bg-slate-900 text-white rounded-lg text-xs font-semibold hover:bg-slate-800 disabled:opacity-50 transition-colors flex items-center justify-center gap-2 shadow-xs mt-2"
+              >
+                {loading ? (
+                  <span>Registering Account...</span>
+                ) : (
+                  <>
+                    <span>Submit Participant Registration</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </>
+                )}
+              </button>
+
+              <div className="pt-2 text-center">
                 <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 text-white font-semibold text-xs rounded-lg hover:bg-slate-800 transition-colors shadow-xs"
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('signin');
+                    setErrorMessage('');
+                    setSuccessMessage('');
+                  }}
+                  className="text-xs text-slate-600 hover:text-slate-900 font-semibold"
                 >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Submit Registration Request</span>
+                  Already have an account? Sign In
                 </button>
               </div>
             </form>
+          )}
+
+          {/* ================================================================ */}
+          {/* TAB 3: FORGOT PASSWORD                                          */}
+          {/* ================================================================ */}
+          {authMode === 'forgot' && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('signin');
+                    setErrorMessage('');
+                    setSuccessMessage('');
+                  }}
+                  className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-slate-900 transition-colors"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+                <span className="text-xs font-semibold text-slate-700">Back to Sign In</span>
+              </div>
+
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-600 leading-relaxed">
+                Enter your registered email address or mobile number. We will dispatch secure password reset instructions to your registered email account.
+              </div>
+
+              <form onSubmit={handlePasswordReset} className="space-y-3.5">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Email Address or Mobile Number
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="e.g. name@college.edu or 98401 23001"
+                      value={resetIdentifier}
+                      onChange={(e) => setResetIdentifier(e.target.value)}
+                      disabled={loading}
+                      className="w-full pl-9 pr-3 py-2.5 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900"
+                    />
+                    <KeyRound className="w-4 h-4 absolute left-3 top-3 text-slate-400 pointer-events-none" />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading || !resetIdentifier.trim()}
+                  className="w-full py-2.5 bg-slate-900 text-white rounded-lg text-xs font-semibold hover:bg-slate-800 disabled:opacity-50 transition-colors flex items-center justify-center gap-2 shadow-xs"
+                >
+                  {loading ? (
+                    <span>Sending Reset Link...</span>
+                  ) : (
+                    <>
+                      <span>Send Password Reset Instructions</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </>
+                  )}
+                </button>
+              </form>
+            </div>
           )}
         </div>
       </div>
     </div>
   );
 };
+
+// Aliased export to preserve backwards compatibility across existing components
+export { AuthModal as PhoneAuthModal };

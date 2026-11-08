@@ -30,7 +30,8 @@ import {
   ActivityLog,
   FestSettings,
   TeamLeaderInvitation,
-  FestRequest
+  FestRequest,
+  FestPublicPageData
 } from '../types';
 import { StorageService } from '../services/storage';
 
@@ -935,7 +936,7 @@ export async function checkDuplicateFestApplication(
       const snap = await getDocs(collection(db, 'fest_requests'));
       for (const d of snap.docs) {
         const req = d.data() as FestRequest;
-        const activeStatuses = ['pending', 'submitted', 'under_review', 'more_info_required'];
+        const activeStatuses = ['pending', 'submitted', 'under_review', 'more_info_required', 'PENDING', 'UNDER_REVIEW', 'MORE_INFORMATION_REQUIRED'];
         if (activeStatuses.includes(req.status)) {
           if (req.institution && req.institution.trim().toLowerCase() === normInst) {
             return { isDuplicate: true, existingRequest: req };
@@ -956,7 +957,7 @@ export async function checkDuplicateFestApplication(
   // 2. Check Local Storage fallback
   const localRequests = StorageService.getFestRequests();
   for (const req of localRequests) {
-    const activeStatuses = ['pending', 'submitted', 'under_review', 'more_info_required'];
+    const activeStatuses = ['pending', 'submitted', 'under_review', 'more_info_required', 'PENDING', 'UNDER_REVIEW', 'MORE_INFORMATION_REQUIRED'];
     if (activeStatuses.includes(req.status)) {
       if (req.institution && req.institution.trim().toLowerCase() === normInst) {
         return { isDuplicate: true, existingRequest: req };
@@ -1081,3 +1082,230 @@ export async function rejectFestApplicationViaCloudFunction(
   }
   return { success: false, message: 'Cloud functions not available.' };
 }
+
+/**
+ * Requests more information for a fest application via trusted Cloud Function.
+ */
+export async function requestMoreInfoViaCloudFunction(
+  requestId: string,
+  moreInfoMessage: string
+): Promise<{ success: boolean; message: string }> {
+  if (isFirebaseConfigured && app) {
+    try {
+      const functions = getFunctions(app);
+      const callMoreInfo = httpsCallable<
+        { requestId: string; moreInfoMessage: string },
+        { success: boolean; message: string }
+      >(functions, 'requestMoreInfoFestApplication');
+
+      const result = await callMoreInfo({ requestId, moreInfoMessage });
+      return result.data;
+    } catch (e: any) {
+      console.warn('[CloudFunctions] requestMoreInfoFestApplication failed:', e);
+      return { success: false, message: e.message || 'Request more info function execution failed.' };
+    }
+  }
+  return { success: false, message: 'Cloud functions not available.' };
+}
+
+/**
+ * Fetches an application by its unique Application ID (e.g. APP-2026-XXXX or REQ-2026-XXXX).
+ */
+export async function fetchFestApplicationById(applicationId: string): Promise<FestRequest | null> {
+  const cleanId = applicationId.trim();
+  if (isFirebaseConfigured && db) {
+    try {
+      const docSnap = await getDoc(doc(db, 'fest_requests', cleanId));
+      if (docSnap.exists()) {
+        return docSnap.data() as FestRequest;
+      }
+    } catch (e) {
+      console.warn('[Firestore] fetchFestApplicationById error:', e);
+    }
+  }
+  const localList = StorageService.getFestRequests();
+  return localList.find((r) => r.id.toLowerCase() === cleanId.toLowerCase()) || null;
+}
+
+/**
+ * Fetches applications associated with a verified phone number.
+ */
+export async function fetchFestApplicationsByPhone(phone: string): Promise<FestRequest[]> {
+  const normDigits = phone.replace(/\D/g, '');
+  if (isFirebaseConfigured && db) {
+    try {
+      const snap = await getDocs(collection(db, 'fest_requests'));
+      if (!snap.empty) {
+        return snap.docs
+          .map((d) => d.data() as FestRequest)
+          .filter((r) => {
+            const reqPhone = (r.requestingAdminPhone || '').replace(/\D/g, '');
+            return reqPhone.length >= 10 && normDigits.endsWith(reqPhone.slice(-10));
+          });
+      }
+    } catch (e) {
+      console.warn('[Firestore] fetchFestApplicationsByPhone error:', e);
+    }
+  }
+  const localList = StorageService.getFestRequests();
+  return localList.filter((r) => {
+    const reqPhone = (r.requestingAdminPhone || '').replace(/\D/g, '');
+    return reqPhone.length >= 10 && normDigits.endsWith(reqPhone.slice(-10));
+  });
+}
+
+// ==========================================
+// PUBLIC FEST PAGE MEDIA & CONTENT MANAGEMENT
+// ==========================================
+
+export function getDefaultFestPublicPage(festId: string, festName?: string): FestPublicPageData {
+  return {
+    festId,
+    hero: {
+      heading: festName ? `Welcome to ${festName}` : 'Celebrate Passion, Talent & Innovation',
+      description: 'The premier inter-collegiate annual cultural and technical championship.',
+      primaryCtaText: 'Register Now',
+      primaryCtaLink: '#register',
+      secondaryCtaText: 'View Schedule',
+      secondaryCtaLink: '#schedule',
+      showFallbackCss: true
+    },
+    logo: {
+      widthPx: 120,
+      alignment: 'left'
+    },
+    photos: [],
+    content: {
+      welcomeTitle: 'Official Festival Portal',
+      welcomeMessage: 'Join thousands of delegates, participants, and spectators across multiple stages and auditoriums.',
+      aboutFest: 'A multi-day symposium of performing arts, literary contests, design hackathons, and intellectual debates.',
+      venueInfo: 'Grand Campus Convention Center & Amphitheatre',
+      contactEmail: 'convenor@festoria.app',
+      contactPhone: '+91 98401 23001',
+      highlights: [
+        'Over 40+ accredited collegiate events and competitions',
+        'Official transparent judge scoring with real-time ratifications',
+        'Certified medals and university honorarium trophies'
+      ]
+    },
+    updatedAt: new Date().toISOString(),
+    version: 1
+  };
+}
+
+/**
+ * Fetches the published public fest page (viewable by all visitors).
+ */
+export async function fetchPublishedFestPage(festId: string, festName?: string): Promise<FestPublicPageData> {
+  const cleanId = (festId || 'FEST-01').trim();
+  const pageDocId = `${cleanId}_published`;
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const snap = await getDoc(doc(db, 'fest_public_pages', pageDocId));
+      if (snap.exists()) {
+        return snap.data() as FestPublicPageData;
+      }
+    } catch (e) {
+      console.warn('[Firestore] fetchPublishedFestPage error:', e);
+    }
+  }
+
+  // Fallback to localStorage or default
+  try {
+    const local = localStorage.getItem(`festoria_public_page_${pageDocId}`);
+    if (local) {
+      return JSON.parse(local) as FestPublicPageData;
+    }
+  } catch {}
+
+  return getDefaultFestPublicPage(cleanId, festName);
+}
+
+/**
+ * Fetches the draft fest page for the Fest Admin to edit and preview.
+ */
+export async function fetchDraftFestPage(festId: string, festName?: string): Promise<FestPublicPageData> {
+  const cleanId = (festId || 'FEST-01').trim();
+  const draftDocId = `${cleanId}_draft`;
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const snap = await getDoc(doc(db, 'fest_public_pages', draftDocId));
+      if (snap.exists()) {
+        return snap.data() as FestPublicPageData;
+      }
+    } catch (e) {
+      console.warn('[Firestore] fetchDraftFestPage error:', e);
+    }
+  }
+
+  // Fallback to published or default
+  const published = await fetchPublishedFestPage(cleanId, festName);
+  try {
+    const localDraft = localStorage.getItem(`festoria_public_page_${draftDocId}`);
+    if (localDraft) {
+      return JSON.parse(localDraft) as FestPublicPageData;
+    }
+  } catch {}
+
+  return { ...published };
+}
+
+/**
+ * Saves draft changes made by Fest Admin without publishing to public visitors.
+ */
+export async function saveDraftFestPage(festId: string, pageData: FestPublicPageData): Promise<void> {
+  const cleanId = (festId || 'FEST-01').trim();
+  const draftDocId = `${cleanId}_draft`;
+  const updated: FestPublicPageData = {
+    ...pageData,
+    festId: cleanId,
+    updatedAt: new Date().toISOString()
+  };
+
+  if (isFirebaseConfigured && db) {
+    try {
+      await setDoc(doc(db, 'fest_public_pages', draftDocId), updated, { merge: true });
+    } catch (e) {
+      console.warn('[Firestore] saveDraftFestPage error:', e);
+    }
+  }
+
+  try {
+    localStorage.setItem(`festoria_public_page_${draftDocId}`, JSON.stringify(updated));
+  } catch {}
+}
+
+/**
+ * Publishes draft changes to the live public-facing website.
+ */
+export async function publishFestPage(festId: string, pageData: FestPublicPageData): Promise<void> {
+  const cleanId = (festId || 'FEST-01').trim();
+  const draftDocId = `${cleanId}_draft`;
+  const publishedDocId = `${cleanId}_published`;
+  const nowIso = new Date().toISOString();
+
+  const published: FestPublicPageData = {
+    ...pageData,
+    festId: cleanId,
+    updatedAt: nowIso,
+    publishedAt: nowIso,
+    version: (pageData.version || 1) + 1
+  };
+
+  if (isFirebaseConfigured && db) {
+    try {
+      await setDoc(doc(db, 'fest_public_pages', publishedDocId), published);
+      await setDoc(doc(db, 'fest_public_pages', draftDocId), published);
+    } catch (e) {
+      console.warn('[Firestore] publishFestPage error:', e);
+    }
+  }
+
+  try {
+    localStorage.setItem(`festoria_public_page_${publishedDocId}`, JSON.stringify(published));
+    localStorage.setItem(`festoria_public_page_${draftDocId}`, JSON.stringify(published));
+  } catch {}
+}
+

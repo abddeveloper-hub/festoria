@@ -229,8 +229,8 @@ if (stage9Checks.every(Boolean)) {
 // =====================================================================
 console.log('--- STAGE 10: Security, Data Integrity, and Firestore Optimization ---');
 const stage10Checks = [
-  firebaseAuthSrc.includes('signInWithPhoneNumber(auth, normalized, verifier)'),
-  firebaseAuthSrc.includes('activeConfirmationResult.confirm(otpCode)'),
+  firebaseAuthSrc.includes('signInWithCredentials'),
+  firebaseAuthSrc.includes('signInWithEmailAndPassword'),
   firestoreRulesSrc.includes("allow update, delete: if false; // Strict audit immutability"),
   firestoreIndexesSrc.includes('"collectionGroup": "participants"'),
   firestoreIndexesSrc.includes('"collectionGroup": "scores"'),

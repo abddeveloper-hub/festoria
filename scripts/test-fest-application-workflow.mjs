@@ -512,31 +512,35 @@ async function runTests() {
   // ============================================================================
   console.log('\n--- TEST GROUP 7: Responsive UI Component Verification ---');
   {
-    // Verify OrganiseFestModal.tsx exists and contains required form fields
-    const modalPath = path.join(__dirname, '../src/components/public/OrganiseFestModal.tsx');
-    assert(fs.existsSync(modalPath), 'OrganiseFestModal.tsx file exists');
+    // Verify CreateFestModal.tsx exists and contains required form fields
+    const modalPath = fs.existsSync(path.join(__dirname, '../src/components/public/CreateFestModal.tsx'))
+      ? path.join(__dirname, '../src/components/public/CreateFestModal.tsx')
+      : path.join(__dirname, '../src/components/public/OrganiseFestModal.tsx');
+    assert(fs.existsSync(modalPath), 'Modal component file exists');
     const modalContent = fs.readFileSync(modalPath, 'utf8');
 
-    assert(modalContent.includes('institutionName'), 'Modal contains Institution Name input');
+    assert(modalContent.includes('institution'), 'Modal contains Institution input');
     assert(modalContent.includes('institutionAddress'), 'Modal contains Institution Address input');
-    assert(modalContent.includes('contactPersonName'), 'Modal contains Contact Person Name input');
+    assert(modalContent.includes('organizerName') || modalContent.includes('contactPersonName'), 'Modal contains Contact Person Name input');
     assert(modalContent.includes('mobileNumber'), 'Modal contains Mobile Number input');
     assert(modalContent.includes('emailAddress'), 'Modal contains Email Address input');
-    assert(modalContent.includes('proposedFestName'), 'Modal contains Proposed Fest Name input');
-    assert(modalContent.includes('festDescription'), 'Modal contains Fest Description input');
+    assert(modalContent.includes('festName'), 'Modal contains Fest Name input');
+    assert(modalContent.includes('description'), 'Modal contains Fest Description input');
     assert(modalContent.includes('startDate'), 'Modal contains Start Date input');
     assert(modalContent.includes('endDate'), 'Modal contains End Date input');
     assert(modalContent.includes('supportingDocumentUrl'), 'Modal contains Supporting Document input');
-    assert(modalContent.includes('requestFirebasePhoneOtp'), 'Modal integrates Firebase Phone OTP');
+    assert(modalContent.includes('signInWithCredentials'), 'Modal integrates Password Authentication');
     assert(modalContent.includes('checkDuplicateFestApplication'), 'Modal integrates Duplicate Check');
     assert(modalContent.includes('submitFestApplication'), 'Modal submits to Firestore');
 
-    // Verify PublicPage.tsx includes navigation button, overview card, and modal mount
+    // Verify PublicPage / FestoriaHomePage includes navigation button, overview card, and modal mount
     const publicPagePath = path.join(__dirname, '../src/pages/PublicPage.tsx');
+    const homePath = path.join(__dirname, '../src/pages/public/FestoriaHomePage.tsx');
     assert(fs.existsSync(publicPagePath), 'PublicPage.tsx exists');
-    const publicContent = fs.readFileSync(publicPagePath, 'utf8');
-    assert(publicContent.includes('Organise a Fest'), 'PublicPage contains "Organise a Fest" navbar option');
-    assert(publicContent.includes('OrganiseFestModal'), 'PublicPage mounts OrganiseFestModal');
+    assert(fs.existsSync(homePath), 'FestoriaHomePage.tsx exists');
+    const publicContent = fs.readFileSync(homePath, 'utf8') + fs.readFileSync(publicPagePath, 'utf8');
+    assert(publicContent.includes('Organise a Fest') || publicContent.includes('Create New Fest'), 'PublicPage contains "Organise a Fest" or "Create New Fest" option');
+    assert(publicContent.includes('OrganiseFestModal') || publicContent.includes('CreateFestModal'), 'PublicPage mounts OrganiseFestModal / CreateFestModal');
 
     // Verify Firestore Rules include fest_requests & platform_audit_logs
     const rulesPath = path.join(__dirname, '../firestore.rules');

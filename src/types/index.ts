@@ -16,6 +16,7 @@ export interface User {
   email: string;
   phone?: string;
   phoneVerified?: boolean;
+  emailVerified?: boolean;
   role: Role;
   status: UserStatus;
   avatar?: string;
@@ -30,6 +31,7 @@ export interface User {
   invitedAt?: string;
   remarks?: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export type InvitationStatus = 'pending_verification' | 'activated' | 'revoked' | 'expired';
@@ -193,6 +195,7 @@ export interface ScoreSubmission {
 export interface ApprovedResult {
   id: string;
   programmeId: string;
+  programmeName?: string;
   rank: number; // 1, 2, 3, etc.
   participantId?: string;
   teamId: string;
@@ -216,6 +219,8 @@ export interface Team {
   teamLeaderContact: string;
   logoUrl?: string;
   colorHex?: string;
+  totalPoints?: number;
+  totalScore?: number;
   status: 'active' | 'inactive';
   createdAt: string;
 }
@@ -317,7 +322,14 @@ export type FestRequestStatus =
   | 'more_info_required' 
   | 'approved' 
   | 'rejected' 
-  | 'withdrawn';
+  | 'workspace_created'
+  | 'withdrawn'
+  | 'PENDING'
+  | 'UNDER_REVIEW'
+  | 'MORE_INFORMATION_REQUIRED'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'WORKSPACE_CREATED';
 
 export interface Fest {
   id: string; // e.g. "FEST-01"
@@ -354,32 +366,52 @@ export interface RequestHistoryEntry {
 }
 
 export interface FestRequest {
-  id: string; // e.g. "REQ-2026-01"
+  id: string; // e.g. "APP-2026-001" or "REQ-2026-01"
+  // SECTION A: Fest Information
   festName: string;
+  shortName?: string;
   edition: string;
+  category: string;
   description: string;
   institution: string;
-  institutionAddress?: string;
-  contactPersonName?: string;
-  category: string;
-  venue: string;
+  logoUrl?: string;
+
+  // SECTION B: Event Details
   startDate: string;
   endDate: string;
+  registrationStartDate?: string;
+  registrationEndDate?: string;
+  venue: string;
   expectedParticipants: number;
   plannedProgrammesCount: number;
-  requestingAdminId: string;
-  requestingAdminName: string;
+
+  // SECTION C: Organizer Information
+  requestingAdminId: string; // Authenticated UID
+  requestingAdminName: string; // Organizer Name
+  designation?: string;
   requestingAdminEmail: string;
-  requestingAdminPhone: string;
+  requestingAdminPhone: string; // Verified Phone Number
+  contactPersonName?: string;
+  institutionAddress?: string;
+
+  // SECTION D: Additional Information
+  websiteUrl?: string;
+  previousFestDetails?: string;
+  additionalMessage?: string;
+  supportingDocs?: string[];
+  supportingDocumentUrl?: string;
+
+  // Platform Lifecycle & Scrutiny
   status: FestRequestStatus;
+  workspaceStatus?: string;
   submissionDate: string;
+  createdAt?: string;
+  updatedAt?: string;
   assignedReviewerId?: string;
   assignedReviewerName?: string;
   reviewNotes?: string;
   rejectionReason?: string;
   moreInfoMessage?: string;
-  supportingDocs?: string[];
-  supportingDocumentUrl?: string;
   allocatedFestId?: string;
   history: RequestHistoryEntry[];
 }
@@ -580,5 +612,61 @@ export interface ParticipantInquiry {
   createdAt: string;
   updatedAt: string;
 }
+
+// ==========================================
+// PUBLIC FEST PAGE & MEDIA DATA MODELS
+// ==========================================
+
+export interface FestHeroMedia {
+  videoUrl?: string;
+  videoType?: string;
+  videoPosterUrl?: string;
+  heading: string;
+  description: string;
+  primaryCtaText?: string;
+  primaryCtaLink?: string;
+  secondaryCtaText?: string;
+  secondaryCtaLink?: string;
+  showFallbackCss: boolean;
+}
+
+export interface FestLogoMedia {
+  logoUrl?: string;
+  widthPx: number;
+  alignment: 'left' | 'center';
+}
+
+export interface FestPhotoItem {
+  id: string;
+  url: string;
+  caption: string;
+  description?: string;
+  order: number;
+  featuredInMain: boolean;
+  category?: string;
+  createdAt: string;
+}
+
+export interface FestPublicPageContent {
+  welcomeTitle: string;
+  welcomeMessage: string;
+  aboutFest: string;
+  venueInfo: string;
+  contactEmail: string;
+  contactPhone: string;
+  highlights: string[];
+}
+
+export interface FestPublicPageData {
+  festId: string;
+  hero: FestHeroMedia;
+  logo: FestLogoMedia;
+  photos: FestPhotoItem[];
+  content: FestPublicPageContent;
+  updatedAt: string;
+  publishedAt?: string;
+  version: number;
+}
+
 
 

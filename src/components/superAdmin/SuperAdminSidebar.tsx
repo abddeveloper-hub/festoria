@@ -49,7 +49,7 @@ export const SuperAdminSidebar: React.FC<SuperAdminSidebarProps> = ({ mobileOpen
   } = useFest();
 
   const pendingRequestsCount = festRequests.filter(
-    (r) => r.status === 'submitted' || r.status === 'under_review' || r.status === 'more_info_required'
+    (r) => ['pending', 'submitted', 'under_review', 'more_info_required', 'PENDING', 'UNDER_REVIEW', 'MORE_INFORMATION_REQUIRED'].includes(r.status)
   ).length;
 
   const unreadNotifsCount = platformNotifications.filter((n) => !n.read).length;

@@ -20,12 +20,13 @@ import { PublicPage } from './pages/PublicPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { ComplaintsManagementPage } from './pages/ComplaintsManagementPage';
+import { PublicPageManagement } from './pages/admin/PublicPageManagement';
 
 const AppContent: React.FC = () => {
   const { activeTab, currentPortal } = useFest();
 
-  // If visitor is on public portal or navigates to public tab
-  if (currentPortal === 'public' || activeTab === 'public') {
+  // If visitor is on public portal
+  if (currentPortal === 'public') {
     return <PublicPage />;
   }
 
@@ -79,6 +80,8 @@ const AppContent: React.FC = () => {
         return <UsersPage />;
       case 'complaints':
         return <ComplaintsManagementPage />;
+      case 'public':
+        return <PublicPageManagement />;
       case 'reports':
         return <ReportsPage />;
       case 'settings':

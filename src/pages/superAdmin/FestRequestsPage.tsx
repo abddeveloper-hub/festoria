@@ -41,6 +41,8 @@ export const FestRequestsPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [startDateFilter, setStartDateFilter] = useState<string>('');
+  const [endDateFilter, setEndDateFilter] = useState<string>('');
 
   // Selected request for detail review
   const [selectedRequest, setSelectedRequest] = useState<FestRequest | null>(null);
@@ -51,6 +53,16 @@ export const FestRequestsPage: React.FC = () => {
   const [rejectionReason, setRejectionReason] = useState('');
   const [moreInfoMessage, setMoreInfoMessage] = useState('');
   const [selectedReviewerId, setSelectedReviewerId] = useState('');
+
+  // Statistics calculation for Governance Dashboard
+  const stats = useMemo(() => {
+    const total = festRequests.length;
+    const pending = festRequests.filter((r) => ['pending', 'submitted', 'PENDING'].includes(r.status)).length;
+    const underReview = festRequests.filter((r) => ['under_review', 'UNDER_REVIEW'].includes(r.status)).length;
+    const approved = festRequests.filter((r) => ['approved', 'APPROVED', 'workspace_created', 'WORKSPACE_CREATED'].includes(r.status)).length;
+    const rejected = festRequests.filter((r) => ['rejected', 'REJECTED'].includes(r.status)).length;
+    return { total, pending, underReview, approved, rejected };
+  }, [festRequests]);
 
   // New Request Submission Modal (for end-to-end testing of Workflow A)
   const [showNewRequestModal, setShowNewRequestModal] = useState(false);
@@ -72,11 +84,23 @@ export const FestRequestsPage: React.FC = () => {
         r.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         r.institution.toLowerCase().includes(searchQuery.toLowerCase()) ||
         r.requestingAdminName.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchStatus = statusFilter === 'all' || r.status === statusFilter;
+
+      const normStatus = r.status.toLowerCase();
+      const matchStatus =
+        statusFilter === 'all' ||
+        normStatus === statusFilter.toLowerCase() ||
+        (statusFilter === 'approved' && normStatus === 'workspace_created');
+
       const matchCategory = categoryFilter === 'all' || r.category === categoryFilter;
-      return matchSearch && matchStatus && matchCategory;
+
+      const subDate = r.submissionDate || '';
+      const festStart = r.startDate || '';
+      const matchStartDate = !startDateFilter || subDate >= startDateFilter || festStart >= startDateFilter;
+      const matchEndDate = !endDateFilter || subDate <= endDateFilter || festStart <= endDateFilter;
+
+      return matchSearch && matchStatus && matchCategory && matchStartDate && matchEndDate;
     });
-  }, [festRequests, searchQuery, statusFilter, categoryFilter]);
+  }, [festRequests, searchQuery, statusFilter, categoryFilter, startDateFilter, endDateFilter]);
 
   const uniqueCategories = Array.from(new Set(festRequests.map((r) => r.category)));
 
@@ -177,21 +201,45 @@ export const FestRequestsPage: React.FC = () => {
         </button>
       </div>
 
+      {/* 5 Statistics Summary Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <div className="bg-white border border-slate-200 rounded-lg p-3.5 shadow-2xs">
+          <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Total Applications</div>
+          <div className="text-2xl font-bold text-slate-900 mt-1">{stats.total}</div>
+        </div>
+        <div className="bg-white border border-blue-200 bg-blue-50/30 rounded-lg p-3.5 shadow-2xs">
+          <div className="text-[11px] font-semibold text-blue-700 uppercase tracking-wider">Pending Review</div>
+          <div className="text-2xl font-bold text-blue-700 mt-1">{stats.pending}</div>
+        </div>
+        <div className="bg-white border border-indigo-200 bg-indigo-50/30 rounded-lg p-3.5 shadow-2xs">
+          <div className="text-[11px] font-semibold text-indigo-700 uppercase tracking-wider">Under Review</div>
+          <div className="text-2xl font-bold text-indigo-700 mt-1">{stats.underReview}</div>
+        </div>
+        <div className="bg-white border border-emerald-200 bg-emerald-50/30 rounded-lg p-3.5 shadow-2xs">
+          <div className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider">Approved</div>
+          <div className="text-2xl font-bold text-emerald-700 mt-1">{stats.approved}</div>
+        </div>
+        <div className="bg-white border border-rose-200 bg-rose-50/30 rounded-lg p-3.5 shadow-2xs">
+          <div className="text-[11px] font-semibold text-rose-700 uppercase tracking-wider">Rejected</div>
+          <div className="text-2xl font-bold text-rose-700 mt-1">{stats.rejected}</div>
+        </div>
+      </div>
+
       {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 text-xs">
+      <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3 text-xs">
         <div className="relative flex-1 max-w-md">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
-            placeholder="Search request ID, fest, institution, or applicant..."
+            placeholder="Search application ID, fest, institution, or applicant..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400"
           />
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 border border-slate-200 rounded px-2.5 py-2 bg-white text-slate-700">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5 border border-slate-200 rounded px-2.5 py-1.5 bg-white text-slate-700">
             <Filter className="w-3.5 h-3.5 text-slate-400" />
             <span className="text-slate-400">Status:</span>
             <select
@@ -204,12 +252,12 @@ export const FestRequestsPage: React.FC = () => {
               <option value="submitted">Submitted</option>
               <option value="under_review">Under Review</option>
               <option value="more_info_required">More Info Required</option>
-              <option value="approved">Approved</option>
+              <option value="approved">Approved & Provisioned</option>
               <option value="rejected">Rejected</option>
             </select>
           </div>
 
-          <div className="flex items-center gap-1.5 border border-slate-200 rounded px-2.5 py-2 bg-white text-slate-700">
+          <div className="flex items-center gap-1.5 border border-slate-200 rounded px-2.5 py-1.5 bg-white text-slate-700">
             <span className="text-slate-400">Category:</span>
             <select
               value={categoryFilter}
@@ -221,6 +269,32 @@ export const FestRequestsPage: React.FC = () => {
                 <option key={c} value={c}>{c}</option>
               ))}
             </select>
+          </div>
+
+          <div className="flex items-center gap-1.5 border border-slate-200 rounded px-2 py-1 bg-white text-slate-700">
+            <Calendar className="w-3.5 h-3.5 text-slate-400" />
+            <span className="text-slate-400 text-[11px]">Date:</span>
+            <input
+              type="date"
+              value={startDateFilter}
+              onChange={(e) => setStartDateFilter(e.target.value)}
+              className="bg-transparent focus:outline-none text-[11px] text-slate-800"
+            />
+            <span className="text-slate-300">-</span>
+            <input
+              type="date"
+              value={endDateFilter}
+              onChange={(e) => setEndDateFilter(e.target.value)}
+              className="bg-transparent focus:outline-none text-[11px] text-slate-800"
+            />
+            {(startDateFilter || endDateFilter) && (
+              <button
+                onClick={() => { setStartDateFilter(''); setEndDateFilter(''); }}
+                className="text-slate-400 hover:text-slate-700 font-bold ml-1"
+              >
+                ×
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -372,14 +446,42 @@ export const FestRequestsPage: React.FC = () => {
 
               {/* Fest Information Card */}
               <div className="border border-slate-200 rounded p-4 space-y-3 bg-white">
-                <h4 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                  <Building className="w-4 h-4 text-slate-500" />
-                  Fest & Institutional Identity
-                </h4>
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                  <h4 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <Building className="w-4 h-4 text-slate-500" />
+                    Section A & B: Fest & Event Details
+                  </h4>
+                  {selectedRequest.allocatedFestId && (
+                    <span className="font-mono text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded border border-emerald-200">
+                      Workspace: {selectedRequest.allocatedFestId}
+                    </span>
+                  )}
+                </div>
+
+                {selectedRequest.logoUrl && (
+                  <div className="flex items-center gap-3 p-2.5 bg-slate-50 rounded border border-slate-200">
+                    <img
+                      src={selectedRequest.logoUrl}
+                      alt="Fest Logo"
+                      className="w-12 h-12 object-contain rounded bg-white border border-slate-200 p-1"
+                      onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                    />
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Official Fest Logo</span>
+                      <a href={selectedRequest.logoUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline truncate max-w-xs block">
+                        {selectedRequest.logoUrl}
+                      </a>
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   <div>
                     <span className="text-slate-400 text-[11px] block">Fest Name & Edition</span>
-                    <span className="font-medium text-slate-900">{selectedRequest.festName} {selectedRequest.edition}</span>
+                    <span className="font-medium text-slate-900">
+                      {selectedRequest.festName} {selectedRequest.edition}
+                      {selectedRequest.shortName && ` (${selectedRequest.shortName})`}
+                    </span>
                   </div>
                   <div>
                     <span className="text-slate-400 text-[11px] block">Category</span>
@@ -394,8 +496,14 @@ export const FestRequestsPage: React.FC = () => {
                     <span className="font-medium text-slate-900">{selectedRequest.institutionAddress || selectedRequest.venue}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 text-[11px] block">Proposed Dates</span>
+                    <span className="text-slate-400 text-[11px] block">Fest Operating Dates</span>
                     <span className="font-medium text-slate-900">{selectedRequest.startDate} to {selectedRequest.endDate}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 text-[11px] block">Registration Window</span>
+                    <span className="font-medium text-slate-900">
+                      {selectedRequest.registrationStartDate || selectedRequest.startDate} to {selectedRequest.registrationEndDate || selectedRequest.endDate}
+                    </span>
                   </div>
                   <div>
                     <span className="text-slate-400 text-[11px] block">Scale & Projections</span>
@@ -404,6 +512,7 @@ export const FestRequestsPage: React.FC = () => {
                     </span>
                   </div>
                 </div>
+
                 <div>
                   <span className="text-slate-400 text-[11px] block">Description & Stated Objectives</span>
                   <p className="text-slate-700 leading-relaxed mt-0.5">{selectedRequest.description}</p>
@@ -414,27 +523,59 @@ export const FestRequestsPage: React.FC = () => {
               <div className="border border-slate-200 rounded p-4 space-y-3 bg-white">
                 <h4 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
                   <User className="w-4 h-4 text-slate-500" />
-                  Applicant & Fest Admin Profile
+                  Section C: Organizer & Fest Admin Profile
                 </h4>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div>
-                    <span className="text-slate-400 text-[11px] block">Contact Person</span>
+                    <span className="text-slate-400 text-[11px] block">Organizer Name</span>
                     <span className="font-medium text-slate-900">{selectedRequest.contactPersonName || selectedRequest.requestingAdminName}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 text-[11px] block">Designation</span>
+                    <span className="font-medium text-slate-900">{selectedRequest.designation || 'Faculty Convenor'}</span>
                   </div>
                   <div>
                     <span className="text-slate-400 text-[11px] block">Registered Email</span>
                     <span className="font-medium text-slate-900">{selectedRequest.requestingAdminEmail}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 text-[11px] block">Contact Phone</span>
-                    <span className="font-medium text-slate-900">{selectedRequest.requestingAdminPhone}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 text-[11px] block">Verification Status</span>
-                    <span className="font-medium text-emerald-700">Firebase Phone Verified</span>
+                    <span className="text-slate-400 text-[11px] block">Verified Mobile</span>
+                    <span className="font-medium font-mono text-emerald-700">{selectedRequest.requestingAdminPhone}</span>
                   </div>
                 </div>
               </div>
+
+              {/* Section D: Additional Information */}
+              {(selectedRequest.websiteUrl || selectedRequest.previousFestDetails || selectedRequest.additionalMessage) && (
+                <div className="border border-slate-200 rounded p-4 space-y-3 bg-white">
+                  <h4 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <FileText className="w-4 h-4 text-slate-500" />
+                    Section D: Additional Information
+                  </h4>
+                  <div className="space-y-2 text-xs">
+                    {selectedRequest.websiteUrl && (
+                      <div>
+                        <span className="text-slate-400 text-[11px] block">Official Website</span>
+                        <a href={selectedRequest.websiteUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                          {selectedRequest.websiteUrl}
+                        </a>
+                      </div>
+                    )}
+                    {selectedRequest.previousFestDetails && (
+                      <div>
+                        <span className="text-slate-400 text-[11px] block">Previous Fest Footfall & Details</span>
+                        <p className="text-slate-700 leading-relaxed">{selectedRequest.previousFestDetails}</p>
+                      </div>
+                    )}
+                    {selectedRequest.additionalMessage && (
+                      <div>
+                        <span className="text-slate-400 text-[11px] block">Message for Super Admin</span>
+                        <p className="text-slate-700 leading-relaxed">{selectedRequest.additionalMessage}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Supporting Documents & Notes */}
               <div className="border border-slate-200 rounded p-4 space-y-2 bg-white">

@@ -74,7 +74,8 @@ import {
   fetchFestRequests,
   submitFestApplication,
   approveFestApplicationViaCloudFunction,
-  rejectFestApplicationViaCloudFunction
+  rejectFestApplicationViaCloudFunction,
+  requestMoreInfoViaCloudFunction
 } from '../firebase/firestoreService';
 
 export type NavigationTab =
@@ -587,6 +588,9 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     if (found) {
       setCurrentUser(found);
       StorageService.setCurrentUser(found);
+      if (found.festId) {
+        setActiveFestId(found.festId);
+      }
       if (!users.some((u) => u.id === found.id)) {
         setUsers((prev) => [found, ...prev]);
       }
@@ -1339,6 +1343,13 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     const req = festRequests.find((r) => r.id === requestId);
     if (!req) return;
     const now = new Date().toISOString().replace('T', ' ').slice(0, 16);
+
+    // Call Cloud Function if live
+    if (isFirebaseConfigured) {
+      requestMoreInfoViaCloudFunction(requestId, message).catch((err) => {
+        console.warn('[FestContext] Cloud Function requestMoreInfo error:', err);
+      });
+    }
 
     const historyEntry: RequestHistoryEntry = {
       date: now,

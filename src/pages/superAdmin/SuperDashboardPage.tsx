@@ -54,7 +54,7 @@ export const SuperDashboardPage: React.FC = () => {
   // Dynamic Metrics - Exact 12 requested summary items
   const totalFests = fests.length;
   const pendingRequests = festRequests.filter(
-    (r) => r.status === 'submitted' || r.status === 'under_review' || r.status === 'more_info_required'
+    (r) => ['pending', 'submitted', 'under_review', 'more_info_required', 'PENDING', 'UNDER_REVIEW', 'MORE_INFORMATION_REQUIRED'].includes(r.status)
   ).length;
   const approvedFests = fests.filter((f) => f.status !== 'suspended' && f.status !== 'cancelled').length;
   const rejectedRequests = festRequests.filter((r) => r.status === 'rejected').length;
