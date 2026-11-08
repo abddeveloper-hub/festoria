@@ -2,9 +2,18 @@ import React, { useMemo } from 'react';
 import { useFest } from '../context/FestContext';
 import { FestoriaHomePage } from './public/FestoriaHomePage';
 import { PublicFestPage } from './public/PublicFestPage';
+import { InvitationAcceptPage } from './public/InvitationAcceptPage';
 
 export const PublicPage: React.FC = () => {
   const { activeFestId, fests } = useFest();
+
+  // Detect if route is for Invitation acceptance: e.g. /invite, ?token=..., or ?invite=...
+  const isInviteRoute = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    const pathname = window.location.pathname;
+    const search = new URLSearchParams(window.location.search);
+    return pathname.includes('/invite') || search.has('token') || search.has('invite');
+  }, []);
 
   // Detect if route is pointing to a specific individual fest: e.g. /f/:festId, ?fest=:festId, or #/f/:festId
   const targetedFestId = useMemo(() => {
@@ -34,6 +43,11 @@ export const PublicPage: React.FC = () => {
 
     return null;
   }, []);
+
+  // If an invitation token is accessed, render the secure token validation and claim page
+  if (isInviteRoute) {
+    return <InvitationAcceptPage />;
+  }
 
   // If a specific fest is targeted (/f/{festId}), render that fest's public page with admin-managed media
   if (targetedFestId) {

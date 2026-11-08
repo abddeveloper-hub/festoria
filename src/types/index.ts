@@ -54,6 +54,33 @@ export interface TeamLeaderInvitation {
   notes?: string;
 }
 
+export type InvitationRole = 'judge' | 'team_leader';
+export type FestInvitationStatus = 'pending' | 'accepted' | 'revoked' | 'expired';
+
+export interface FestInvitation {
+  id: string; // e.g. "INV-JD-A1B2C3" or "INV-TL-X9Y8Z7"
+  token: string; // Secure unique token
+  festId: string; // Target Fest ID
+  role: InvitationRole; // 'judge' | 'team_leader'
+  recipientType: 'phone' | 'email';
+  recipientContact: string; // Recipient's phone or email
+  recipientName?: string;
+  assignedJudgeId?: string; // Optional: Link to an existing Judge profile
+  assignedJudgeName?: string;
+  assignedTeamId?: string; // Optional: Link to a Team (for team leader)
+  assignedTeamName?: string;
+  expiresAt: string; // ISO 8601 string
+  status: FestInvitationStatus;
+  createdByAdminId: string;
+  createdByAdminName: string;
+  createdAt: string;
+  acceptedAt?: string;
+  acceptedByUserId?: string;
+  revokedAt?: string;
+  revokedByAdminId?: string;
+  notes?: string;
+}
+
 export type ParticipantCategory = 'Junior' | 'Senior' | 'Sub-Junior' | 'Open';
 
 export type RegistrationStatus = 'registered' | 'verified' | 'disqualified' | 'inactive';

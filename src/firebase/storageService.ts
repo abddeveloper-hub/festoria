@@ -216,3 +216,4 @@ export async function deleteFestMedia(storagePath: string): Promise<void> {
     }
   }
 }
+

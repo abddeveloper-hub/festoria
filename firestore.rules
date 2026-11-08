@@ -501,5 +501,24 @@ service cloud.firestore {
       allow write: if isSuperAdmin() ||
         (isAuthenticated() && request.resource.data.festId != null && isFestAdmin(request.resource.data.festId));
     }
+
+    // ========================================================
+    // 18. FEST INVITATIONS (Share Fest Role Invitations)
+    // ========================================================
+    match /fest_invitations/{invitationId} {
+      // Fest Admin for that fest or Super Admin can read and list invitations
+      allow read: if isSuperAdmin() ||
+        (isAuthenticated() && resource.data.festId != null && isFestAdmin(resource.data.festId));
+
+      // Fest Admin or Super Admin can create invitations
+      allow create: if isSuperAdmin() ||
+        (isAuthenticated() && request.resource.data.festId != null && isFestAdmin(request.resource.data.festId));
+
+      // Fest Admin can revoke or update invitation status
+      allow update: if isSuperAdmin() ||
+        (isAuthenticated() && resource.data.festId != null && isFestAdmin(resource.data.festId));
+
+      allow delete: if isSuperAdmin();
+    }
   }
 }

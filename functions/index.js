@@ -1801,6 +1801,330 @@ async function registerNewUserHandler(request, deps = {}) {
 }
 
 /**
+ * ============================================================================
+ * SHARE FEST: ROLE-BASED INVITATION CLOUD FUNCTION HANDLERS
+ * ============================================================================
+ */
+
+/**
+ * Creates a secure role-based invitation (Judge or Team Leader)
+ */
+async function createFestInvitationHandler(request, deps = {}) {
+  const currentDb = deps.db || db;
+  const data = request.data || {};
+  const {
+    festId,
+    role,
+    recipientContact,
+    recipientType,
+    recipientName,
+    assignedJudgeId,
+    assignedJudgeName,
+    assignedTeamId,
+    assignedTeamName,
+    expiresInDays,
+    notes
+  } = data;
+
+  if (!festId || typeof festId !== 'string' || !festId.trim()) {
+    throw new HttpsError('invalid-argument', 'Missing or invalid festId.');
+  }
+  if (!role || (role !== 'judge' && role !== 'team_leader')) {
+    throw new HttpsError('invalid-argument', 'Role must be either "judge" or "team_leader".');
+  }
+  if (!recipientContact || typeof recipientContact !== 'string' || !recipientContact.trim()) {
+    throw new HttpsError('invalid-argument', 'Missing recipient contact.');
+  }
+
+  const adminCaller = await verifyAdminAuth(request, festId, deps);
+
+  // If team_leader, validate assigned team belongs to fest
+  if (role === 'team_leader' && assignedTeamId) {
+    const teamDoc = await currentDb.collection('teams').doc(assignedTeamId).get();
+    if (teamDoc.exists) {
+      const tData = teamDoc.data();
+      if (tData.festId && tData.festId !== festId) {
+        throw new HttpsError('invalid-argument', `Team ${assignedTeamId} belongs to another festival.`);
+      }
+    }
+  }
+
+  const tokenPrefix = role === 'judge' ? 'tok_jd' : 'tok_tl';
+  const randBytes = crypto.randomBytes ? crypto.randomBytes(16).toString('hex') : Math.random().toString(36).substring(2);
+  const token = `${tokenPrefix}_${randBytes}_${Date.now().toString(36)}`;
+
+  const days = expiresInDays && Number(expiresInDays) > 0 ? Number(expiresInDays) : 7;
+  const expiryDate = new Date();
+  expiryDate.setDate(expiryDate.getDate() + days);
+
+  const uniqueIdSuffix = crypto.randomBytes ? crypto.randomBytes(4).toString('hex').toUpperCase() : Math.random().toString(36).substring(2, 6).toUpperCase();
+  const invId = `INV-${role === 'judge' ? 'JD' : 'TL'}-${Date.now().toString(36).toUpperCase()}-${uniqueIdSuffix}`;
+  const invRef = currentDb.collection('fest_invitations').doc(invId);
+  const invitation = {
+    id: invId,
+    token,
+    festId: festId.trim(),
+    role,
+    recipientType: recipientType || (recipientContact.includes('@') ? 'email' : 'phone'),
+    recipientContact: recipientContact.trim(),
+    recipientName: (recipientName || '').trim(),
+    assignedJudgeId: assignedJudgeId || '',
+    assignedJudgeName: assignedJudgeName || '',
+    assignedTeamId: assignedTeamId || '',
+    assignedTeamName: assignedTeamName || '',
+    expiresAt: expiryDate.toISOString(),
+    status: 'pending',
+    createdByAdminId: adminCaller.uid,
+    createdByAdminName: adminCaller.name,
+    createdAt: FieldValue.serverTimestamp(),
+    notes: (notes || '').trim()
+  };
+
+  await invRef.set(invitation);
+
+  // Record audit log
+  const auditRef = currentDb.collection('audit_logs').doc();
+  await auditRef.set({
+    id: auditRef.id,
+    festId: festId.trim(),
+    userId: adminCaller.uid,
+    userName: adminCaller.name,
+    action: 'CREATE_FEST_INVITATION',
+    targetType: 'invitation',
+    targetId: invitation.id,
+    details: `Admin created ${role} invitation for ${invitation.recipientContact} (Expires: ${invitation.expiresAt})`,
+    timestamp: FieldValue.serverTimestamp()
+  });
+
+  return { success: true, invitation };
+}
+
+/**
+ * Revokes an unused fest invitation
+ */
+async function revokeFestInvitationHandler(request, deps = {}) {
+  const currentDb = deps.db || db;
+  const data = request.data || {};
+  const { invitationId, festId } = data;
+
+  if (!invitationId) {
+    throw new HttpsError('invalid-argument', 'Missing invitationId.');
+  }
+
+  const adminCaller = await verifyAdminAuth(request, festId, deps);
+
+  const querySnap = await currentDb.collection('fest_invitations')
+    .where('id', '==', invitationId)
+    .get();
+
+  if (querySnap.empty) {
+    throw new HttpsError('not-found', `Invitation ${invitationId} not found.`);
+  }
+
+  const invDocRef = querySnap.docs[0].ref;
+  const invData = querySnap.docs[0].data();
+
+  if (invData.status === 'accepted') {
+    throw new HttpsError('failed-precondition', 'Cannot revoke an invitation that has already been accepted.');
+  }
+
+  await invDocRef.update({
+    status: 'revoked',
+    revokedAt: FieldValue.serverTimestamp(),
+    revokedByAdminId: adminCaller.uid
+  });
+
+  // Record audit log
+  const auditRef = currentDb.collection('audit_logs').doc();
+  await auditRef.set({
+    id: auditRef.id,
+    festId: invData.festId,
+    userId: adminCaller.uid,
+    userName: adminCaller.name,
+    action: 'REVOKE_FEST_INVITATION',
+    targetType: 'invitation',
+    targetId: invitationId,
+    details: `Admin revoked ${invData.role} invitation ${invitationId} for ${invData.recipientContact}`,
+    timestamp: FieldValue.serverTimestamp()
+  });
+
+  return { success: true, message: 'Invitation successfully revoked.' };
+}
+
+/**
+ * Validates an invitation token without privileged authorization
+ */
+async function validateInvitationTokenHandler(request, deps = {}) {
+  const currentDb = deps.db || db;
+  const data = request.data || {};
+  const { token } = data;
+
+  if (!token || typeof token !== 'string') {
+    throw new HttpsError('invalid-argument', 'Missing invitation token.');
+  }
+
+  const snap = await currentDb.collection('fest_invitations')
+    .where('token', '==', token.trim())
+    .get();
+
+  if (snap.empty) {
+    throw new HttpsError('not-found', 'Invitation token not found.');
+  }
+
+  const inv = snap.docs[0].data();
+
+  if (inv.status === 'revoked') {
+    throw new HttpsError('failed-precondition', 'This invitation has been revoked by the Fest Admin.');
+  }
+  if (inv.status === 'accepted') {
+    throw new HttpsError('failed-precondition', 'This invitation has already been accepted and claimed.');
+  }
+  if (new Date(inv.expiresAt).getTime() < Date.now()) {
+    throw new HttpsError('failed-precondition', 'This invitation has expired.');
+  }
+
+  // Return non-sensitive validation payload
+  return {
+    valid: true,
+    invitation: {
+      id: inv.id,
+      festId: inv.festId,
+      role: inv.role,
+      recipientContact: inv.recipientContact,
+      recipientName: inv.recipientName,
+      assignedJudgeId: inv.assignedJudgeId,
+      assignedJudgeName: inv.assignedJudgeName,
+      assignedTeamId: inv.assignedTeamId,
+      assignedTeamName: inv.assignedTeamName,
+      expiresAt: inv.expiresAt,
+      status: inv.status
+    }
+  };
+}
+
+/**
+ * Accepts an invitation and binds the role to an authenticated caller
+ */
+async function acceptFestInvitationHandler(request, deps = {}) {
+  const currentDb = deps.db || db;
+  const currentAuth = deps.auth || auth;
+  const data = request.data || {};
+  const { token } = data;
+
+  if (!request.auth || !request.auth.uid) {
+    throw new HttpsError('unauthenticated', 'User must be signed in with password credentials to claim an invitation.');
+  }
+
+  const callerUid = request.auth.uid;
+  if (!token || typeof token !== 'string') {
+    throw new HttpsError('invalid-argument', 'Missing invitation token.');
+  }
+
+  const snap = await currentDb.collection('fest_invitations')
+    .where('token', '==', token.trim())
+    .get();
+
+  if (snap.empty) {
+    throw new HttpsError('not-found', 'Invitation token not found.');
+  }
+
+  const invDocRef = snap.docs[0].ref;
+  const inv = snap.docs[0].data();
+
+  if (inv.status === 'revoked') {
+    throw new HttpsError('failed-precondition', 'This invitation has been revoked.');
+  }
+  if (inv.status === 'accepted') {
+    throw new HttpsError('failed-precondition', 'This invitation has already been accepted.');
+  }
+  if (new Date(inv.expiresAt).getTime() < Date.now()) {
+    throw new HttpsError('failed-precondition', 'This invitation has expired.');
+  }
+
+  // Atomic transaction
+  await currentDb.runTransaction(async (transaction) => {
+    // 1. Mark invitation accepted
+    transaction.update(invDocRef, {
+      status: 'accepted',
+      acceptedAt: FieldValue.serverTimestamp(),
+      acceptedByUserId: callerUid
+    });
+
+    // 2. Fetch or update user profile
+    const userDocRef = currentDb.collection('users').doc(callerUid);
+    const userSnap = await transaction.get(userDocRef);
+
+    const userUpdates = {
+      role: inv.role,
+      festId: inv.festId,
+      status: 'active',
+      invitationStatus: 'active',
+      updatedAt: FieldValue.serverTimestamp()
+    };
+
+    if (inv.role === 'team_leader' && inv.assignedTeamId) {
+      userUpdates.linkedTeamId = inv.assignedTeamId;
+    }
+    if (inv.role === 'judge' && inv.assignedJudgeId) {
+      userUpdates.linkedJudgeId = inv.assignedJudgeId;
+    }
+
+    if (userSnap.exists) {
+      transaction.update(userDocRef, userUpdates);
+    } else {
+      transaction.set(userDocRef, {
+        id: callerUid,
+        uid: callerUid,
+        email: request.auth.token.email || '',
+        phone: request.auth.token.phone_number || '',
+        name: inv.recipientName || 'Invited Member',
+        createdAt: FieldValue.serverTimestamp(),
+        ...userUpdates
+      });
+    }
+
+    // 3. Record audit log
+    const auditRef = currentDb.collection('audit_logs').doc();
+    transaction.set(auditRef, {
+      id: auditRef.id,
+      festId: inv.festId,
+      userId: callerUid,
+      userName: inv.recipientName || 'Invited User',
+      action: 'ACCEPT_FEST_INVITATION',
+      targetType: 'invitation',
+      targetId: inv.id,
+      details: `User ${callerUid} claimed invitation ${inv.id} as ${inv.role} for fest ${inv.festId}`,
+      timestamp: FieldValue.serverTimestamp()
+    });
+  });
+
+  // Assign Firebase custom claims
+  const claims = {
+    role: inv.role,
+    festId: inv.festId
+  };
+  if (inv.role === 'team_leader' && inv.assignedTeamId) {
+    claims.linkedTeamId = inv.assignedTeamId;
+  }
+  if (inv.role === 'judge' && inv.assignedJudgeId) {
+    claims.linkedJudgeId = inv.assignedJudgeId;
+  }
+
+  try {
+    await currentAuth.setCustomUserClaims(callerUid, claims);
+  } catch (claimErr) {
+    console.warn('[CloudFunctions] Warning: Could not set custom claims:', claimErr);
+  }
+
+  return {
+    success: true,
+    role: inv.role,
+    festId: inv.festId,
+    message: `Invitation successfully accepted as ${inv.role}.`
+  };
+}
+
+/**
  * Callable Cloud Functions (v2)
  */
 exports.createTeamLeaderInvite = onCall(async (request) => {
@@ -1851,6 +2175,22 @@ exports.registerNewUser = onCall(async (request) => {
   return await registerNewUserHandler(request);
 });
 
+exports.createFestInvitation = onCall(async (request) => {
+  return await createFestInvitationHandler(request);
+});
+
+exports.revokeFestInvitation = onCall(async (request) => {
+  return await revokeFestInvitationHandler(request);
+});
+
+exports.validateInvitationToken = onCall(async (request) => {
+  return await validateInvitationTokenHandler(request);
+});
+
+exports.acceptFestInvitation = onCall(async (request) => {
+  return await acceptFestInvitationHandler(request);
+});
+
 /**
  * Unit & Security Test Harness Exports
  */
@@ -1870,5 +2210,9 @@ exports._handlers = {
   requestMoreInfoFestApplicationHandler,
   signInWithPhoneCredentialsHandler,
   requestPasswordResetForPhoneHandler,
-  registerNewUserHandler
+  registerNewUserHandler,
+  createFestInvitationHandler,
+  revokeFestInvitationHandler,
+  validateInvitationTokenHandler,
+  acceptFestInvitationHandler
 };

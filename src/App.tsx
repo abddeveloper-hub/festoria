@@ -21,6 +21,7 @@ import { ReportsPage } from './pages/ReportsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { ComplaintsManagementPage } from './pages/ComplaintsManagementPage';
 import { PublicPageManagement } from './pages/admin/PublicPageManagement';
+import { ShareFestPage } from './pages/admin/ShareFestPage';
 
 const AppContent: React.FC = () => {
   const { activeTab, currentPortal } = useFest();
@@ -82,6 +83,8 @@ const AppContent: React.FC = () => {
         return <ComplaintsManagementPage />;
       case 'public':
         return <PublicPageManagement />;
+      case 'share_fest':
+        return <ShareFestPage />;
       case 'reports':
         return <ReportsPage />;
       case 'settings':

@@ -90,6 +90,7 @@ export type NavigationTab =
   | 'users'
   | 'complaints'
   | 'public'
+  | 'share_fest'
   | 'reports'
   | 'settings';
 

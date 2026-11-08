@@ -31,7 +31,8 @@ import {
   FestSettings,
   TeamLeaderInvitation,
   FestRequest,
-  FestPublicPageData
+  FestPublicPageData,
+  FestInvitation
 } from '../types';
 import { StorageService } from '../services/storage';
 
@@ -1307,5 +1308,340 @@ export async function publishFestPage(festId: string, pageData: FestPublicPageDa
     localStorage.setItem(`festoria_public_page_${publishedDocId}`, JSON.stringify(published));
     localStorage.setItem(`festoria_public_page_${draftDocId}`, JSON.stringify(published));
   } catch {}
+}
+
+// ============================================================================
+// SHARE FEST & ROLE-BASED INVITATION SERVICES
+// ============================================================================
+
+/**
+ * Returns the authoritative deployed production domain for public sharing.
+ * Guaranteed to NEVER output localhost or loopback addresses in shared links.
+ */
+export function getShareableBaseUrl(): string {
+  // 1. Explicit configured production domain in env
+  const envUrl = (import.meta.env.VITE_PUBLIC_APP_URL || import.meta.env.VITE_DEPLOYED_URL || '').trim();
+  if (envUrl && envUrl.startsWith('http')) {
+    return envUrl.replace(/\/+$/, '');
+  }
+
+  // 2. Browser window origin if running on a live deployed domain (non-localhost)
+  if (typeof window !== 'undefined' && window.location) {
+    const origin = window.location.origin;
+    const hostname = window.location.hostname;
+    const isLocal =
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '::1' ||
+      hostname.endsWith('.local') ||
+      hostname.includes('192.168.') ||
+      hostname.includes('10.');
+
+    if (!isLocal && origin.startsWith('http')) {
+      return origin.replace(/\/+$/, '');
+    }
+  }
+
+  // 3. Official Festoria production domain for project festoria-cd375
+  return 'https://festoria-cd375.web.app';
+}
+
+/**
+ * Generates a cryptographically strong unique token.
+ */
+export function generateInvitationToken(prefix: string = 'tok'): string {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let rand = '';
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    const buf = new Uint8Array(20);
+    crypto.getRandomValues(buf);
+    for (let i = 0; i < buf.length; i++) {
+      rand += chars[buf[i] % chars.length];
+    }
+  } else {
+    for (let i = 0; i < 24; i++) {
+      rand += chars[Math.floor(Math.random() * chars.length)];
+    }
+  }
+  return `${prefix}_${rand}_${Date.now().toString(36)}`;
+}
+
+/**
+ * Creates a secure role-based invitation record (Judge or Team Leader).
+ */
+export async function createFestInvitation(data: {
+  festId: string;
+  role: 'judge' | 'team_leader';
+  recipientType: 'phone' | 'email';
+  recipientContact: string;
+  recipientName?: string;
+  assignedJudgeId?: string;
+  assignedJudgeName?: string;
+  assignedTeamId?: string;
+  assignedTeamName?: string;
+  expiresInDays?: number;
+  createdByAdminId: string;
+  createdByAdminName: string;
+  notes?: string;
+}): Promise<FestInvitation> {
+  const festId = (data.festId || 'FEST-01').trim();
+  const tokenPrefix = data.role === 'judge' ? 'tok_jd' : 'tok_tl';
+  const token = generateInvitationToken(tokenPrefix);
+  const invId = `INV-${data.role === 'judge' ? 'JD' : 'TL'}-${Date.now().toString(36).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`;
+
+  const days = data.expiresInDays || 7;
+  const expiryDate = new Date();
+  expiryDate.setDate(expiryDate.getDate() + days);
+
+  const invitation: FestInvitation = {
+    id: invId,
+    token,
+    festId,
+    role: data.role,
+    recipientType: data.recipientType,
+    recipientContact: data.recipientContact.trim(),
+    recipientName: data.recipientName?.trim(),
+    assignedJudgeId: data.assignedJudgeId,
+    assignedJudgeName: data.assignedJudgeName,
+    assignedTeamId: data.assignedTeamId,
+    assignedTeamName: data.assignedTeamName,
+    expiresAt: expiryDate.toISOString(),
+    status: 'pending',
+    createdByAdminId: data.createdByAdminId,
+    createdByAdminName: data.createdByAdminName,
+    createdAt: new Date().toISOString(),
+    notes: data.notes?.trim()
+  };
+
+  // 1. Save in Firestore if configured
+  if (isFirebaseConfigured && db) {
+    try {
+      await setDoc(doc(db, 'fest_invitations', invId), invitation);
+    } catch (e) {
+      console.warn('[Firestore] createFestInvitation error:', e);
+    }
+  }
+
+  // 2. Persist in LocalStorage for offline resilience & demo mode
+  try {
+    const key = `festoria_invitations_${festId}`;
+    const raw = localStorage.getItem(key);
+    const list: FestInvitation[] = raw ? JSON.parse(raw) : [];
+    list.unshift(invitation);
+    localStorage.setItem(key, JSON.stringify(list));
+  } catch {}
+
+  return invitation;
+}
+
+/**
+ * Fetches all invitations associated with a specific fest.
+ */
+export async function fetchFestInvitations(festId: string): Promise<FestInvitation[]> {
+  const cleanId = (festId || 'FEST-01').trim();
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const q = query(collection(db, 'fest_invitations'), where('festId', '==', cleanId));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const items = snap.docs.map((d) => d.data() as FestInvitation);
+        return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      }
+    } catch (e) {
+      console.warn('[Firestore] fetchFestInvitations error:', e);
+    }
+  }
+
+  // Local fallback
+  try {
+    const raw = localStorage.getItem(`festoria_invitations_${cleanId}`);
+    if (raw) {
+      return JSON.parse(raw);
+    }
+  } catch {}
+
+  return [];
+}
+
+/**
+ * Revokes an unused fest invitation by its ID.
+ */
+export async function revokeFestInvitation(
+  invitationId: string,
+  festId: string,
+  adminId: string
+): Promise<boolean> {
+  const nowIso = new Date().toISOString();
+
+  if (isFirebaseConfigured && db) {
+    try {
+      await updateDoc(doc(db, 'fest_invitations', invitationId), {
+        status: 'revoked',
+        revokedAt: nowIso,
+        revokedByAdminId: adminId
+      });
+    } catch (e) {
+      console.warn('[Firestore] revokeFestInvitation error:', e);
+    }
+  }
+
+  // LocalStorage update
+  try {
+    const key = `festoria_invitations_${festId}`;
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const list: FestInvitation[] = JSON.parse(raw);
+      const updated = list.map((inv) =>
+        inv.id === invitationId
+          ? { ...inv, status: 'revoked' as const, revokedAt: nowIso, revokedByAdminId: adminId }
+          : inv
+      );
+      localStorage.setItem(key, JSON.stringify(updated));
+    }
+  } catch {}
+
+  return true;
+}
+
+/**
+ * Validates an invitation token from the client or server.
+ * Returns the invitation object if valid, or throws/returns descriptive error.
+ */
+export async function validateInvitationToken(token: string): Promise<{
+  valid: boolean;
+  invitation?: FestInvitation;
+  error?: string;
+}> {
+  if (!token || !token.trim()) {
+    return { valid: false, error: 'Invalid or missing invitation token.' };
+  }
+
+  const cleanToken = token.trim();
+  let foundInv: FestInvitation | null = null;
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const q = query(collection(db, 'fest_invitations'), where('token', '==', cleanToken));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        foundInv = snap.docs[0].data() as FestInvitation;
+      }
+    } catch (e) {
+      console.warn('[Firestore] validateInvitationToken error:', e);
+    }
+  }
+
+  // Fallback scan across local storage keys
+  if (!foundInv) {
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('festoria_invitations_')) {
+          const list: FestInvitation[] = JSON.parse(localStorage.getItem(key) || '[]');
+          const match = list.find((item) => item.token === cleanToken);
+          if (match) {
+            foundInv = match;
+            break;
+          }
+        }
+      }
+    } catch {}
+  }
+
+  if (!foundInv) {
+    return { valid: false, error: 'Invitation not found. Please verify the URL or contact your Fest Admin.' };
+  }
+
+  if (foundInv.status === 'revoked') {
+    return { valid: false, error: 'This invitation has been revoked by the Fest Admin.' };
+  }
+
+  if (foundInv.status === 'accepted') {
+    return { valid: false, error: 'This invitation has already been claimed and activated.' };
+  }
+
+  if (new Date(foundInv.expiresAt).getTime() < Date.now()) {
+    return { valid: false, error: `This invitation expired on ${new Date(foundInv.expiresAt).toLocaleDateString()}. Please request a new invitation.` };
+  }
+
+  return { valid: true, invitation: foundInv };
+}
+
+/**
+ * Authoritatively claims and accepts a validated invitation for an authenticated user.
+ * Assigns the user their requested role, festId, and linked team/judge profile.
+ */
+export async function acceptFestInvitation(
+  token: string,
+  user: User
+): Promise<{
+  success: boolean;
+  role: 'judge' | 'team_leader';
+  festId: string;
+  message: string;
+  updatedUser?: User;
+}> {
+  const check = await validateInvitationToken(token);
+  if (!check.valid || !check.invitation) {
+    return {
+      success: false,
+      role: 'judge',
+      festId: '',
+      message: check.error || 'Failed to validate invitation.'
+    };
+  }
+
+  const inv = check.invitation;
+  const nowIso = new Date().toISOString();
+
+  // Create updated user with authoritative role assignment
+  const updatedUser: User = {
+    ...user,
+    role: inv.role,
+    festId: inv.festId,
+    status: 'active',
+    linkedTeamId: inv.role === 'team_leader' ? inv.assignedTeamId : user.linkedTeamId,
+    linkedJudgeId: inv.role === 'judge' ? inv.assignedJudgeId : user.linkedJudgeId,
+    invitationStatus: 'active'
+  };
+
+  // 1. Update in Firestore
+  if (isFirebaseConfigured && db) {
+    try {
+      await updateDoc(doc(db, 'fest_invitations', inv.id), {
+        status: 'accepted',
+        acceptedAt: nowIso,
+        acceptedByUserId: user.id
+      });
+
+      await setDoc(doc(db, 'users', user.id), updatedUser, { merge: true });
+    } catch (e) {
+      console.warn('[Firestore] acceptFestInvitation error:', e);
+    }
+  }
+
+  // 2. Update LocalStorage
+  try {
+    const key = `festoria_invitations_${inv.festId}`;
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const list: FestInvitation[] = JSON.parse(raw);
+      const updated = list.map((item) =>
+        item.id === inv.id
+          ? { ...item, status: 'accepted' as const, acceptedAt: nowIso, acceptedByUserId: user.id }
+          : item
+      );
+      localStorage.setItem(key, JSON.stringify(updated));
+    }
+  } catch {}
+
+  return {
+    success: true,
+    role: inv.role,
+    festId: inv.festId,
+    message: `Congratulations! You have successfully accepted the invitation as ${inv.role === 'judge' ? 'Official Judge' : 'Team Leader'} for ${inv.festId}.`,
+    updatedUser
+  };
 }
 

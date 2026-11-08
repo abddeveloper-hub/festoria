@@ -15,7 +15,8 @@ import {
   Settings,
   X,
   AlertTriangle,
-  Sparkles
+  Sparkles,
+  Share2
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -105,6 +106,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
       id: 'public',
       label: 'Public Page Management',
       icon: Globe,
+    },
+    {
+      id: 'share_fest',
+      label: 'Share Fest',
+      icon: Share2,
     },
     {
       id: 'reports',

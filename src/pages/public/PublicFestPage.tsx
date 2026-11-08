@@ -48,7 +48,8 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
     programmes,
     results,
     announcements,
-    activeFestId
+    activeFestId,
+    setActiveFestId
   } = useFest();
 
   const targetFestId = propFestId || activeFestId || 'FEST-01';
@@ -110,10 +111,24 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
   };
 
   const openAuth = (role: Role | 'participant' | 'auto', mode: 'signin' | 'register' = 'signin') => {
+    if (targetFestId) {
+      setActiveFestId(targetFestId);
+    }
     setAuthRole(role);
     setAuthMode(mode);
     setAuthModalOpen(true);
   };
+
+  // Check if URL parameters request participant registration directly: ?action=register or ?register=participant
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const search = new URLSearchParams(window.location.search);
+      const action = search.get('action') || search.get('register');
+      if (action === 'register' || action === 'true' || action === 'participant') {
+        openAuth('participant', 'register');
+      }
+    }
+  }, [targetFestId]);
 
   const publishedResults = results.filter((r) => r.published);
   const publicAnnouncements = announcements.filter((a) => a.isPublic);
