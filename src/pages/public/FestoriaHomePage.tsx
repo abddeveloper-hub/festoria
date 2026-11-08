@@ -767,9 +767,6 @@ export const FestoriaHomePage: React.FC = () => {
             <a href="/admin.html" className="hover:text-[#0f172a] transition-colors">
               Fest Admin Console
             </a>
-            <a href="/super-admin.html" className="hover:text-[#0f172a] transition-colors">
-              Super Admin Console
-            </a>
           </div>
         </div>
       </footer>
@@ -779,6 +776,7 @@ export const FestoriaHomePage: React.FC = () => {
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
         defaultRole={authRole}
+        showSuperAdmin={false}
       />
 
       {/* Create New Fest / Application Modal */}

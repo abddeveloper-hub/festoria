@@ -37,6 +37,7 @@ interface AuthModalProps {
   onClose: () => void;
   defaultRole?: Role | 'participant' | 'auto';
   initialMode?: 'signin' | 'register' | 'forgot';
+  showSuperAdmin?: boolean;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
@@ -44,6 +45,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onClose,
   defaultRole = 'auto',
   initialMode = 'signin',
+  showSuperAdmin = false,
 }) => {
   const {
     teams,
@@ -53,6 +55,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setActiveParticipantId,
     addToast,
   } = useFest();
+
+  const isSuperAdminVisible = showSuperAdmin || defaultRole === 'super_admin';
 
   const [activeRole, setActiveRole] = useState<Role | 'participant' | 'auto'>(defaultRole);
   const [authMode, setAuthMode] = useState<'signin' | 'register' | 'forgot'>(initialMode);
@@ -354,7 +358,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <label className="block text-xs font-semibold text-slate-600 mb-2">
                   Signing In As:
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-slate-100 rounded-lg border border-slate-200 text-xs font-semibold">
+                <div className={`grid gap-1.5 p-1 bg-slate-100 rounded-lg border border-slate-200 text-xs font-semibold ${
+                  isSuperAdminVisible ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'
+                }`}>
                   <button
                     type="button"
                     onClick={() => setActiveRole('participant')}
@@ -391,18 +397,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     <Building className="w-3 h-3" />
                     <span>Fest Admin</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveRole('super_admin')}
-                    className={`py-1.5 rounded-md transition-all flex items-center justify-center gap-1 ${
-                      activeRole === 'super_admin'
-                        ? 'bg-white text-slate-900 shadow-2xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <ShieldCheck className="w-3 h-3" />
-                    <span>Super Admin</span>
-                  </button>
+                  {isSuperAdminVisible && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveRole('super_admin')}
+                      className={`py-1.5 rounded-md transition-all flex items-center justify-center gap-1 ${
+                        activeRole === 'super_admin'
+                          ? 'bg-white text-slate-900 shadow-2xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <ShieldCheck className="w-3 h-3" />
+                      <span>Super Admin</span>
+                    </button>
+                  )}
                 </div>
               </div>
 

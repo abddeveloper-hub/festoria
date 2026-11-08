@@ -92,7 +92,7 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) 
               className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 text-white text-xs font-semibold rounded-lg hover:bg-slate-800 transition-colors shadow-xs"
             >
               <ShieldCheck className="w-4 h-4" />
-              <span>Sign In with Phone OTP</span>
+              <span>Sign In as Super Admin</span>
             </button>
             <a
               href="/"
@@ -109,6 +109,7 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) 
           isOpen={authModalOpen}
           onClose={() => setAuthModalOpen(false)}
           defaultRole="super_admin"
+          showSuperAdmin={true}
         />
       </div>
     );
