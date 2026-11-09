@@ -90,9 +90,15 @@ service cloud.firestore {
       
       // User profile creation:
       // - Super Admin can create accounts platform-wide with any role
+      // - Platform root email can bootstrap the initial Super Admin profile
       // - Fest Admin can create accounts only for their authorized fest, but CANNOT create administrative roles (super_admin, admin, fest_admin)
       // - Individual authenticated user can self-create their initial participant profile
       allow create: if isSuperAdmin() ||
+        (
+          isUser(userId) &&
+          request.auth.token.email in ['superadmin@festoria.app', 'superadmin@festoria.platform'] &&
+          request.resource.data.role == 'super_admin'
+        ) ||
         (
           isAuthenticated() &&
           request.resource.data.festId != null &&
