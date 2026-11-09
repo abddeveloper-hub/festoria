@@ -11,3 +11,4 @@ if (fs.existsSync(indexPath)) {
 } else {
   console.warn('⚠️ index.html not found in dist directory');
 }
+

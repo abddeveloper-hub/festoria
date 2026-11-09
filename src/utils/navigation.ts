@@ -23,3 +23,4 @@ export const getAppUrl = (path: string = ''): string => {
 export const navigateTo = (path: string = '') => {
   window.location.href = getAppUrl(path);
 };
+
