@@ -527,13 +527,13 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
         fetchResults(),
         fetchFestRequests()
       ]);
-      if (fsFests.length > 0) setFests(fsFests);
-      if (fsTeams.length > 0) setTeams(fsTeams);
-      if (fsParticipants.length > 0) setParticipants(fsParticipants);
-      if (fsProgrammes.length > 0) setProgrammes(fsProgrammes);
-      if (fsScores.length > 0) setScores(fsScores);
-      if (fsResults.length > 0) setResults(fsResults);
-      if (fsFestRequests.length > 0) setFestRequests(fsFestRequests);
+      setFests(fsFests);
+      setTeams(fsTeams);
+      setParticipants(fsParticipants);
+      setProgrammes(fsProgrammes);
+      setScores(fsScores);
+      setResults(fsResults);
+      setFestRequests(fsFestRequests);
       setFirebaseStatus({
         isConfigured: true,
         projectId: 'festoria-cd375',
@@ -552,6 +552,45 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
   useEffect(() => {
     if (isFirebaseConfigured) {
       syncFirestoreData();
+    }
+  }, []);
+
+  // One-time purge of legacy cached demo data from browser localStorage
+  useEffect(() => {
+    try {
+      const storedFests = localStorage.getItem('festflow_fests');
+      if (
+        storedFests &&
+        (storedFests.includes('Luminaria') ||
+          storedFests.includes('FEST-01') ||
+          storedFests.includes('Vibrance') ||
+          storedFests.includes('Kalautsav'))
+      ) {
+        localStorage.removeItem('festflow_fests');
+        localStorage.removeItem('festflow_teams');
+        localStorage.removeItem('festflow_participants');
+        localStorage.removeItem('festflow_programmes');
+        localStorage.removeItem('festflow_scores');
+        localStorage.removeItem('festflow_results');
+        localStorage.removeItem('festflow_schedule');
+        localStorage.removeItem('festflow_judges');
+        localStorage.removeItem('festflow_milestones');
+        localStorage.removeItem('festflow_complaints');
+        localStorage.removeItem('festflow_assignments');
+        setFests([]);
+        setTeams([]);
+        setParticipants([]);
+        setProgrammes([]);
+        setScores([]);
+        setResults([]);
+        setScheduleSlots([]);
+        setJudges([]);
+        setMilestones([]);
+        setComplaints([]);
+        setAssignments([]);
+      }
+    } catch (e) {
+      // ignore
     }
   }, []);
 

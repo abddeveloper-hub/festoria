@@ -348,23 +348,29 @@ export const SuperDashboardPage: React.FC = () => {
           <div className="p-3 border border-slate-200 rounded bg-white space-y-2">
             <div className="text-xs font-semibold text-slate-900">Recent Request Decisions</div>
             <div className="space-y-1.5">
-              {festRequests.slice(0, 3).map((req) => (
-                <div key={req.id} className="flex items-center justify-between text-xs py-1 border-b border-slate-100 last:border-b-0">
-                  <div className="truncate mr-2">
-                    <span className="font-medium text-slate-900 truncate block">{req.festName}</span>
-                    <span className="text-[10px] text-slate-400">{req.institution}</span>
-                  </div>
-                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded capitalize shrink-0 ${
-                    req.status === 'approved'
-                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                      : req.status === 'rejected'
-                      ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                      : 'bg-amber-50 text-amber-700 border border-amber-200'
-                  }`}>
-                    {req.status.replace('_', ' ')}
-                  </span>
+              {festRequests.length === 0 ? (
+                <div className="py-3 text-center text-[11px] text-slate-400">
+                  No incoming or past applications.
                 </div>
-              ))}
+              ) : (
+                festRequests.slice(0, 3).map((req) => (
+                  <div key={req.id} className="flex items-center justify-between text-xs py-1 border-b border-slate-100 last:border-b-0">
+                    <div className="truncate mr-2">
+                      <span className="font-medium text-slate-900 truncate block">{req.festName}</span>
+                      <span className="text-[10px] text-slate-400">{req.institution}</span>
+                    </div>
+                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded capitalize shrink-0 ${
+                      req.status === 'approved'
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : req.status === 'rejected'
+                        ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                        : 'bg-amber-50 text-amber-700 border border-amber-200'
+                    }`}>
+                      {req.status.replace('_', ' ')}
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -380,31 +386,37 @@ export const SuperDashboardPage: React.FC = () => {
           </div>
 
           <div className="space-y-2.5">
-            {fests.slice(0, 4).map((f) => (
-              <div
-                key={f.id}
-                onClick={() => {
-                  setActiveFestId(f.id);
-                  setSuperAdminTab('fest_monitoring');
-                }}
-                className="p-2.5 border border-slate-200 rounded hover:border-slate-300 transition-colors cursor-pointer group"
-              >
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-medium text-slate-900 group-hover:text-slate-700">{f.name}</span>
-                  <span className="text-[10px] text-slate-500 font-mono">{f.startDate}</span>
-                </div>
-                <div className="flex items-center justify-between text-[11px] text-slate-500 mt-1">
-                  <span>{f.institution}</span>
-                  <span className="font-semibold text-slate-700">{f.completionPercentage}% setup</span>
-                </div>
-                <div className="w-full bg-slate-100 rounded-full h-1 mt-1.5">
-                  <div
-                    className="h-1 rounded-full bg-slate-900"
-                    style={{ width: `${f.completionPercentage}%` }}
-                  />
-                </div>
+            {fests.length === 0 ? (
+              <div className="py-8 text-center text-xs text-slate-400">
+                No active festivals or scheduled milestones yet.
               </div>
-            ))}
+            ) : (
+              fests.slice(0, 4).map((f) => (
+                <div
+                  key={f.id}
+                  onClick={() => {
+                    setActiveFestId(f.id);
+                    setSuperAdminTab('fest_monitoring');
+                  }}
+                  className="p-2.5 border border-slate-200 rounded hover:border-slate-300 transition-colors cursor-pointer group"
+                >
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium text-slate-900 group-hover:text-slate-700">{f.name}</span>
+                    <span className="text-[10px] text-slate-500 font-mono">{f.startDate}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-slate-500 mt-1">
+                    <span>{f.institution}</span>
+                    <span className="font-semibold text-slate-700">{f.completionPercentage}% setup</span>
+                  </div>
+                  <div className="w-full bg-slate-100 rounded-full h-1 mt-1.5">
+                    <div
+                      className="h-1 rounded-full bg-slate-900"
+                      style={{ width: `${f.completionPercentage}%` }}
+                    />
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
@@ -430,42 +442,48 @@ export const SuperDashboardPage: React.FC = () => {
           </div>
 
           <div className="divide-y divide-slate-100 overflow-hidden">
-            {filteredFests.map((fest) => (
-              <div key={fest.id} className="py-2.5 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-slate-900 truncate">{fest.name}</span>
-                    <span className="text-[10px] font-mono px-1 rounded bg-slate-100 text-slate-600">{fest.id}</span>
-                  </div>
-                  <div className="text-[11px] text-slate-500 truncate mt-0.5">
-                    {fest.institution} • Admin: {fest.adminName}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded capitalize ${
-                    fest.status === 'ongoing'
-                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                      : fest.status === 'suspended'
-                      ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                      : fest.status === 'setup'
-                      ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-                      : 'bg-slate-100 text-slate-700 border border-slate-200'
-                  }`}>
-                    {fest.status.replace('_', ' ')}
-                  </span>
-                  <button
-                    onClick={() => {
-                      setActiveFestId(fest.id);
-                      setSuperAdminTab('fest_monitoring');
-                    }}
-                    className="text-xs px-2 py-1 border border-slate-200 rounded text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-medium"
-                  >
-                    Monitor
-                  </button>
-                </div>
+            {filteredFests.length === 0 ? (
+              <div className="py-8 text-center text-xs text-slate-400">
+                No festivals currently registered on the platform.
               </div>
-            ))}
+            ) : (
+              filteredFests.map((fest) => (
+                <div key={fest.id} className="py-2.5 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-slate-900 truncate">{fest.name}</span>
+                      <span className="text-[10px] font-mono px-1 rounded bg-slate-100 text-slate-600">{fest.id}</span>
+                    </div>
+                    <div className="text-[11px] text-slate-500 truncate mt-0.5">
+                      {fest.institution} • Admin: {fest.adminName}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded capitalize ${
+                      fest.status === 'ongoing'
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : fest.status === 'suspended'
+                        ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                        : fest.status === 'setup'
+                        ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                        : 'bg-slate-100 text-slate-700 border border-slate-200'
+                    }`}>
+                      {fest.status.replace('_', ' ')}
+                    </span>
+                    <button
+                      onClick={() => {
+                        setActiveFestId(fest.id);
+                        setSuperAdminTab('fest_monitoring');
+                      }}
+                      className="text-xs px-2 py-1 border border-slate-200 rounded text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-medium"
+                    >
+                      Monitor
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
