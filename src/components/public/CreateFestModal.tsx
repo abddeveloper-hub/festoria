@@ -311,12 +311,12 @@ export const CreateFestModal: React.FC<CreateFestModalProps> = ({
         id: newAppId,
         // Section A
         festName: festName.trim(),
-        shortName: shortName.trim() || undefined,
+        shortName: shortName.trim() || '',
         edition,
         category,
         description: description.trim(),
         institution: institution.trim(),
-        logoUrl: logoUrl.trim() || undefined,
+        logoUrl: logoUrl.trim() || '',
 
         // Section B
         startDate,
@@ -330,17 +330,17 @@ export const CreateFestModal: React.FC<CreateFestModalProps> = ({
         // Section C
         requestingAdminId: verifiedUid,
         requestingAdminName: organizerName.trim(),
-        designation: designation.trim(),
+        designation: designation.trim() || '',
         requestingAdminEmail: emailAddress.trim(),
         requestingAdminPhone: verifiedPhone,
         contactPersonName: organizerName.trim(),
-        institutionAddress: institutionAddress.trim(),
+        institutionAddress: institutionAddress.trim() || '',
 
         // Section D
-        websiteUrl: websiteUrl.trim() || undefined,
-        previousFestDetails: previousFestDetails.trim() || undefined,
-        additionalMessage: additionalMessage.trim() || undefined,
-        supportingDocumentUrl: supportingDocumentUrl.trim() || undefined,
+        websiteUrl: websiteUrl.trim() || '',
+        previousFestDetails: previousFestDetails.trim() || '',
+        additionalMessage: additionalMessage.trim() || '',
+        supportingDocumentUrl: supportingDocumentUrl.trim() || '',
         supportingDocs: supportingDocumentUrl.trim() ? [supportingDocumentUrl.trim()] : [],
 
         // Lifecycle & Scrutiny

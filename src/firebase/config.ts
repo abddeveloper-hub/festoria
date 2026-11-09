@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth, connectAuthEmulator } from 'firebase/auth';
-import { getFirestore, Firestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { getFirestore, initializeFirestore, Firestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getStorage, FirebaseStorage, connectStorageEmulator } from 'firebase/storage';
 import { getAnalytics, isSupported, Analytics } from 'firebase/analytics';
 
@@ -46,9 +46,15 @@ if (isFirebaseConfigured) {
     }
 
     try {
-      db = getFirestore(app);
+      db = initializeFirestore(app, {
+        ignoreUndefinedProperties: true
+      });
     } catch (dbError) {
-      console.error('[Firebase] Failed to initialize Cloud Firestore:', dbError);
+      try {
+        db = getFirestore(app);
+      } catch (fallbackError) {
+        console.error('[Firebase] Failed to initialize Cloud Firestore:', dbError);
+      }
     }
 
     try {

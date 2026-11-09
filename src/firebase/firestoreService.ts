@@ -39,6 +39,25 @@ import { StorageService } from '../services/storage';
 // ==========================================
 // TRUSTED CLOUD FUNCTIONS FOR SENSITIVE ACTIONS
 // ==========================================
+
+/**
+ * Recursively cleans an object for Firestore by omitting any fields whose value is undefined.
+ * Preserves Date, FieldValue, arrays, and primitive types.
+ */
+export function cleanFirestoreData<T extends Record<string, any>>(obj: T): T {
+  if (obj === null || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map((item) => cleanFirestoreData(item)).filter((v) => v !== undefined) as any;
+  if (obj.constructor && obj.constructor.name !== 'Object') return obj;
+
+  const result: any = {};
+  for (const [key, val] of Object.entries(obj)) {
+    if (val === undefined) {
+      continue;
+    }
+    result[key] = cleanFirestoreData(val);
+  }
+  return result;
+}
 export async function publishResultsViaCloudFunction(festId: string, programmeId: string): Promise<boolean> {
   if (isFirebaseConfigured && app) {
     try {
@@ -175,10 +194,10 @@ export async function saveUserToFirestore(user: User): Promise<void> {
 
   if (isFirebaseConfigured && db) {
     try {
-      await setDoc(doc(db, 'users', user.id), {
+      await setDoc(doc(db, 'users', user.id), cleanFirestoreData({
         ...user,
         updatedAt: serverTimestamp()
-      }, { merge: true });
+      }), { merge: true });
     } catch (e) {
       console.warn('[Firestore] saveUserToFirestore error:', e);
     }
@@ -861,11 +880,11 @@ export async function saveFestSettingsToFirestore(
 
   if (isFirebaseConfigured && db) {
     try {
-      await setDoc(doc(db, 'fest_settings', festId), {
+      await setDoc(doc(db, 'fest_settings', festId), cleanFirestoreData({
         ...settings,
         festId,
         updatedAt: serverTimestamp()
-      }, { merge: true });
+      }), { merge: true });
     } catch (e) {
       console.warn('[Firestore] saveFestSettingsToFirestore error:', e);
     }
@@ -987,11 +1006,12 @@ export async function submitFestApplication(application: FestRequest): Promise<{
   // 2. Save to authoritative Cloud Firestore
   if (isFirebaseConfigured && db) {
     try {
-      await setDoc(doc(db, 'fest_requests', application.id), {
+      const dataToSave = cleanFirestoreData({
         ...application,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
+      await setDoc(doc(db, 'fest_requests', application.id), dataToSave);
       return {
         success: true,
         id: application.id,
