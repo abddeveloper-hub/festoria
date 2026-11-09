@@ -1,0 +1,1 @@
+import{a as e,i as t,n,r,t as i}from"./App-D4FFp7NA.js";var a=e(t(),1),o=r(),s=n();window.location.pathname.includes(`admin`),(0,o.createRoot)(document.getElementById(`root`)).render((0,s.jsx)(a.StrictMode,{children:(0,s.jsx)(i,{initialTab:`dashboard`})}));
