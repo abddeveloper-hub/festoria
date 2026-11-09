@@ -1358,7 +1358,8 @@ export function getShareableBaseUrl(): string {
       hostname.includes('10.');
 
     if (!isLocal && origin.startsWith('http')) {
-      return origin.replace(/\/+$/, '');
+      const base = (import.meta.env.BASE_URL || '/').replace(/^\/+/, '').replace(/\/+$/, '');
+      return base ? `${origin}/${base}` : origin.replace(/\/+$/, '');
     }
   }
 

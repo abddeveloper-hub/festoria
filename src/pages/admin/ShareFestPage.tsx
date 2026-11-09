@@ -92,10 +92,10 @@ export const ShareFestPage: React.FC = () => {
     refreshInvitations();
   }, [activeFestId]);
 
-  // Base production links (guaranteed non-localhost)
+  // Base production links (guaranteed non-localhost & subpath-compatible)
   const baseUrl = (customDomain && customDomain.startsWith('http') ? customDomain : defaultDomain).replace(/\/+$/, '');
-  const publicFestUrl = `${baseUrl}/f/${activeFestId}`;
-  const participantRegisterUrl = `${baseUrl}/f/${activeFestId}?action=register`;
+  const publicFestUrl = `${baseUrl}/?fest=${activeFestId}`;
+  const participantRegisterUrl = `${baseUrl}/?fest=${activeFestId}&action=register`;
 
   // Copy helper
   const handleCopy = async (url: string, label: string) => {
@@ -635,7 +635,7 @@ export const ShareFestPage: React.FC = () => {
                 {invitations.map((inv) => {
                   const isExpired = new Date(inv.expiresAt).getTime() < Date.now();
                   const effectiveStatus = inv.status === 'pending' && isExpired ? 'expired' : inv.status;
-                  const inviteUrl = `${baseUrl}/invite?token=${inv.token}&role=${inv.role}&fest=${inv.festId}`;
+                  const inviteUrl = `${baseUrl}/?invite=true&token=${inv.token}&role=${inv.role}&fest=${inv.festId}`;
 
                   return (
                     <tr key={inv.id} className="hover:bg-slate-50/70 transition-colors">

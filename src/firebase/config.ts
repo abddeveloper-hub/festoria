@@ -1,12 +1,12 @@
-import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth, connectAuthEmulator } from 'firebase/auth';
-import { getFirestore, initializeFirestore, Firestore, connectFirestoreEmulator } from 'firebase/firestore';
-import { getStorage, FirebaseStorage, connectStorageEmulator } from 'firebase/storage';
-import { getAnalytics, isSupported, Analytics } from 'firebase/analytics';
+import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
+import { getAuth, type Auth, connectAuthEmulator } from 'firebase/auth';
+import { getFirestore, initializeFirestore, type Firestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { getStorage, type FirebaseStorage, connectStorageEmulator } from 'firebase/storage';
+import { getAnalytics, isSupported, type Analytics } from 'firebase/analytics';
 
 // Environment-configured Firebase credentials for project festoria-cd375
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyATw_Lna2YpPJR86to1uw3uI9kkwb3HC5U',
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'festoria-cd375.firebaseapp.com',
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'festoria-cd375',
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'festoria-cd375.firebasestorage.app',

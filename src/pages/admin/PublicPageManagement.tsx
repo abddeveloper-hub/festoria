@@ -14,6 +14,7 @@ import {
   getDefaultFestPublicPage
 } from '../../firebase/firestoreService';
 import { uploadFestMedia, deleteFestMedia } from '../../firebase/storageService';
+import { getAppUrl } from '../../utils/navigation';
 import {
   Globe,
   Upload,
@@ -290,7 +291,7 @@ export const PublicPageManagement: React.FC = () => {
         {/* Global Save Draft & Publish Buttons */}
         <div className="flex items-center gap-2.5">
           <a
-            href={`/f/${currentFestId}`}
+            href={getAppUrl(`?fest=${currentFestId}`)}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold hover:bg-slate-50 transition-colors shadow-2xs"

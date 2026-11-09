@@ -18,6 +18,26 @@
     ],
     "rewrites": [
       {
+        "source": "/festoria/participant**",
+        "destination": "/participant.html"
+      },
+      {
+        "source": "/festoria/team-leader**",
+        "destination": "/team-leader.html"
+      },
+      {
+        "source": "/festoria/admin**",
+        "destination": "/admin.html"
+      },
+      {
+        "source": "/festoria/super-admin**",
+        "destination": "/super-admin.html"
+      },
+      {
+        "source": "/festoria/**",
+        "destination": "/index.html"
+      },
+      {
         "source": "/participant**",
         "destination": "/participant.html"
       },

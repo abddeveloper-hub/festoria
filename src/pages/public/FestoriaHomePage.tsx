@@ -3,7 +3,7 @@ import { useFest } from '../../context/FestContext';
 import { PhoneAuthModal as AuthModal } from '../../components/common/PhoneAuthModal';
 import { CreateFestModal, CreateFestModal as OrganiseFestModal } from '../../components/public/CreateFestModal';
 import { Role } from '../../types';
-import { getAppUrl } from '../../utils/navigation';
+import { getAppUrl, navigateTo } from '../../utils/navigation';
 import {
   Sparkles,
   Layers,
@@ -803,10 +803,15 @@ export const FestoriaHomePage: React.FC = () => {
 
               <div className="pt-3 border-t border-[#e2e8f0] flex items-center justify-between">
                 <a
-                  href={`/f/${fest.id}`}
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#4648d4] hover:text-[#712ae2] transition-colors"
+                  href={getAppUrl(`?fest=${fest.id}`)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setActiveFestId(fest.id);
+                    navigateTo(`?fest=${fest.id}`);
+                  }}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#4648d4] hover:text-[#712ae2] transition-colors min-h-[44px]"
                 >
-                  <span>Visit Fest Portal (/f/{fest.id})</span>
+                  <span>Visit Fest Portal</span>
                   <ExternalLink className="w-3.5 h-3.5" />
                 </a>
 
