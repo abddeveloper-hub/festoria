@@ -6,12 +6,12 @@ import { getAnalytics, isSupported, type Analytics } from 'firebase/analytics';
 
 // Environment-configured Firebase credentials for project festoria-cd375
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyATw_Lna2YpPJR86to1uw3uI9kkwb3HC5U',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'festoria-cd375.firebaseapp.com',
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'festoria-cd375',
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'festoria-cd375.firebasestorage.app',
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '416271261412',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:416271261412:web:dd8f76c08c474a1fe516f1',
+  apiKey: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_API_KEY) || 'AIzaSyATw_Lna2YpPJR86to1uw3uI9kkwb3HC5U',
+  authDomain: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_AUTH_DOMAIN) || 'festoria-cd375.firebaseapp.com',
+  projectId: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_PROJECT_ID) || 'festoria-cd375',
+  storageBucket: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_STORAGE_BUCKET) || 'festoria-cd375.firebasestorage.app',
+  messagingSenderId: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_MESSAGING_SENDER_ID) || '416271261412',
+  appId: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_APP_ID) || '1:416271261412:web:dd8f76c08c474a1fe516f1',
 };
 
 // Check if valid credentials have been provided

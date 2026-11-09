@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useFest } from '../../context/FestContext';
 import { FestInvitation, User } from '../../types';
-import { navigateTo } from '../../utils/navigation';
+import { navigateTo, getAppUrl } from '../../utils/navigation';
 import {
   validateInvitationToken,
   acceptFestInvitation
@@ -198,7 +198,7 @@ export const InvitationAcceptPage: React.FC<InvitationAcceptPageProps> = ({ toke
     <div className="min-h-screen bg-slate-950 text-white flex flex-col justify-between selection:bg-indigo-500 selection:text-white font-sans">
       {/* Top Header */}
       <nav className="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md px-4 sm:px-8 py-3.5 flex items-center justify-between">
-        <a href="/" className="flex items-center gap-2.5">
+        <a href={getAppUrl()} className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-linear-to-br from-indigo-500 to-violet-600 text-white flex items-center justify-center font-black text-sm tracking-widest shadow-md">
             F
           </div>
@@ -208,7 +208,7 @@ export const InvitationAcceptPage: React.FC<InvitationAcceptPageProps> = ({ toke
         </a>
 
         <a
-          href="/"
+          href={getAppUrl()}
           className="text-xs font-semibold text-slate-400 hover:text-white transition-colors flex items-center gap-1"
         >
           <span>Festoria Home</span>
@@ -240,7 +240,7 @@ export const InvitationAcceptPage: React.FC<InvitationAcceptPageProps> = ({ toke
               </div>
               <div className="pt-2">
                 <a
-                  href="/"
+                  href={getAppUrl()}
                   className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors"
                 >
                   Return to Home

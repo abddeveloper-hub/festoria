@@ -71,7 +71,7 @@ export const TeamLeaderLayout: React.FC<{ children: ReactNode }> = ({ children }
           </div>
           <h2 className="text-xl font-bold text-slate-900 tracking-tight">Team Leader Access Required</h2>
           <p className="text-sm text-slate-600 mt-2">
-            This dashboard is reserved for authorized Team Leaders. Please sign in with your registered and verified mobile phone number.
+            This dashboard is reserved for authorized Team Leaders. Please sign in with your registered credentials.
           </p>
           <div className="mt-6 flex flex-col gap-3">
             <button
@@ -80,10 +80,10 @@ export const TeamLeaderLayout: React.FC<{ children: ReactNode }> = ({ children }
               className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 text-white text-xs font-semibold rounded-lg hover:bg-slate-800 transition-colors shadow-xs"
             >
               <ShieldCheck className="w-4 h-4" />
-              <span>Sign In with Phone OTP</span>
+              <span>Sign In with Credentials</span>
             </button>
             <a
-              href="/?portal=public"
+              href={getAppUrl('?portal=public')}
               onClick={handleBackToPublic}
               className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
             >
@@ -116,10 +116,12 @@ export const TeamLeaderLayout: React.FC<{ children: ReactNode }> = ({ children }
           </p>
           <div className="mt-6 flex flex-col gap-3">
             <a
-              href="/index.html"
-              onClick={() => {
+              href={getAppUrl('?portal=public')}
+              onClick={(e) => {
+                e.preventDefault();
                 localStorage.removeItem('festflow_current_user');
-                window.location.href = '/index.html';
+                localStorage.setItem('festflow_portal', 'public');
+                navigateTo('?portal=public');
               }}
               className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 text-white text-xs font-semibold rounded-lg hover:bg-slate-800 transition-colors"
             >
@@ -146,7 +148,7 @@ export const TeamLeaderLayout: React.FC<{ children: ReactNode }> = ({ children }
           </p>
           <div className="mt-6">
             <a
-              href="/?portal=public"
+              href={getAppUrl('?portal=public')}
               onClick={handleBackToPublic}
               className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 text-white text-xs font-semibold rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
             >

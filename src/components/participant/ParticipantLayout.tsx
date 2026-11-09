@@ -68,11 +68,13 @@ export const ParticipantLayout: React.FC<{ children: React.ReactNode }> = ({ chi
           </p>
           <div className="mt-6">
             <a
-              href="/index.html"
-              onClick={() => {
+              href={getAppUrl('?portal=public')}
+              onClick={(e) => {
+                e.preventDefault();
                 localStorage.removeItem('festflow_active_participant_id');
                 localStorage.removeItem('festflow_current_user');
-                window.location.href = '/index.html';
+                localStorage.setItem('festflow_portal', 'public');
+                navigateTo('?portal=public');
               }}
               className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 text-white text-xs font-semibold rounded-lg hover:bg-slate-800 transition-colors"
             >
@@ -95,7 +97,7 @@ export const ParticipantLayout: React.FC<{ children: React.ReactNode }> = ({ chi
           </div>
           <h2 className="text-xl font-bold text-slate-900 tracking-tight">Participant Sign In Required</h2>
           <p className="text-sm text-slate-600 mt-2">
-            Please sign in with your registered mobile phone number to view your events, chest number, attendance, and scores.
+            Please sign in with your registered email or mobile number to view your events, chest number, attendance, and scores.
           </p>
           <div className="mt-6 flex flex-col gap-3">
             <button
@@ -104,10 +106,10 @@ export const ParticipantLayout: React.FC<{ children: React.ReactNode }> = ({ chi
               className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 text-white text-xs font-semibold rounded-lg hover:bg-slate-800 transition-colors shadow-xs"
             >
               <UserCheck className="w-4 h-4" />
-              <span>Sign In with Phone OTP</span>
+              <span>Sign In with Credentials</span>
             </button>
             <a
-              href="/?portal=public"
+              href={getAppUrl('?portal=public')}
               onClick={handleBackToPublic}
               className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
             >

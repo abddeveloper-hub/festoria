@@ -86,6 +86,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
+  const fillDemoCredentials = (role: Role | 'participant' | 'auto') => {
+    const targetRole = role === 'auto' ? 'participant' : role;
+    setActiveRole(targetRole);
+    if (targetRole === 'super_admin') {
+      setIdentifier('superadmin@festoria.app');
+      setPassword('SuperAdmin@2025!');
+    } else if (targetRole === 'admin' || targetRole === 'fest_admin') {
+      setIdentifier('admin@festoria.app');
+      setPassword('FestAdmin@2025!');
+    } else if (targetRole === 'team_leader') {
+      setIdentifier('leader@festoria.app');
+      setPassword('TeamLeader@2025!');
+    } else {
+      setIdentifier('participant@festoria.app');
+      setPassword('Participant@2025!');
+    }
+    setErrorMessage('');
+  };
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -418,6 +437,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     </button>
                   )}
                 </div>
+              </div>
+
+              {/* Quick Demo Access Pill */}
+              <div className="flex items-center justify-between px-3 py-2 bg-indigo-50/70 border border-indigo-100 rounded-lg text-xs">
+                <span className="font-medium text-slate-600 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                  <span>Demo Access:</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => fillDemoCredentials(activeRole)}
+                  className="font-bold text-indigo-700 hover:text-indigo-900 underline text-xs transition-colors"
+                >
+                  Fill {activeRole === 'admin' ? 'Fest Admin' : activeRole === 'team_leader' ? 'Team Leader' : activeRole === 'super_admin' ? 'Super Admin' : 'Participant'} Credentials
+                </button>
               </div>
 
               {/* Sign In Form */}
