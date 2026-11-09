@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useFest } from '../../context/FestContext';
 import { FestInvitation, User } from '../../types';
+import { navigateTo } from '../../utils/navigation';
 import {
   validateInvitationToken,
   acceptFestInvitation
@@ -281,9 +282,9 @@ export const InvitationAcceptPage: React.FC<InvitationAcceptPageProps> = ({ toke
                   type="button"
                   onClick={() => {
                     if (claimedRole === 'team_leader') {
-                      window.location.href = `/team-leader.html?fest=${invitation?.festId}`;
+                      navigateTo(`team-leader.html?fest=${invitation?.festId}`);
                     } else {
-                      window.location.href = `/admin.html?fest=${invitation?.festId}`;
+                      navigateTo(`admin.html?fest=${invitation?.festId}`);
                     }
                   }}
                   className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-linear-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white font-bold text-xs shadow-lg transition-all"

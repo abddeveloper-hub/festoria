@@ -320,11 +320,31 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       if (portalParam && ['super_admin', 'fest_admin', 'public', 'team_leader', 'participant'].includes(portalParam)) {
         return portalParam;
       }
-      if (window.location.pathname.includes('super-admin')) return 'super_admin';
-      if (window.location.pathname.includes('team-leader')) return 'team_leader';
-      if (window.location.pathname.includes('participant')) return 'participant';
-      if (window.location.pathname.includes('admin.html')) return 'fest_admin';
-      if (window.location.pathname === '/' || window.location.pathname === '/index.html' || window.location.pathname === '') {
+
+      // Hash-based subroute detection (e.g. for GitHub Pages SPA navigation)
+      const hash = (window.location.hash || '').toLowerCase();
+      if (hash.includes('super-admin') || hash.includes('super_admin')) return 'super_admin';
+      if (hash.includes('team-leader') || hash.includes('team_leader')) return 'team_leader';
+      if (hash.includes('participant')) return 'participant';
+      if (hash.includes('admin')) return 'fest_admin';
+
+      // Path-based route detection (Multi-Page and Single-Page under base path)
+      const pathname = (window.location.pathname || '').toLowerCase();
+      if (pathname.includes('super-admin')) return 'super_admin';
+      if (pathname.includes('team-leader')) return 'team_leader';
+      if (pathname.includes('participant')) return 'participant';
+      if (pathname.includes('admin.html') || pathname.endsWith('/admin') || pathname.includes('/admin/')) return 'fest_admin';
+
+      // Clean home path matching across local dev, Firebase, and GitHub Pages (/festoria/)
+      const isHome =
+        pathname === '/' ||
+        pathname === '/index.html' ||
+        pathname === '' ||
+        pathname === '/festoria' ||
+        pathname === '/festoria/' ||
+        pathname === '/festoria/index.html';
+
+      if (isHome) {
         const stored = localStorage.getItem('festflow_portal') as PortalType;
         if (stored === 'public') return 'public';
         if (stored && ['super_admin', 'fest_admin', 'team_leader', 'participant'].includes(stored)) {

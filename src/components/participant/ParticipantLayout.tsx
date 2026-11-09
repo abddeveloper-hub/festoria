@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ParticipantSidebar } from './ParticipantSidebar';
 import { ParticipantHeader } from './ParticipantHeader';
 import { useFest } from '../../context/FestContext';
@@ -15,11 +15,24 @@ import {
   ShieldAlert,
   LogOut
 } from 'lucide-react';
+import { navigateTo, getAppUrl } from '../../utils/navigation';
 
 export const ParticipantLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const { currentUser, activeParticipantId, setActiveParticipantId, participants, toasts, removeToast, switchPortal } = useFest();
+
+  // Lock body scroll when mobile navigation is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileMenuOpen]);
 
   const handleBackToPublic = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -31,11 +44,7 @@ export const ParticipantLayout: React.FC<{ children: React.ReactNode }> = ({ chi
     if (typeof switchPortal === 'function') {
       switchPortal('public');
     }
-    if (window.location.pathname !== '/' && window.location.pathname !== '/index.html') {
-      window.location.href = '/?portal=public';
-    } else {
-      window.history.replaceState({}, '', '/?portal=public');
-    }
+    navigateTo('?portal=public');
   };
 
   const isParticipantOrAdmin =
@@ -118,7 +127,7 @@ export const ParticipantLayout: React.FC<{ children: React.ReactNode }> = ({ chi
   }
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 flex font-sans antialiased">
+    <div className="min-h-screen min-h-dvh bg-white text-slate-900 flex font-sans antialiased">
       {/* Participant Sidebar */}
       <ParticipantSidebar
         isOpen={mobileMenuOpen}
@@ -129,7 +138,7 @@ export const ParticipantLayout: React.FC<{ children: React.ReactNode }> = ({ chi
       {mobileMenuOpen && (
         <div
           onClick={() => setMobileMenuOpen(false)}
-          className="fixed inset-0 z-30 bg-slate-900/40 backdrop-blur-xs lg:hidden"
+          className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-md lg:hidden"
         />
       )}
 

@@ -153,7 +153,7 @@ export const SuperAdminSidebar: React.FC<SuperAdminSidebarProps> = ({ mobileOpen
       {/* Mobile backdrop */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-slate-900/40 lg:hidden"
+          className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-md lg:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}
@@ -172,7 +172,7 @@ export const SuperAdminSidebar: React.FC<SuperAdminSidebarProps> = ({ mobileOpen
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="font-semibold text-slate-900 text-sm tracking-tight">FestFlow</span>
+                <span className="font-semibold text-slate-900 text-sm tracking-tight">Festoria</span>
                 <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-800 border border-slate-300">
                   PLATFORM
                 </span>

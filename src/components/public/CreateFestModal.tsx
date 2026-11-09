@@ -128,6 +128,7 @@ export const CreateFestModal: React.FC<CreateFestModalProps> = ({
   // Sync initial tab and reset state on open
   useEffect(() => {
     if (isOpen) {
+      document.body.style.overflow = 'hidden';
       setActiveTab(initialTab);
       setErrorMessage('');
       setTrackingError('');
@@ -136,8 +137,13 @@ export const CreateFestModal: React.FC<CreateFestModalProps> = ({
       } else {
         setSubmissionStep('form');
       }
+    } else {
+      document.body.style.overflow = '';
     }
-  }, [isOpen, initialTab]);
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen, initialTab, verifiedUid]);
 
   if (!isOpen) return null;
 
@@ -470,7 +476,7 @@ export const CreateFestModal: React.FC<CreateFestModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 overflow-y-auto">
       <div className="relative w-full max-w-3xl bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden my-6">
         {/* Modal Header */}
         <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between border-b border-slate-800">
@@ -549,7 +555,7 @@ export const CreateFestModal: React.FC<CreateFestModalProps> = ({
         )}
 
         {/* Modal Content */}
-        <div className="p-6 max-h-[75vh] overflow-y-auto">
+        <div className="p-6 max-h-[75dvh] overflow-y-auto">
           {/* ========================================================= */}
           {/* TAB 1: SUBMIT APPLICATION */}
           {/* ========================================================= */}

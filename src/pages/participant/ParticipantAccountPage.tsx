@@ -16,6 +16,7 @@ import {
   Key
 } from 'lucide-react';
 import { formatPhoneDisplay } from '../../services/authService';
+import { navigateTo } from '../../utils/navigation';
 
 export const ParticipantAccountPage: React.FC = () => {
   const {
@@ -33,11 +34,7 @@ export const ParticipantAccountPage: React.FC = () => {
     setActiveParticipantId('');
     localStorage.removeItem('festflow_active_participant_id');
     localStorage.setItem('festflow_portal', 'public');
-    window.location.href = '/index.html';
-  };
-
-  const navigateTo = (url: string) => {
-    window.location.href = url;
+    navigateTo('index.html?portal=public');
   };
 
   return (

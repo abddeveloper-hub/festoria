@@ -15,11 +15,24 @@ import {
   ArrowRight,
   ShieldCheck
 } from 'lucide-react';
+import { navigateTo, getAppUrl } from '../../utils/navigation';
 
 export const TeamLeaderLayout: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const { currentUser, activeTeamId, setActiveTeamId, switchPortal, toasts, removeToast } = useFest();
+
+  // Lock body scroll when mobile sidebar is open
+  useEffect(() => {
+    if (sidebarOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [sidebarOpen]);
 
   const handleBackToPublic = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -31,11 +44,7 @@ export const TeamLeaderLayout: React.FC<{ children: ReactNode }> = ({ children }
     if (typeof switchPortal === 'function') {
       switchPortal('public');
     }
-    if (window.location.pathname !== '/' && window.location.pathname !== '/index.html') {
-      window.location.href = '/?portal=public';
-    } else {
-      window.history.replaceState({}, '', '/?portal=public');
-    }
+    navigateTo('?portal=public');
   };
 
   // Enforce Team Isolation for Team Leaders:
@@ -150,12 +159,12 @@ export const TeamLeaderLayout: React.FC<{ children: ReactNode }> = ({ children }
   }
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 flex flex-col font-sans selection:bg-slate-200">
+    <div className="min-h-screen min-h-dvh bg-white text-slate-900 flex flex-col font-sans selection:bg-slate-200">
       <div className="flex-1 flex overflow-hidden">
-        {/* Backdrop for mobile */}
+        {/* Backdrop for mobile with blur and high z-index */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 bg-slate-900/30 z-20 md:hidden"
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-50 md:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}

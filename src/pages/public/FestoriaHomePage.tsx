@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useFest } from '../../context/FestContext';
 import { PhoneAuthModal as AuthModal } from '../../components/common/PhoneAuthModal';
 import { CreateFestModal, CreateFestModal as OrganiseFestModal } from '../../components/public/CreateFestModal';
 import { Role } from '../../types';
+import { getAppUrl } from '../../utils/navigation';
 import {
   Sparkles,
   Layers,
@@ -31,7 +32,9 @@ import {
   Tv,
   Activity,
   Layers3,
-  Cpu
+  Cpu,
+  Menu,
+  X
 } from 'lucide-react';
 
 export const FestoriaHomePage: React.FC = () => {
@@ -41,6 +44,19 @@ export const FestoriaHomePage: React.FC = () => {
   const [authRole, setAuthRole] = useState<Role | 'participant' | 'auto'>('auto');
   const [createFestModalOpen, setCreateFestModalOpen] = useState(false);
   const [createFestInitialTab, setCreateFestInitialTab] = useState<'apply' | 'track'>('apply');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Lock body scroll when mobile menu is active
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileMenuOpen]);
 
   // Interactive Live Run-of-Show Console Tab State
   const [activeStageTab, setActiveStageTab] = useState<'mainstage' | 'amphitheatre' | 'arena'>('mainstage');
@@ -56,11 +72,11 @@ export const FestoriaHomePage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#faf8ff] text-[#131b2e] flex flex-col font-display selection:bg-[#6366f1] selection:text-white">
+    <div className="min-h-screen min-h-dvh bg-[#faf8ff] text-[#131b2e] flex flex-col font-display selection:bg-[#6366f1] selection:text-white">
       {/* ==================================================================== */}
       {/* 1. TOP NAVBAR — VIBRANT EVENT STUDIO SPEC                            */}
       {/* ==================================================================== */}
-      <nav className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#e2e8f0] px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-xs">
+      <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-[#e2e8f0] px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-xs">
         <div className="flex items-center gap-3">
           {/* Brand Mark with Luminous Electric Gradient */}
           <div className="w-9 h-9 rounded-lg bg-linear-to-br from-[#4648d4] via-[#6063ee] to-[#712ae2] text-white flex items-center justify-center font-black text-base tracking-widest shadow-md shadow-[#4648d4]/25">
@@ -86,7 +102,7 @@ export const FestoriaHomePage: React.FC = () => {
         <div className="flex items-center gap-2 sm:gap-3">
           <a
             href="#fest-directory"
-            className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#64748b] hover:text-[#0f172a] transition-colors"
+            className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#64748b] hover:text-[#0f172a] transition-colors min-h-[44px]"
           >
             <span>Festivals</span>
           </a>
@@ -94,7 +110,7 @@ export const FestoriaHomePage: React.FC = () => {
           <button
             type="button"
             onClick={() => openCreateFest('track')}
-            className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#464554] hover:text-[#0f172a] transition-colors"
+            className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#464554] hover:text-[#0f172a] transition-colors min-h-[44px]"
           >
             <Compass className="w-3.5 h-3.5 text-[#4648d4]" />
             <span>Track Application</span>
@@ -103,7 +119,7 @@ export const FestoriaHomePage: React.FC = () => {
           <button
             type="button"
             onClick={() => openAuth('auto')}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-[#cbd5e1] bg-white text-[#0f172a] text-xs font-semibold hover:bg-[#f8fafc] hover:border-[#94a3b8] transition-colors shadow-2xs"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-[#cbd5e1] bg-white text-[#0f172a] text-xs font-semibold hover:bg-[#f8fafc] hover:border-[#94a3b8] transition-colors shadow-2xs min-h-[44px]"
           >
             <span>Sign In</span>
           </button>
@@ -111,13 +127,121 @@ export const FestoriaHomePage: React.FC = () => {
           <button
             type="button"
             onClick={() => openCreateFest('apply')}
-            className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-linear-to-r from-[#4648d4] via-[#6063ee] to-[#712ae2] text-white text-xs font-bold hover:shadow-md hover:shadow-[#4648d4]/30 hover:scale-[1.02] transition-all"
+            className="hidden sm:inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-linear-to-r from-[#4648d4] via-[#6063ee] to-[#712ae2] text-white text-xs font-bold hover:shadow-md hover:shadow-[#4648d4]/30 transition-all min-h-[44px]"
           >
             <Sparkles className="w-3.5 h-3.5 text-[#e1e0ff]" />
             <span>Create New Fest</span>
           </button>
+
+          {/* Mobile Hamburger Toggle Button */}
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="sm:hidden min-w-[44px] min-h-[44px] flex items-center justify-center p-2 rounded-lg text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+            aria-label="Toggle navigation menu"
+          >
+            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
         </div>
       </nav>
+
+      {/* Mobile Drawer Navigation with backdrop blur & body scroll lock */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-50 sm:hidden">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-md transition-opacity"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+
+          {/* Drawer Menu */}
+          <div className="fixed top-0 right-0 bottom-0 w-full max-w-xs bg-white shadow-2xl p-6 flex flex-col justify-between overflow-y-auto">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between pb-4 border-b border-slate-200">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-linear-to-br from-[#4648d4] to-[#712ae2] text-white flex items-center justify-center font-bold text-sm">
+                    F
+                  </div>
+                  <span className="font-bold text-slate-900 text-sm">Festoria Menu</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                  aria-label="Close menu"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex flex-col space-y-2">
+                <a
+                  href="#fest-directory"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="min-h-[44px] flex items-center px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                >
+                  <span>Explore Festivals</span>
+                </a>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    openCreateFest('track');
+                  }}
+                  className="min-h-[44px] flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 text-left"
+                >
+                  <Compass className="w-4 h-4 text-[#4648d4]" />
+                  <span>Track Application</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    openAuth('auto');
+                  }}
+                  className="min-h-[44px] flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 text-left"
+                >
+                  <Lock className="w-4 h-4 text-emerald-600" />
+                  <span>Sign In</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    openCreateFest('apply');
+                  }}
+                  className="min-h-[44px] flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-linear-to-r from-[#4648d4] to-[#712ae2] text-white shadow-sm text-left"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-300" />
+                  <span>Create New Fest</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="pt-6 border-t border-slate-200 space-y-2 text-xs text-slate-500">
+              <a
+                href={getAppUrl('admin.html')}
+                onClick={() => setMobileMenuOpen(false)}
+                className="min-h-[44px] flex items-center justify-between px-3 py-2 rounded text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+              >
+                <span>Fest Administrator Console</span>
+                <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+              </a>
+              <a
+                href={getAppUrl('super-admin.html')}
+                onClick={() => setMobileMenuOpen(false)}
+                className="min-h-[44px] flex items-center justify-between px-3 py-2 rounded text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+              >
+                <span>Super Admin Governance</span>
+                <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ==================================================================== */}
       {/* 2. HERO SECTION — VIBRANT STUDIO CANVAS & RUN-OF-SHOW SHOWCASE       */}
@@ -761,10 +885,10 @@ export const FestoriaHomePage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-6 text-xs text-[#64748b]">
-            <button type="button" onClick={() => openCreateFest('track')} className="hover:text-[#0f172a] transition-colors">
+            <button type="button" onClick={() => openCreateFest('track')} className="hover:text-[#0f172a] transition-colors min-h-[44px]">
               Track Application
             </button>
-            <a href="/admin.html" className="hover:text-[#0f172a] transition-colors">
+            <a href={getAppUrl('admin.html')} className="hover:text-[#0f172a] transition-colors inline-flex items-center min-h-[44px]">
               Fest Admin Console
             </a>
           </div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useFest } from '../../context/FestContext';
+import { getAppUrl } from '../../utils/navigation';
 import {
   FestPublicPageData,
   FestPhotoItem,
@@ -147,7 +148,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
   const categories = ['All', ...Array.from(new Set(allPhotos.map((p) => p.category || 'General')))];
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen min-h-dvh bg-white text-slate-900 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
       {/* ==================================================================== */}
       {/* 1. PUBLIC TOP NAVIGATION                                             */}
       {/* ==================================================================== */}
@@ -813,8 +814,8 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <p>© 2026 {settings.festName}. Powered by Festoria Festival Management System.</p>
           <div className="flex items-center gap-4">
-            <a href="/" className="hover:text-slate-900 font-semibold">Festoria Home</a>
-            <a href="/admin.html" className="hover:text-slate-900 font-semibold">Admin Sign In</a>
+            <a href={getAppUrl()} className="hover:text-slate-900 font-semibold min-h-[44px] inline-flex items-center">Festoria Home</a>
+            <a href={getAppUrl('admin.html')} className="hover:text-slate-900 font-semibold min-h-[44px] inline-flex items-center">Admin Sign In</a>
           </div>
         </div>
       </footer>

@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SuperAdminSidebar } from './SuperAdminSidebar';
 import { SuperAdminHeader } from './SuperAdminHeader';
 import { ToastContainer } from '../common/ToastContainer';
 import { useFest } from '../../context/FestContext';
 import { PhoneAuthModal } from '../common/PhoneAuthModal';
 import { Lock, ShieldCheck, ArrowRight, ShieldAlert, LogOut } from 'lucide-react';
+import { navigateTo, getAppUrl } from '../../utils/navigation';
 
 interface SuperAdminLayoutProps {
   children: React.ReactNode;
@@ -14,6 +15,18 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const { currentUser, switchCurrentUser, users, switchPortal } = useFest();
+
+  // Lock body scroll when mobile navigation sidebar is active
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileOpen]);
 
   const handleBackToPublic = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -25,11 +38,7 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) 
     if (typeof switchPortal === 'function') {
       switchPortal('public');
     }
-    if (window.location.pathname !== '/' && window.location.pathname !== '/index.html') {
-      window.location.href = '/?portal=public';
-    } else {
-      window.history.replaceState({}, '', '/?portal=public');
-    }
+    navigateTo('?portal=public');
   };
 
   const isSuperAdmin = currentUser.role === 'super_admin' && currentUser.status === 'active';
@@ -37,7 +46,7 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) 
   // Suspended Account Gate
   if (currentUser.status === 'suspended') {
     return (
-      <div className="min-h-screen bg-white text-slate-900 flex flex-col justify-center items-center px-4 font-sans">
+      <div className="min-h-screen min-h-dvh bg-white text-slate-900 flex flex-col justify-center items-center px-4 font-sans">
         <div className="max-w-md w-full bg-white border border-rose-200 rounded-xl p-8 shadow-sm text-center">
           <div className="w-14 h-14 bg-rose-50 border border-rose-200 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-5">
             <ShieldAlert className="w-6 h-6" />
@@ -48,7 +57,7 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) 
           </p>
           <div className="mt-6 flex flex-col gap-3">
             <a
-              href="/"
+              href={getAppUrl()}
               onClick={(e) => {
                 e.preventDefault();
                 try {
@@ -60,7 +69,7 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) 
                 if (typeof switchPortal === 'function') {
                   switchPortal('public');
                 }
-                window.location.href = '/';
+                navigateTo('?portal=public');
               }}
               className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 text-white text-xs font-semibold rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
             >
@@ -76,7 +85,7 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) 
   // Unauthorized Gate
   if (!isSuperAdmin) {
     return (
-      <div className="min-h-screen bg-white text-slate-900 flex flex-col justify-center items-center px-4 font-sans">
+      <div className="min-h-screen min-h-dvh bg-white text-slate-900 flex flex-col justify-center items-center px-4 font-sans">
         <div className="max-w-md w-full bg-white border border-slate-200 rounded-xl p-8 shadow-sm text-center">
           <div className="w-14 h-14 bg-slate-100 border border-slate-200 text-slate-800 rounded-full flex items-center justify-center mx-auto mb-5">
             <Lock className="w-6 h-6" />
@@ -116,7 +125,7 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) 
   }
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 flex">
+    <div className="min-h-screen min-h-dvh bg-white text-slate-900 flex">
       {/* Persistent desktop sidebar & collapsible mobile navigation */}
       <SuperAdminSidebar mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
 

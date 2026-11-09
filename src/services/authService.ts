@@ -1,5 +1,5 @@
 // ============================================================================
-// FestFlow Authentication Utilities & Account Verification
+// Festoria Authentication Utilities & Account Verification
 // Supports Password Authentication via Registered Email OR Registered Mobile.
 // Zero SMS OTP. Native Firebase Auth with secure server-side phone lookup.
 // ============================================================================

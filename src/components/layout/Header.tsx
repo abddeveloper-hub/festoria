@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useFest, NavigationTab } from '../../context/FestContext';
+import { navigateTo } from '../../utils/navigation';
 import {
   Menu,
   Search,
@@ -212,7 +213,7 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
         <button
           onClick={() => {
             if (window.location.pathname.includes('admin.html')) {
-              window.location.href = '/index.html?tab=public';
+              navigateTo('index.html?tab=public');
             } else {
               setActiveTab('public');
             }
