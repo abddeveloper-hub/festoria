@@ -182,6 +182,7 @@ interface FestContextType {
   }) => { success: boolean; message: string; participantId: string };
   inviteParticipantByTeamLeader: (data: {
     name: string;
+    chestNumber?: string;
     phone: string;
     email: string;
     college?: string;
@@ -920,6 +921,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       createdAt: new Date().toISOString().slice(0, 10),
     };
     setParticipants((prev) => [newParticipant, ...prev]);
+    saveParticipantToFirestore(newParticipant);
 
     // Also update registeredProgrammes on programmes
     if (data.registeredProgrammes.length > 0) {
@@ -942,9 +944,20 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
   };
 
   const updateParticipant = (id: string, updates: Partial<Participant>) => {
+    let updatedRecord: Participant | undefined;
     setParticipants((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, ...updates } : p))
+      prev.map((p) => {
+        if (p.id === id) {
+          const updated = { ...p, ...updates };
+          updatedRecord = updated;
+          return updated;
+        }
+        return p;
+      })
     );
+    if (updatedRecord) {
+      saveParticipantToFirestore(updatedRecord);
+    }
     logActivity('UPDATE_PARTICIPANT', 'participant', id, `Updated details for participant ID ${id}.`);
     addToast('success', 'Updated', 'Participant record has been updated.');
   };
@@ -2632,6 +2645,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     if (currentUser.role === 'team_leader') {
       const res = inviteParticipantByTeamLeader({
         name: data.name,
+        chestNumber: data.chestNumber,
         phone: data.phone,
         email: data.email,
         college: data.college || data.institution,
@@ -3086,6 +3100,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
 
   const inviteParticipantByTeamLeader = (data: {
     name: string;
+    chestNumber?: string;
     phone: string;
     email: string;
     college?: string;
@@ -3147,6 +3162,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     const newParticipant: Participant = {
       id,
       name: data.name.trim(),
+      chestNumber: data.chestNumber?.trim() || undefined,
       email: data.email.trim(),
       phone: formatPhoneDisplay(normalized),
       phoneVerified: false, // Must verify phone OTP before activation

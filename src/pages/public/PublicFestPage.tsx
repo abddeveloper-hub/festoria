@@ -31,7 +31,11 @@ import {
   Pause,
   X,
   Maximize2,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Search,
+  Medal,
+  Users,
+  CheckCircle2
 } from 'lucide-react';
 
 interface PublicFestPageProps {
@@ -46,6 +50,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
   const {
     settings,
     teams,
+    participants,
     programmes,
     results,
     announcements,
@@ -66,8 +71,15 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
   );
 
   const [activeTabSection, setActiveTabSection] = useState<
-    'overview' | 'results' | 'schedule' | 'teams' | 'gallery' | 'bulletin'
+    'overview' | 'leaderboard' | 'student_search' | 'results' | 'schedule' | 'teams' | 'gallery' | 'bulletin'
   >('overview');
+
+  const [leaderboardType, setLeaderboardType] = useState<'team' | 'individual'>('team');
+  const [leaderboardCategory, setLeaderboardCategory] = useState<string>('all');
+
+  const [studentSearchQuery, setStudentSearchQuery] = useState('');
+  const [selectedStudentForModal, setSelectedStudentForModal] = useState<any | null>(null);
+  const [overviewLeaderboardToggle, setOverviewLeaderboardToggle] = useState<'team' | 'individual'>('team');
 
   const [resultsSubTab, setResultsSubTab] = useState<'programmes' | 'team_scoreboard' | 'category_scoreboards'>('programmes');
   const [selectedPublicCategory, setSelectedPublicCategory] = useState<string>('Senior');
@@ -144,6 +156,48 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
   const publicAnnouncements = announcements.filter((a) => a.isPublic);
   const publishedProgrammes = programmes.filter((p) => p.status !== 'draft');
 
+  // Participants scoped to this festival
+  const festParticipants = React.useMemo(() => {
+    return (participants || []).filter((p) => !p.festId || p.festId === targetFestId);
+  }, [participants, targetFestId]);
+
+  // Student search filtering by Chest Number or Name
+  const matchedStudents = React.useMemo(() => {
+    const q = studentSearchQuery.trim().toLowerCase();
+    if (!q) return [];
+    return festParticipants.filter((p) => {
+      const chest = (p.chestNumber || '').toLowerCase();
+      const id = (p.id || '').toLowerCase();
+      const name = (p.name || '').toLowerCase();
+      return chest.includes(q) || id.includes(q) || name.includes(q);
+    });
+  }, [festParticipants, studentSearchQuery]);
+
+  // Compute student stats helper
+  const getStudentStats = (participantId: string) => {
+    const studentResults = results.filter(
+      (r) => r.participantId === participantId && r.published
+    );
+    const totalPoints = studentResults.reduce(
+      (sum, r) => sum + (r.pointsAwarded || 0),
+      0
+    );
+    const goldCount = studentResults.filter((r) => r.rank === 1).length;
+    const silverCount = studentResults.filter((r) => r.rank === 2).length;
+    const bronzeCount = studentResults.filter((r) => r.rank === 3).length;
+    return { studentResults, totalPoints, goldCount, silverCount, bronzeCount };
+  };
+
+  // Dynamic individual leaderboard for selected category or all categories
+  const individualLeaderboardData = React.useMemo(() => {
+    return getCategoryScoreboard(leaderboardCategory);
+  }, [getCategoryScoreboard, leaderboardCategory]);
+
+  // Top individual scorers for Overview spotlight pod
+  const topIndividualContestants = React.useMemo(() => {
+    return getCategoryScoreboard('all').slice(0, 5);
+  }, [getCategoryScoreboard]);
+
   // Featured photos for main landing section
   const mainFeaturedPhotos = pageData.photos.filter((p) => p.featuredInMain);
   const allPhotos = pageData.photos;
@@ -197,6 +251,28 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
             }`}
           >
             Overview
+          </button>
+          <button
+            onClick={() => setActiveTabSection('leaderboard')}
+            className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+              activeTabSection === 'leaderboard'
+                ? 'bg-slate-100 text-slate-900 font-bold'
+                : 'hover:text-slate-900'
+            }`}
+          >
+            <Trophy className="w-3.5 h-3.5 text-amber-500" />
+            <span>Leaderboard</span>
+          </button>
+          <button
+            onClick={() => setActiveTabSection('student_search')}
+            className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+              activeTabSection === 'student_search'
+                ? 'bg-slate-100 text-slate-900 font-bold'
+                : 'hover:text-slate-900'
+            }`}
+          >
+            <Search className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Student Search</span>
           </button>
           <button
             onClick={() => setActiveTabSection('results')}
@@ -285,6 +361,28 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
           }`}
         >
           Overview
+        </button>
+        <button
+          onClick={() => setActiveTabSection('leaderboard')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors flex items-center gap-1 ${
+            activeTabSection === 'leaderboard'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Trophy className="w-3 h-3 text-amber-500" />
+          <span>Leaderboard</span>
+        </button>
+        <button
+          onClick={() => setActiveTabSection('student_search')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors flex items-center gap-1 ${
+            activeTabSection === 'student_search'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Search className="w-3 h-3 text-indigo-500" />
+          <span>Student Search</span>
         </button>
         <button
           onClick={() => setActiveTabSection('results')}
@@ -457,6 +555,111 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               <ChevronRight className="w-4 h-4 text-slate-400" />
             </button>
           </div>
+
+          {/* Quick Chest Number Student Search Bar directly in Hero */}
+          <div className="w-full max-w-xl mx-auto pt-6 text-left">
+            <div className="relative bg-white/95 backdrop-blur-md rounded-2xl p-1.5 sm:p-2 shadow-2xl border border-white/30">
+              <div className="flex items-center gap-2">
+                <div className="pl-3 text-slate-400">
+                  <Search className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600" />
+                </div>
+                <input
+                  type="text"
+                  value={studentSearchQuery}
+                  onChange={(e) => setStudentSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && studentSearchQuery.trim()) {
+                      setActiveTabSection('student_search');
+                    }
+                  }}
+                  placeholder="Search student by Chest Number (e.g. 104) or Name..."
+                  className="flex-1 bg-transparent border-0 focus:outline-none text-slate-900 placeholder:text-slate-400 text-xs sm:text-sm py-2 px-1 font-medium"
+                />
+                {studentSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setStudentSearchQuery('')}
+                    className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+                    title="Clear"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (studentSearchQuery.trim()) {
+                      setActiveTabSection('student_search');
+                    }
+                  }}
+                  className="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors shrink-0 shadow-xs"
+                >
+                  Search
+                </button>
+              </div>
+
+              {/* Floating Instant Matches Dropdown */}
+              {studentSearchQuery.trim().length > 0 && (
+                <div className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden z-50 max-h-80 overflow-y-auto divide-y divide-slate-100">
+                  {matchedStudents.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-slate-500">
+                      No participant found for <strong className="text-slate-800 font-bold">"{studentSearchQuery}"</strong>. Check the chest number and try again.
+                    </div>
+                  ) : (
+                    matchedStudents.slice(0, 6).map((student) => {
+                      const team = teams.find((t) => t.id === student.teamId);
+                      const stats = getStudentStats(student.id);
+                      return (
+                        <div
+                          key={student.id}
+                          onClick={() => {
+                            setSelectedStudentForModal(student);
+                            setActiveTabSection('student_search');
+                          }}
+                          className="w-full p-3 hover:bg-slate-50 flex items-center justify-between gap-3 text-left transition-colors cursor-pointer"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-8 h-8 rounded-xl bg-slate-900 text-white font-bold text-xs flex items-center justify-center shrink-0">
+                              {student.name.charAt(0)}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-sm text-slate-900 truncate">{student.name}</span>
+                                <span className="font-mono font-bold text-xs bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-md">
+                                  Chest #{student.chestNumber || student.id}
+                                </span>
+                              </div>
+                              <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
+                                <span className="text-slate-700 font-medium">{team?.name || 'Team'}</span>
+                                <span>•</span>
+                                <span>{student.category}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="text-right shrink-0">
+                            <span className="font-mono font-bold text-sm text-slate-900">{stats.totalPoints} pts</span>
+                            <div className="text-[10px] text-slate-400 mt-0.5">
+                              {stats.goldCount}🥇 {stats.silverCount}🥈 {stats.bronzeCount}🥉
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                  <div className="p-2 bg-slate-50 text-center border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTabSection('student_search')}
+                      className="text-xs font-bold text-indigo-600 hover:text-indigo-800"
+                    >
+                      View all in Student Directory →
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </section>
 
@@ -597,6 +800,734 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Live Championship Spotlight Pod on Overview */}
+          <div className="bg-slate-50 border border-slate-200 rounded-3xl p-6 sm:p-8 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <span className="text-xs font-bold text-indigo-600 uppercase tracking-widest block">
+                  Live Championship Standings
+                </span>
+                <h4 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight mt-0.5">
+                  Top Scoring Leaders & Houses
+                </h4>
+                <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                  Live ratified points from individual stage competitions and house performances.
+                </p>
+              </div>
+
+              {/* Toggle Pod: Teams vs Individual */}
+              <div className="flex items-center gap-1.5 p-1 bg-white rounded-xl border border-slate-200 shadow-2xs self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setOverviewLeaderboardToggle('team')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    overviewLeaderboardToggle === 'team'
+                      ? 'bg-slate-900 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Top Teams
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOverviewLeaderboardToggle('individual')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    overviewLeaderboardToggle === 'individual'
+                      ? 'bg-slate-900 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Top Students
+                </button>
+              </div>
+            </div>
+
+            {/* Content for Spotlight */}
+            {overviewLeaderboardToggle === 'team' ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {leaderboard.slice(0, 3).map((entry, idx) => (
+                  <div
+                    key={entry.team.id}
+                    className={`p-5 rounded-2xl border transition-all ${
+                      idx === 0
+                        ? 'bg-amber-50/70 border-amber-300 shadow-sm'
+                        : idx === 1
+                        ? 'bg-slate-100/80 border-slate-300'
+                        : 'bg-amber-50/40 border-amber-200'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <span className={`text-xs font-black px-2.5 py-1 rounded-lg ${
+                        idx === 0
+                          ? 'bg-amber-400 text-slate-950'
+                          : idx === 1
+                          ? 'bg-slate-300 text-slate-800'
+                          : 'bg-amber-200 text-amber-900'
+                      }`}>
+                        {idx === 0 ? '🥇 1st Place' : idx === 1 ? '🥈 2nd Place' : '🥉 3rd Place'}
+                      </span>
+                      <span className="font-mono font-black text-lg text-slate-900">
+                        {entry.totalPoints} pts
+                      </span>
+                    </div>
+                    <h5 className="font-bold text-base text-slate-900">{entry.team.name}</h5>
+                    <p className="text-xs text-slate-500 mt-0.5">{entry.team.institution || 'Collegiate House'}</p>
+                    <div className="mt-3 pt-3 border-t border-slate-200/60 flex items-center justify-between text-xs font-medium text-slate-600">
+                      <span>🥇 {entry.firstPlaceCount} Gold</span>
+                      <span>🥈 {entry.secondPlaceCount} Silver</span>
+                      <span>🥉 {entry.thirdPlaceCount} Bronze</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {topIndividualContestants.slice(0, 3).map((entry, idx) => (
+                  <div
+                    key={entry.participant.id}
+                    className={`p-5 rounded-2xl border transition-all ${
+                      idx === 0
+                        ? 'bg-amber-50/70 border-amber-300 shadow-sm'
+                        : idx === 1
+                        ? 'bg-slate-100/80 border-slate-300'
+                        : 'bg-amber-50/40 border-amber-200'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="font-mono font-bold text-xs bg-slate-900 text-amber-300 px-2.5 py-1 rounded-md">
+                        Chest #{entry.participant.chestNumber || entry.participant.id}
+                      </span>
+                      <span className="font-mono font-black text-lg text-slate-900">
+                        {entry.totalPoints} pts
+                      </span>
+                    </div>
+                    <h5 className="font-bold text-base text-slate-900">{entry.participant.name}</h5>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {entry.team?.name || 'Independent'} • {entry.category}
+                    </p>
+                    <div className="mt-3 pt-3 border-t border-slate-200/60 flex items-center justify-between text-xs font-medium text-slate-600">
+                      <span>🥇 {entry.firstPlaceCount} 1st</span>
+                      <span>🥈 {entry.secondPlaceCount} 2nd</span>
+                      <span>🥉 {entry.thirdPlaceCount} 3rd</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setActiveTabSection('leaderboard')}
+                className="text-xs sm:text-sm font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1.5"
+              >
+                <span>View Full Championship Leaderboards</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ==================================================================== */}
+      {/* 4B. OFFICIAL LEADERBOARD TAB (TEAM & INDIVIDUAL)                     */}
+      {/* ==================================================================== */}
+      {activeTabSection === 'leaderboard' && (
+        <section className="py-12 max-w-7xl mx-auto px-4 sm:px-8 space-y-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
+            <div>
+              <span className="text-xs font-bold text-indigo-600 uppercase tracking-widest block">
+                Championship Standings
+              </span>
+              <h3 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 mt-1">
+                Official Festival Leaderboards
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                Real-time verified standings for competing houses and top individual student performers.
+              </p>
+            </div>
+
+            {/* Main Leaderboard Switcher: Team vs Individual */}
+            <div className="flex items-center gap-1.5 p-1.5 bg-slate-100 rounded-2xl border border-slate-200 self-start sm:self-auto shadow-2xs">
+              <button
+                type="button"
+                onClick={() => setLeaderboardType('team')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+                  leaderboardType === 'team'
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Trophy className="w-4 h-4 text-amber-500" />
+                <span>Team Leaderboard</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setLeaderboardType('individual')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+                  leaderboardType === 'individual'
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Award className="w-4 h-4 text-indigo-600" />
+                <span>Individual Leaderboard</span>
+              </button>
+            </div>
+          </div>
+
+          {/* VIEW A: TEAM LEADERBOARD */}
+          {leaderboardType === 'team' && (
+            <div className="space-y-6">
+              {/* Podium for Top 3 Teams */}
+              {leaderboard.length >= 3 && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* 2nd Place */}
+                  <div className="order-2 md:order-1 bg-slate-50 border border-slate-200 rounded-2xl p-5 flex flex-col justify-between shadow-2xs">
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-xs font-black bg-slate-200 text-slate-800 px-3 py-1 rounded-lg">
+                          🥈 2nd Place
+                        </span>
+                        <span className="font-mono font-black text-xl text-slate-900">
+                          {leaderboard[1].totalPoints} pts
+                        </span>
+                      </div>
+                      <h4 className="text-lg font-black text-slate-900">{leaderboard[1].team.name}</h4>
+                      <p className="text-xs text-slate-500 mt-0.5">{leaderboard[1].team.institution || 'Collegiate House'}</p>
+                    </div>
+                    <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between text-xs font-semibold text-slate-600">
+                      <span>🥇 {leaderboard[1].firstPlaceCount} Gold</span>
+                      <span>🥈 {leaderboard[1].secondPlaceCount} Silver</span>
+                      <span>🥉 {leaderboard[1].thirdPlaceCount} Bronze</span>
+                    </div>
+                  </div>
+
+                  {/* 1st Place Champion */}
+                  <div className="order-1 md:order-2 bg-gradient-to-b from-amber-50 to-amber-100/60 border-2 border-amber-300 rounded-2xl p-6 flex flex-col justify-between shadow-md relative -translate-y-1">
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-400 text-slate-950 font-black text-[11px] uppercase tracking-wider px-3 py-0.5 rounded-full shadow-xs">
+                      Fest Leader
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-3 mt-1">
+                        <span className="text-xs font-black bg-amber-400 text-slate-950 px-3 py-1 rounded-lg flex items-center gap-1">
+                          <Trophy className="w-3.5 h-3.5" />
+                          1st Place Champion
+                        </span>
+                        <span className="font-mono font-black text-2xl text-slate-900">
+                          {leaderboard[0].totalPoints} pts
+                        </span>
+                      </div>
+                      <h4 className="text-xl font-black text-slate-900">{leaderboard[0].team.name}</h4>
+                      <p className="text-xs text-slate-600 mt-0.5">{leaderboard[0].team.institution || 'Collegiate House'}</p>
+                    </div>
+                    <div className="mt-4 pt-3 border-t border-amber-200 flex items-center justify-between text-xs font-bold text-slate-800">
+                      <span>🥇 {leaderboard[0].firstPlaceCount} Gold</span>
+                      <span>🥈 {leaderboard[0].secondPlaceCount} Silver</span>
+                      <span>🥉 {leaderboard[0].thirdPlaceCount} Bronze</span>
+                    </div>
+                  </div>
+
+                  {/* 3rd Place */}
+                  <div className="order-3 bg-amber-50/40 border border-amber-200 rounded-2xl p-5 flex flex-col justify-between shadow-2xs">
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-xs font-black bg-amber-200 text-amber-900 px-3 py-1 rounded-lg">
+                          🥉 3rd Place
+                        </span>
+                        <span className="font-mono font-black text-xl text-slate-900">
+                          {leaderboard[2].totalPoints} pts
+                        </span>
+                      </div>
+                      <h4 className="text-lg font-black text-slate-900">{leaderboard[2].team.name}</h4>
+                      <p className="text-xs text-slate-500 mt-0.5">{leaderboard[2].team.institution || 'Collegiate House'}</p>
+                    </div>
+                    <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between text-xs font-semibold text-slate-600">
+                      <span>🥇 {leaderboard[2].firstPlaceCount} Gold</span>
+                      <span>🥈 {leaderboard[2].secondPlaceCount} Silver</span>
+                      <span>🥉 {leaderboard[2].thirdPlaceCount} Bronze</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Complete Team Leaderboard Table */}
+              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+                <div className="p-4 bg-slate-50 border-b border-slate-200 text-xs text-slate-600 flex items-center justify-between">
+                  <span className="font-bold text-slate-800">
+                    House Championship Standings — Cumulative Points from Individual & Team Programmes
+                  </span>
+                  <span className="font-mono text-[11px] text-slate-500">Live Ratified</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[11px] bg-slate-50/50">
+                        <th className="py-3 px-4 text-center w-16">Rank</th>
+                        <th className="py-3 px-4">House / Team</th>
+                        <th className="py-3 px-4">Institution</th>
+                        <th className="py-3 px-3 text-center">🥇 Gold</th>
+                        <th className="py-3 px-3 text-center">🥈 Silver</th>
+                        <th className="py-3 px-3 text-center">🥉 Bronze</th>
+                        <th className="py-3 px-4 text-right">Ratified Points</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {leaderboard.map((entry) => (
+                        <tr key={entry.team.id} className="hover:bg-slate-50/70 transition-colors">
+                          <td className="py-3.5 px-4 text-center font-mono font-bold">
+                            <span
+                              className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${
+                                entry.rank === 1
+                                  ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                  : entry.rank === 2
+                                  ? 'bg-slate-200 text-slate-900'
+                                  : entry.rank === 3
+                                  ? 'bg-amber-50 text-amber-900 border border-amber-200'
+                                  : 'bg-slate-100 text-slate-600'
+                              }`}
+                            >
+                              #{entry.rank}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="font-bold text-slate-900">{entry.team.name}</div>
+                            <div className="font-mono text-[10px] text-slate-400">{entry.team.code}</div>
+                          </td>
+                          <td className="py-3.5 px-4 text-slate-600">
+                            {entry.team.institution || 'Collegiate House'}
+                          </td>
+                          <td className="py-3.5 px-3 text-center font-mono font-bold text-amber-700">
+                            {entry.firstPlaceCount}
+                          </td>
+                          <td className="py-3.5 px-3 text-center font-mono font-bold text-slate-500">
+                            {entry.secondPlaceCount}
+                          </td>
+                          <td className="py-3.5 px-3 text-center font-mono font-bold text-amber-800">
+                            {entry.thirdPlaceCount}
+                          </td>
+                          <td className="py-3.5 px-4 text-right font-mono font-bold text-base text-slate-900">
+                            {entry.totalPoints} pts
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* VIEW B: INDIVIDUAL LEADERBOARD */}
+          {leaderboardType === 'individual' && (
+            <div className="space-y-6">
+              {/* Category Filter Pills */}
+              <div className="flex flex-wrap items-center gap-2 pb-2 border-b border-slate-200">
+                <span className="text-xs font-bold text-slate-500 mr-1 uppercase tracking-wider">Category:</span>
+                <button
+                  type="button"
+                  onClick={() => setLeaderboardCategory('all')}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    leaderboardCategory === 'all'
+                      ? 'bg-slate-900 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  All Categories (Overall Champions)
+                </button>
+                {festCategories.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setLeaderboardCategory(c.name)}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      leaderboardCategory.toLowerCase() === c.name.toLowerCase()
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+
+              {/* Individual Champions Podium (Top 3) */}
+              {individualLeaderboardData.length >= 3 && individualLeaderboardData[0].totalPoints > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* 2nd Place Individual */}
+                  <div className="order-2 md:order-1 bg-slate-50 border border-slate-200 rounded-2xl p-5 flex flex-col justify-between shadow-2xs">
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-xs font-black bg-slate-200 text-slate-800 px-3 py-1 rounded-lg">
+                          🥈 2nd Place
+                        </span>
+                        <span className="font-mono font-bold text-xs bg-slate-900 text-amber-300 px-2 py-0.5 rounded-md">
+                          Chest #{individualLeaderboardData[1].participant.chestNumber || individualLeaderboardData[1].participant.id}
+                        </span>
+                      </div>
+                      <h4 className="text-lg font-black text-slate-900">{individualLeaderboardData[1].participant.name}</h4>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {individualLeaderboardData[1].team?.name || 'Independent'} • {individualLeaderboardData[1].category}
+                      </p>
+                    </div>
+                    <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between">
+                      <span className="text-xs text-slate-500 font-medium">
+                        🥇 {individualLeaderboardData[1].firstPlaceCount} • 🥈 {individualLeaderboardData[1].secondPlaceCount} • 🥉 {individualLeaderboardData[1].thirdPlaceCount}
+                      </span>
+                      <span className="font-mono font-black text-lg text-slate-900">
+                        {individualLeaderboardData[1].totalPoints} pts
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 1st Place Individual Champion */}
+                  <div className="order-1 md:order-2 bg-gradient-to-b from-amber-50 to-amber-100/60 border-2 border-amber-300 rounded-2xl p-6 flex flex-col justify-between shadow-md relative -translate-y-1">
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-400 text-slate-950 font-black text-[11px] uppercase tracking-wider px-3 py-0.5 rounded-full shadow-xs">
+                      Category Champion
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-3 mt-1">
+                        <span className="text-xs font-black bg-amber-400 text-slate-950 px-3 py-1 rounded-lg flex items-center gap-1">
+                          <Trophy className="w-3.5 h-3.5" />
+                          1st Place Champion
+                        </span>
+                        <span className="font-mono font-bold text-xs bg-slate-900 text-amber-300 px-2.5 py-1 rounded-md">
+                          Chest #{individualLeaderboardData[0].participant.chestNumber || individualLeaderboardData[0].participant.id}
+                        </span>
+                      </div>
+                      <h4 className="text-xl font-black text-slate-900">{individualLeaderboardData[0].participant.name}</h4>
+                      <p className="text-xs text-slate-600 mt-0.5">
+                        {individualLeaderboardData[0].team?.name || 'Independent'} • {individualLeaderboardData[0].category}
+                      </p>
+                    </div>
+                    <div className="mt-4 pt-3 border-t border-amber-200 flex items-center justify-between">
+                      <span className="text-xs text-slate-700 font-bold">
+                        🥇 {individualLeaderboardData[0].firstPlaceCount} • 🥈 {individualLeaderboardData[0].secondPlaceCount} • 🥉 {individualLeaderboardData[0].thirdPlaceCount}
+                      </span>
+                      <span className="font-mono font-black text-2xl text-slate-900">
+                        {individualLeaderboardData[0].totalPoints} pts
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 3rd Place Individual */}
+                  <div className="order-3 bg-amber-50/40 border border-amber-200 rounded-2xl p-5 flex flex-col justify-between shadow-2xs">
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-xs font-black bg-amber-200 text-amber-900 px-3 py-1 rounded-lg">
+                          🥉 3rd Place
+                        </span>
+                        <span className="font-mono font-bold text-xs bg-slate-900 text-amber-300 px-2 py-0.5 rounded-md">
+                          Chest #{individualLeaderboardData[2].participant.chestNumber || individualLeaderboardData[2].participant.id}
+                        </span>
+                      </div>
+                      <h4 className="text-lg font-black text-slate-900">{individualLeaderboardData[2].participant.name}</h4>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {individualLeaderboardData[2].team?.name || 'Independent'} • {individualLeaderboardData[2].category}
+                      </p>
+                    </div>
+                    <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between">
+                      <span className="text-xs text-slate-500 font-medium">
+                        🥇 {individualLeaderboardData[2].firstPlaceCount} • 🥈 {individualLeaderboardData[2].secondPlaceCount} • 🥉 {individualLeaderboardData[2].thirdPlaceCount}
+                      </span>
+                      <span className="font-mono font-black text-lg text-slate-900">
+                        {individualLeaderboardData[2].totalPoints} pts
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Complete Individual Leaderboard Table */}
+              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+                <div className="p-4 bg-slate-50 border-b border-slate-200 text-xs text-slate-600 flex items-center justify-between">
+                  <span className="font-bold text-slate-800">
+                    Individual Contestants Standings — {leaderboardCategory === 'all' ? 'All Categories' : `${leaderboardCategory} Category`}
+                  </span>
+                  <span className="font-mono text-[11px] text-slate-500">
+                    Tie-breaker: Points &gt; 1st &gt; 2nd &gt; Marks
+                  </span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[11px] bg-slate-50/50">
+                        <th className="py-3 px-3 text-center w-16">Rank</th>
+                        <th className="py-3 px-4">Chest #</th>
+                        <th className="py-3 px-4">Contestant</th>
+                        <th className="py-3 px-4">House / Team</th>
+                        <th className="py-3 px-3">Category</th>
+                        <th className="py-3 px-2 text-center">🥇 1st</th>
+                        <th className="py-3 px-2 text-center">🥈 2nd</th>
+                        <th className="py-3 px-2 text-center">🥉 3rd</th>
+                        <th className="py-3 px-2 text-center">Total Marks</th>
+                        <th className="py-3 px-4 text-right">Individual Points</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {individualLeaderboardData.length === 0 ? (
+                        <tr>
+                          <td colSpan={10} className="py-12 text-center text-slate-400">
+                            No participants scored yet in this category.
+                          </td>
+                        </tr>
+                      ) : (
+                        individualLeaderboardData.map((entry) => (
+                          <tr key={entry.participant.id} className="hover:bg-slate-50/70 transition-colors">
+                            <td className="py-3.5 px-3 text-center font-mono font-bold">
+                              {entry.totalPoints > 0 ? (
+                                <span className="inline-flex items-center gap-1">
+                                  {entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : ''}
+                                  #{entry.rank}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 font-normal">-</span>
+                              )}
+                            </td>
+                            <td className="py-3.5 px-4 font-mono">
+                              <span className="font-mono font-bold text-xs bg-slate-100 text-slate-900 px-2.5 py-1 rounded-md border border-slate-200 shadow-2xs">
+                                #{entry.participant.chestNumber || entry.participant.id}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <div className="font-bold text-slate-900">{entry.participant.name}</div>
+                              <div className="font-mono text-[10px] text-slate-400">ID: {entry.participant.id}</div>
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <div className="font-semibold text-slate-800">{entry.team?.name || 'Independent'}</div>
+                              <div className="text-[10px] text-slate-400">{entry.team?.institution}</div>
+                            </td>
+                            <td className="py-3.5 px-3">
+                              <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700 font-medium">
+                                {entry.category}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-2 text-center font-mono font-bold text-amber-700">
+                              {entry.firstPlaceCount}
+                            </td>
+                            <td className="py-3.5 px-2 text-center font-mono font-bold text-slate-500">
+                              {entry.secondPlaceCount}
+                            </td>
+                            <td className="py-3.5 px-2 text-center font-mono font-bold text-amber-800">
+                              {entry.thirdPlaceCount}
+                            </td>
+                            <td className="py-3.5 px-2 text-center font-mono text-slate-700">
+                              {entry.totalMarks}
+                            </td>
+                            <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-900 text-sm">
+                              {entry.totalPoints} pts
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* ==================================================================== */}
+      {/* 4C. OFFICIAL STUDENT LOOKUP & SEARCH TAB                             */}
+      {/* ==================================================================== */}
+      {activeTabSection === 'student_search' && (
+        <section className="py-12 max-w-7xl mx-auto px-4 sm:px-8 space-y-8">
+          <div className="border-b border-slate-200 pb-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <span className="text-xs font-bold text-indigo-600 uppercase tracking-widest block">
+                  Official Student Directory & Live Search
+                </span>
+                <h3 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 mt-1">
+                  Student & Contestant Lookup
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                  Search any student by Chest Number or Name to inspect event schedules, registered programmes, and live points won.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                <span className="text-xs font-bold bg-slate-100 text-slate-700 px-3 py-1.5 rounded-xl border border-slate-200">
+                  {festParticipants.length} Contestants Enrolled
+                </span>
+              </div>
+            </div>
+
+            {/* Search Input Bar */}
+            <div className="mt-6 max-w-2xl">
+              <div className="relative flex items-center bg-white border-2 border-slate-300 rounded-2xl shadow-sm focus-within:border-slate-900 transition-colors">
+                <div className="pl-4 text-slate-400">
+                  <Search className="w-5 h-5 text-indigo-600" />
+                </div>
+                <input
+                  type="text"
+                  value={studentSearchQuery}
+                  onChange={(e) => setStudentSearchQuery(e.target.value)}
+                  placeholder="Search by Chest Number (e.g. 104, PT-104) or Student Name..."
+                  className="w-full pl-3 pr-10 py-3.5 text-sm sm:text-base text-slate-900 bg-transparent focus:outline-none placeholder:text-slate-400 font-medium"
+                  autoFocus
+                />
+                {studentSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setStudentSearchQuery('')}
+                    className="absolute right-3 p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
+                    title="Clear search"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Results Grid */}
+          {(() => {
+            const queryPresent = studentSearchQuery.trim().length > 0;
+            const studentsToDisplay = queryPresent ? matchedStudents : festParticipants;
+
+            if (queryPresent && studentsToDisplay.length === 0) {
+              return (
+                <div className="p-16 text-center border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50 space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-slate-200 text-slate-600 flex items-center justify-center mx-auto">
+                    <Search className="w-6 h-6" />
+                  </div>
+                  <h4 className="text-base font-bold text-slate-900">
+                    No participant found matching "{studentSearchQuery}"
+                  </h4>
+                  <p className="text-xs text-slate-500 max-w-md mx-auto">
+                    Please verify the chest number (e.g. 101, CH-12) or try searching by the participant's full name.
+                  </p>
+                </div>
+              );
+            }
+
+            return (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
+                  <span>
+                    Showing {studentsToDisplay.length} {studentsToDisplay.length === 1 ? 'student' : 'students'}
+                    {queryPresent ? ` for "${studentSearchQuery}"` : ''}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {studentsToDisplay.map((student) => {
+                    const team = teams.find((t) => t.id === student.teamId);
+                    const stats = getStudentStats(student.id);
+                    const studentProgs = programmes.filter((prg) =>
+                      student.registeredProgrammes?.includes(prg.id)
+                    );
+
+                    return (
+                      <div
+                        key={student.id}
+                        className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs hover:shadow-md hover:border-slate-300 transition-all flex flex-col justify-between space-y-4"
+                      >
+                        <div>
+                          {/* Top Badges */}
+                          <div className="flex items-center justify-between gap-2 mb-3">
+                            <span className="font-mono font-black text-xs bg-slate-900 text-amber-300 px-3 py-1 rounded-xl shadow-xs">
+                              Chest #{student.chestNumber || student.id}
+                            </span>
+                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
+                              {student.category}
+                            </span>
+                          </div>
+
+                          {/* Student Info */}
+                          <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-sm shrink-0">
+                              {student.name.charAt(0)}
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="font-bold text-base text-slate-900 truncate">{student.name}</h4>
+                              <p className="text-xs text-slate-600 mt-0.5">
+                                House: <strong className="text-slate-900">{team?.name || 'Team'}</strong>
+                              </p>
+                              {team?.institution && (
+                                <p className="text-[11px] text-slate-400 truncate">{team.institution}</p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Points & Medals Strip */}
+                          <div className="mt-4 p-3 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between">
+                            <div>
+                              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Total Points</span>
+                              <span className="font-mono font-black text-base text-slate-900">
+                                {stats.totalPoints} pts
+                              </span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Medals Won</span>
+                              <span className="text-xs font-bold text-slate-700">
+                                🥇 {stats.goldCount} · 🥈 {stats.silverCount} · 🥉 {stats.bronzeCount}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Registered Programmes */}
+                          <div className="mt-3.5 space-y-1.5">
+                            <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">
+                              Events ({studentProgs.length})
+                            </span>
+                            {studentProgs.length === 0 ? (
+                              <p className="text-xs text-slate-400 italic">No events assigned yet.</p>
+                            ) : (
+                              studentProgs.slice(0, 3).map((prg) => {
+                                const res = stats.studentResults.find((r) => r.programmeId === prg.id);
+                                return (
+                                  <div
+                                    key={prg.id}
+                                    className="flex items-center justify-between text-xs py-1 px-2 rounded-lg bg-slate-50 border border-slate-100"
+                                  >
+                                    <span className="font-medium text-slate-800 truncate max-w-[170px]">
+                                      {prg.name}
+                                    </span>
+                                    {res ? (
+                                      <span className="font-mono font-bold text-[11px] text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                                        Rank #{res.rank} (+{res.pointsAwarded} pts)
+                                      </span>
+                                    ) : (
+                                      <span className="text-[10px] text-slate-400 font-medium">
+                                        {prg.venue || 'Scheduled'}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })
+                            )}
+                            {studentProgs.length > 3 && (
+                              <span className="text-[11px] text-slate-400 block pt-0.5">
+                                +{studentProgs.length - 3} more events
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* View Card Button */}
+                        <div className="pt-2 border-t border-slate-100">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedStudentForModal(student)}
+                            className="w-full py-2 px-3 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors flex items-center justify-center gap-1.5"
+                          >
+                            <User className="w-3.5 h-3.5 text-indigo-600" />
+                            <span>View Full Student Card</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
         </section>
       )}
 
@@ -1163,6 +2094,132 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
           </div>
         </div>
       </footer>
+
+      {/* Student Details / Performance Modal */}
+      {selectedStudentForModal && (() => {
+        const student = selectedStudentForModal;
+        const team = teams.find((t) => t.id === student.teamId);
+        const stats = getStudentStats(student.id);
+        const studentProgs = programmes.filter((prg) =>
+          student.registeredProgrammes?.includes(prg.id)
+        );
+
+        return (
+          <div
+            className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm p-4 flex items-center justify-center"
+            onClick={() => setSelectedStudentForModal(null)}
+          >
+            <div
+              className="max-w-lg w-full bg-white rounded-3xl overflow-hidden shadow-2xl border border-slate-200"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header Banner */}
+              <div className="bg-slate-900 text-white p-6 relative">
+                <button
+                  type="button"
+                  onClick={() => setSelectedStudentForModal(null)}
+                  className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="font-mono font-black text-xs bg-amber-400 text-slate-950 px-3 py-1 rounded-xl shadow-xs">
+                    Chest #{student.chestNumber || student.id}
+                  </span>
+                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-lg bg-white/10 text-slate-300">
+                    {student.category}
+                  </span>
+                  <span className="text-[10px] font-mono text-slate-400">ID: {student.id}</span>
+                </div>
+
+                <h3 className="text-xl sm:text-2xl font-black text-white">{student.name}</h3>
+                <p className="text-xs text-slate-300 mt-1">
+                  Representing <strong className="text-white font-bold">{team?.name || 'Independent'}</strong>
+                  {team?.institution ? ` • ${team.institution}` : ''}
+                </p>
+              </div>
+
+              {/* Statistics Strip */}
+              <div className="p-5 border-b border-slate-100 bg-slate-50/70 grid grid-cols-2 gap-3 text-center">
+                <div className="p-3 bg-white rounded-2xl border border-slate-200/80 shadow-2xs">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
+                    Total Individual Points
+                  </span>
+                  <span className="font-mono font-black text-2xl text-slate-900 mt-0.5 block">
+                    {stats.totalPoints} pts
+                  </span>
+                </div>
+                <div className="p-3 bg-white rounded-2xl border border-slate-200/80 shadow-2xs">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
+                    Medals Won
+                  </span>
+                  <span className="text-sm font-black text-slate-800 mt-1.5 block">
+                    🥇 {stats.goldCount} · 🥈 {stats.silverCount} · 🥉 {stats.bronzeCount}
+                  </span>
+                </div>
+              </div>
+
+              {/* Registered Programmes Detail */}
+              <div className="p-6 space-y-3 max-h-72 overflow-y-auto">
+                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  Registered Programmes ({studentProgs.length})
+                </h4>
+
+                {studentProgs.length === 0 ? (
+                  <p className="text-xs text-slate-400 italic">No programmes registered yet.</p>
+                ) : (
+                  studentProgs.map((prg) => {
+                    const res = stats.studentResults.find((r) => r.programmeId === prg.id);
+                    return (
+                      <div
+                        key={prg.id}
+                        className="p-3 rounded-2xl border border-slate-200 bg-white shadow-2xs space-y-1.5"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <h5 className="font-bold text-sm text-slate-900">{prg.name}</h5>
+                          {res ? (
+                            <span className="font-mono font-black text-xs text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-lg border border-emerald-300">
+                              Rank #{res.rank} (+{res.pointsAwarded} pts)
+                            </span>
+                          ) : (
+                            <span className="text-[11px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                              Scheduled
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-3 text-xs text-slate-500">
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5 text-slate-400" />
+                            {prg.startTime} - {prg.endTime}
+                          </span>
+                          <span>•</span>
+                          <span className="flex items-center gap-1">
+                            <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                            {prg.venue} ({prg.stage})
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Footer Modal Action */}
+              <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setSelectedStudentForModal(null)}
+                  className="px-5 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors shadow-xs"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Unified Authentication Modal */}
       <AuthModal

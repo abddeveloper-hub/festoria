@@ -113,6 +113,7 @@ export interface Participant {
   id: string; // e.g. "PT-101"
   userId?: string;
   name: string;
+  chestNumber?: string; // Official Chest Number assigned to student (e.g. "101", "CH-12")
   email: string;
   phone: string;
   phoneVerified?: boolean;

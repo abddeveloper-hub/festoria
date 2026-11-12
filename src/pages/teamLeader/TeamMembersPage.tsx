@@ -35,6 +35,7 @@ export const TeamMembersPage: React.FC = () => {
   // Form State
   const [formData, setFormData] = useState({
     name: '',
+    chestNumber: '',
     email: '',
     phone: '',
     category: 'Senior' as ParticipantCategory,
@@ -52,6 +53,7 @@ export const TeamMembersPage: React.FC = () => {
       const matchesSearch =
         m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         m.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (m.chestNumber && m.chestNumber.toLowerCase().includes(searchQuery.toLowerCase())) ||
         m.email.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCat = categoryFilter === 'all' || m.category === categoryFilter;
       return matchesSearch && matchesCat;
@@ -61,6 +63,7 @@ export const TeamMembersPage: React.FC = () => {
   const handleOpenAdd = () => {
     setFormData({
       name: '',
+      chestNumber: '',
       email: '',
       phone: '',
       category: 'Senior',
@@ -73,6 +76,7 @@ export const TeamMembersPage: React.FC = () => {
     setEditingMember(member);
     setFormData({
       name: member.name,
+      chestNumber: member.chestNumber || '',
       email: member.email,
       phone: member.phone,
       category: member.category,
@@ -94,6 +98,7 @@ export const TeamMembersPage: React.FC = () => {
     if (editingMember) {
       updateTeamMember(editingMember.id, {
         name: formData.name.trim(),
+        chestNumber: formData.chestNumber.trim() || undefined,
         email: formData.email.trim(),
         phone: formData.phone.trim(),
         category: formData.category,
@@ -102,6 +107,7 @@ export const TeamMembersPage: React.FC = () => {
     } else {
       const success = addTeamMember({
         name: formData.name.trim(),
+        chestNumber: formData.chestNumber.trim() || undefined,
         email: formData.email.trim(),
         phone: formData.phone.trim(),
         teamId: activeTeamId,
@@ -118,6 +124,7 @@ export const TeamMembersPage: React.FC = () => {
   const handleExportCSV = () => {
     const rows = teamMembers.map((m) => ({
       ID: m.id,
+      'Chest Number': m.chestNumber || m.id,
       Name: m.name,
       Email: m.email,
       Phone: m.phone,
@@ -244,7 +251,12 @@ export const TeamMembersPage: React.FC = () => {
                     </div>
                     <div className="min-w-0">
                       <span className="font-bold text-sm text-slate-900 block truncate">{member.name}</span>
-                      <span className="text-xs font-mono text-slate-400 block mt-0.5">ID: {member.id}</span>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-[11px] font-mono font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                          Chest #{member.chestNumber || member.id}
+                        </span>
+                        <span className="text-[10px] font-mono text-slate-400">ID: {member.id}</span>
+                      </div>
                     </div>
                   </div>
 
@@ -296,6 +308,7 @@ export const TeamMembersPage: React.FC = () => {
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-600 uppercase tracking-wider">
                 <th className="py-3 px-4">Member</th>
+                <th className="py-3 px-4">Chest #</th>
                 <th className="py-3 px-4">Category</th>
                 <th className="py-3 px-4">Contact</th>
                 <th className="py-3 px-4 text-center">Assigned Events</th>
@@ -306,7 +319,7 @@ export const TeamMembersPage: React.FC = () => {
             <tbody className="divide-y divide-slate-100">
               {filteredMembers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-500 text-xs">
+                  <td colSpan={7} className="py-8 text-center text-slate-500 text-xs">
                     No team members found matching your search.
                   </td>
                 </tr>
@@ -324,6 +337,11 @@ export const TeamMembersPage: React.FC = () => {
                             <span className="text-[11px] font-mono text-slate-500">{member.id}</span>
                           </div>
                         </div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className="font-mono font-bold text-xs bg-slate-100 text-slate-900 px-2.5 py-1 rounded-md border border-slate-200 shadow-2xs">
+                          #{member.chestNumber || member.id}
+                        </span>
                       </td>
                       <td className="py-3.5 px-4">
                         <span
@@ -418,6 +436,22 @@ export const TeamMembersPage: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-slate-400 text-slate-900"
                 />
+              </div>
+
+              <div>
+                <label className="font-bold text-xs text-slate-700 uppercase tracking-wider block mb-1">
+                  Chest Number <span className="text-slate-400 font-normal lowercase">(optional - defaults to ID)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder={editingMember ? `e.g. 101, CH-05 (Current: ${editingMember.chestNumber || editingMember.id})` : 'e.g. 101, CH-05 (Auto-generated if empty)'}
+                  value={formData.chestNumber}
+                  onChange={(e) => setFormData({ ...formData, chestNumber: e.target.value })}
+                  className="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-slate-400 text-slate-900 font-mono"
+                />
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Official badge number for stage appearance, scoring sheets, and public search.
+                </p>
               </div>
 
               <div>

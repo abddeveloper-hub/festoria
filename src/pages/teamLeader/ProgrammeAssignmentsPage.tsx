@@ -526,7 +526,7 @@ export const ProgrammeAssignmentsPage: React.FC = () => {
                           return (
                             <div key={m.id} className="flex items-center justify-between text-xs bg-white px-2.5 py-1.5 rounded-lg border border-slate-200">
                               <span className="font-bold text-slate-800 truncate">
-                                {m.name} <span className="text-slate-400 font-normal text-[11px]">({m.category})</span>
+                                {m.name} <span className="text-slate-400 font-normal text-[11px]">(Chest #{m.chestNumber || m.id} • {m.category})</span>
                               </span>
                               {asg && (
                                 <button
@@ -797,7 +797,7 @@ export const ProgrammeAssignmentsPage: React.FC = () => {
                           <div>
                             <span className="font-bold text-sm text-slate-900 block">{member.name}</span>
                             <span className="text-xs text-slate-500 font-medium">
-                              ID: {member.id} • Category: {member.category}
+                              Chest #{member.chestNumber || member.id} • Category: {member.category}
                             </span>
                           </div>
                         </div>
@@ -974,7 +974,7 @@ export const ProgrammeAssignmentsPage: React.FC = () => {
                           <div>
                             <span className="font-bold text-sm text-slate-900 block">{member.name}</span>
                             <span className="text-xs text-slate-500 font-medium">
-                              ID: {member.id} • Category: {member.category}
+                              Chest #{member.chestNumber || member.id} • Category: {member.category}
                             </span>
                           </div>
                         </div>
