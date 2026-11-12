@@ -21,6 +21,7 @@ import {
   ArrowRight,
   ExternalLink,
   ChevronRight,
+  ChevronLeft,
   Layers,
   Phone,
   Mail,
@@ -246,101 +247,13 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
           </div>
         </div>
 
-        {/* Navigation Sections */}
-        <div className="hidden lg:flex items-center gap-1 text-xs font-semibold text-slate-600">
-          <button
-            onClick={() => setActiveTabSection('overview')}
-            className={`px-3 py-1.5 rounded-lg transition-colors ${
-              activeTabSection === 'overview'
-                ? 'bg-slate-100 text-slate-900 font-bold'
-                : 'hover:text-slate-900'
-            }`}
-          >
-            Overview
-          </button>
-          <button
-            onClick={() => setActiveTabSection('leaderboard')}
-            className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
-              activeTabSection === 'leaderboard'
-                ? 'bg-slate-100 text-slate-900 font-bold'
-                : 'hover:text-slate-900'
-            }`}
-          >
-            <Trophy className="w-3.5 h-3.5 text-amber-500" />
-            <span>Leaderboard</span>
-          </button>
-          <button
-            onClick={() => setActiveTabSection('student_search')}
-            className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
-              activeTabSection === 'student_search'
-                ? 'bg-slate-100 text-slate-900 font-bold'
-                : 'hover:text-slate-900'
-            }`}
-          >
-            <Search className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Student Search</span>
-          </button>
-          <button
-            onClick={() => setActiveTabSection('results')}
-            className={`px-3 py-1.5 rounded-lg transition-colors ${
-              activeTabSection === 'results'
-                ? 'bg-slate-100 text-slate-900 font-bold'
-                : 'hover:text-slate-900'
-            }`}
-          >
-            Live Results ({publishedResults.length})
-          </button>
-          <button
-            onClick={() => setActiveTabSection('schedule')}
-            className={`px-3 py-1.5 rounded-lg transition-colors ${
-              activeTabSection === 'schedule'
-                ? 'bg-slate-100 text-slate-900 font-bold'
-                : 'hover:text-slate-900'
-            }`}
-          >
-            Timetable
-          </button>
-          <button
-            onClick={() => setActiveTabSection('teams')}
-            className={`px-3 py-1.5 rounded-lg transition-colors ${
-              activeTabSection === 'teams'
-                ? 'bg-slate-100 text-slate-900 font-bold'
-                : 'hover:text-slate-900'
-            }`}
-          >
-            Houses & Teams ({teams.length})
-          </button>
-          {allPhotos.length > 0 && (
-            <button
-              onClick={() => setActiveTabSection('gallery')}
-              className={`px-3 py-1.5 rounded-lg transition-colors ${
-                activeTabSection === 'gallery'
-                  ? 'bg-slate-100 text-slate-900 font-bold'
-                  : 'hover:text-slate-900'
-              }`}
-            >
-              Photo Gallery ({allPhotos.length})
-            </button>
-          )}
-          <button
-            onClick={() => setActiveTabSection('bulletin')}
-            className={`px-3 py-1.5 rounded-lg transition-colors ${
-              activeTabSection === 'bulletin'
-                ? 'bg-slate-100 text-slate-900 font-bold'
-                : 'hover:text-slate-900'
-            }`}
-          >
-            Bulletins
-          </button>
-        </div>
-
-        {/* Menu Bar Trigger Button */}
+        {/* Menu Bar Button */}
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => setMenuDrawerOpen(true)}
             aria-label="Open Navigation Menu"
-            className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all shadow-xs active:scale-95 cursor-pointer"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all shadow-xs active:scale-95 cursor-pointer"
           >
             <Menu className="w-4 h-4 text-white" />
             <span>Menu</span>
@@ -348,97 +261,29 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
         </div>
       </nav>
 
-      {/* Mobile Horizontal Section Navigation Bar */}
-      <div className="flex lg:hidden overflow-x-auto py-2.5 px-3 gap-1.5 border-b border-slate-200 bg-white/95 backdrop-blur-md sticky top-[57px] z-30 no-scrollbar shadow-2xs">
-        <button
-          onClick={() => setActiveTabSection('overview')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
-            activeTabSection === 'overview'
-              ? 'bg-slate-900 text-white shadow-xs'
-              : 'bg-slate-100 text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          Overview
-        </button>
-        <button
-          onClick={() => setActiveTabSection('leaderboard')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors flex items-center gap-1 ${
-            activeTabSection === 'leaderboard'
-              ? 'bg-slate-900 text-white shadow-xs'
-              : 'bg-slate-100 text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <Trophy className="w-3 h-3 text-amber-500" />
-          <span>Leaderboard</span>
-        </button>
-        <button
-          onClick={() => setActiveTabSection('student_search')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors flex items-center gap-1 ${
-            activeTabSection === 'student_search'
-              ? 'bg-slate-900 text-white shadow-xs'
-              : 'bg-slate-100 text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <Search className="w-3 h-3 text-indigo-500" />
-          <span>Student Search</span>
-        </button>
-        <button
-          onClick={() => setActiveTabSection('results')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
-            activeTabSection === 'results'
-              ? 'bg-slate-900 text-white shadow-xs'
-              : 'bg-slate-100 text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          Live Results ({publishedResults.length})
-        </button>
-        <button
-          onClick={() => setActiveTabSection('schedule')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
-            activeTabSection === 'schedule'
-              ? 'bg-slate-900 text-white shadow-xs'
-              : 'bg-slate-100 text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          Timetable
-        </button>
-        <button
-          onClick={() => setActiveTabSection('teams')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
-            activeTabSection === 'teams'
-              ? 'bg-slate-900 text-white shadow-xs'
-              : 'bg-slate-100 text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          Houses & Teams ({teams.length})
-        </button>
-        {allPhotos.length > 0 && (
-          <button
-            onClick={() => setActiveTabSection('gallery')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
-              activeTabSection === 'gallery'
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'bg-slate-100 text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Photos ({allPhotos.length})
-          </button>
-        )}
-        <button
-          onClick={() => setActiveTabSection('bulletin')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
-            activeTabSection === 'bulletin'
-              ? 'bg-slate-900 text-white shadow-xs'
-              : 'bg-slate-100 text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          Bulletins
-        </button>
-      </div>
+      {/* Subview Navigation Breadcrumb (When viewing a specific section) */}
+      {activeTabSection !== 'overview' && (
+        <div className="bg-slate-100/90 border-b border-slate-200 py-3 px-4 sm:px-8 sticky top-[57px] z-30 backdrop-blur-xs">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => setActiveTabSection('overview')}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-700 hover:text-indigo-900 transition-colors cursor-pointer"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span>Back to Festival Overview</span>
+            </button>
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              {activeTabSection === 'student_search' ? 'Student Directory' : activeTabSection.replace('_', ' ')}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* ==================================================================== */}
-      {/* 2. HERO SECTION WITH ADMIN-MANAGED VIDEO & FALLBACKS                 */}
+      {/* 2. HERO SECTION WITH ADMIN-MANAGED VIDEO & FALLBACKS (OVERVIEW ONLY) */}
       {/* ==================================================================== */}
+      {activeTabSection === 'overview' && (
       <section className="relative min-h-[420px] sm:min-h-[480px] lg:min-h-[600px] flex items-center justify-center overflow-hidden bg-slate-950 text-white">
         {/* Background Video */}
         {pageData.hero.videoUrl && !videoFailed ? (
@@ -660,6 +505,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
           </div>
         </div>
       </section>
+      )}
 
       {/* ==================================================================== */}
       {/* 3. MAIN SECTION: CURATED MAIN PHOTOS                                */}
@@ -1156,70 +1002,62 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                 </div>
               </div>
 
-              {/* Bento Card 5: Official Secretariat & Help Desk */}
+              {/* Bento Card 5: Festival Campus & Stage Locations */}
               <div className="bg-slate-900 text-white rounded-3xl p-6 sm:p-7 shadow-xl border border-slate-800 flex flex-col justify-between">
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-pink-400 bg-pink-950/80 border border-pink-800/80 px-2.5 py-0.5 rounded-full">
-                    Official Helpdesk
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400 bg-indigo-950/80 border border-indigo-800/80 px-2.5 py-0.5 rounded-full">
+                    Festival Grounds
                   </span>
                   
                   <h4 className="text-lg font-bold text-white tracking-tight mt-2.5">
-                    Festival Secretariat & Support
+                    Campus Grounds & Stages
                   </h4>
                   <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-                    Direct official support channels for contestant inquiries, schedule clarifications, and scoring.
+                    Official venues, stage distribution, and campus grounds for all accredited festival events.
                   </p>
 
                   <div className="space-y-2.5 mt-4 text-xs">
-                    <a
-                      href={`tel:${settings.contactPhone || '9844691633'}`}
-                      className="flex items-center gap-3 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/10"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-                        <Phone className="w-4 h-4" />
+                    <div className="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1">
+                      <div className="flex items-center gap-2 text-indigo-300 font-semibold text-[11px]">
+                        <MapPin className="w-3.5 h-3.5" />
+                        <span>Festival Venue</span>
                       </div>
-                      <div>
-                        <div className="text-[10px] text-slate-400 uppercase font-semibold">Phone Helpline</div>
-                        <div className="font-bold text-white">{settings.contactPhone || '9844691633'}</div>
+                      <div className="font-bold text-white text-sm">
+                        {fest ? `${fest.venue || ''}${fest.institution ? `, ${fest.institution}` : ''}` : (pageData.content.venueInfo || settings.venue || 'Grand Campus Convention Center')}
                       </div>
-                    </a>
+                    </div>
 
-                    <a
-                      href={`mailto:${settings.contactEmail || 'abdwahidbc@gmail.com'}`}
-                      className="flex items-center gap-3 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/10"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0">
-                        <Mail className="w-4 h-4" />
+                    <div className="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1">
+                      <div className="flex items-center gap-2 text-indigo-300 font-semibold text-[11px]">
+                        <Calendar className="w-3.5 h-3.5" />
+                        <span>Festival Dates</span>
                       </div>
-                      <div className="min-w-0">
-                        <div className="text-[10px] text-slate-400 uppercase font-semibold">Official Email</div>
-                        <div className="font-bold text-white truncate">{settings.contactEmail || 'abdwahidbc@gmail.com'}</div>
+                      <div className="font-bold text-white">
+                        {fest?.startDate || settings.startDate} to {fest?.endDate || settings.endDate}
                       </div>
-                    </a>
+                    </div>
 
-                    <a
-                      href={`https://instagram.com/${settings.contactInstagram || 'abd_l_wahid_'}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-3 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/10"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-pink-500/20 text-pink-400 flex items-center justify-center shrink-0">
-                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-                          <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-                          <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
-                        </svg>
+                    <div className="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1">
+                      <div className="flex items-center gap-2 text-indigo-300 font-semibold text-[11px]">
+                        <Layers className="w-3.5 h-3.5" />
+                        <span>Official Stages</span>
                       </div>
-                      <div>
-                        <div className="text-[10px] text-slate-400 uppercase font-semibold">Official Instagram</div>
-                        <div className="font-bold text-white">@{settings.contactInstagram || 'abd_l_wahid_'}</div>
+                      <div className="text-slate-300 text-xs">
+                        Main Stage, Open Amphitheatre, Cultural Hall & Seminar Stage
                       </div>
-                    </a>
+                    </div>
                   </div>
                 </div>
 
-                <div className="mt-5 pt-4 border-t border-slate-800 text-[11px] text-slate-400">
-                  <span>Venue: <strong className="text-slate-200">{fest?.venue || settings.venue || pageData.content.venueInfo}</strong></span>
+                <div className="mt-5 pt-4 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+                  <span>Entry open to contestants & delegates</span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTabSection('schedule')}
+                    className="text-indigo-400 hover:text-indigo-300 font-bold"
+                  >
+                    View Schedule →
+                  </button>
                 </div>
               </div>
             </div>
@@ -2385,39 +2223,8 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       <footer className="mt-auto border-t border-slate-200 bg-slate-50 py-8 px-4 sm:px-8 text-xs text-slate-500">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div>
-            <p className="font-medium text-slate-700">© 2026 {settings.festName}. Powered by Festoria Festival Management Platform.</p>
+            <p className="font-medium text-slate-700">© 2026 {festName}. Powered by Festoria Festival Management Platform.</p>
             <p className="text-[11px] text-slate-400 mt-0.5">Unified collegiate governance & scoring infrastructure.</p>
-          </div>
-
-          {/* Help & Secretariat Support Contact */}
-          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-xs text-slate-600">
-            <a
-              href={`mailto:${settings.contactEmail || 'abdwahidbc@gmail.com'}`}
-              className="inline-flex items-center gap-1.5 hover:text-slate-900 transition-colors"
-            >
-              <Mail className="w-3.5 h-3.5 text-indigo-600" />
-              <span>{settings.contactEmail || 'abdwahidbc@gmail.com'}</span>
-            </a>
-            <a
-              href={`tel:${settings.contactPhone || '9844691633'}`}
-              className="inline-flex items-center gap-1.5 hover:text-slate-900 transition-colors"
-            >
-              <Phone className="w-3.5 h-3.5 text-emerald-600" />
-              <span>{settings.contactPhone || '9844691633'}</span>
-            </a>
-            <a
-              href={`https://instagram.com/${settings.contactInstagram || 'abd_l_wahid_'}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 hover:text-pink-600 transition-colors font-medium"
-            >
-              <svg className="w-3.5 h-3.5 text-pink-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
-              </svg>
-              <span>@{settings.contactInstagram || 'abd_l_wahid_'}</span>
-            </a>
           </div>
 
           <div className="flex items-center gap-4">
@@ -2739,48 +2546,23 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                   </div>
                 </div>
 
-                {/* Secretariat Help & Contact */}
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3">
+                {/* Festival Grounds & Edition Info */}
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2 text-xs">
                   <div className="flex items-center justify-between">
-                    <h5 className="text-xs font-bold text-slate-900">Festival Secretariat</h5>
+                    <h5 className="font-bold text-slate-900">Festival Info</h5>
                     <span className="text-[10px] bg-indigo-100 text-indigo-800 font-semibold px-2 py-0.5 rounded-full">
-                      Help & Support
+                      {fest?.edition || 'Official Edition'}
                     </span>
                   </div>
-                  <div className="space-y-2 text-xs">
-                    <a
-                      href={`tel:${settings.contactPhone || '9844691633'}`}
-                      className="flex items-center gap-2.5 text-slate-700 hover:text-slate-900 font-medium"
-                    >
-                      <div className="w-6 h-6 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
-                        <Phone className="w-3.5 h-3.5 text-emerald-700" />
-                      </div>
-                      <span>{settings.contactPhone || '9844691633'}</span>
-                    </a>
-                    <a
-                      href={`mailto:${settings.contactEmail || 'abdwahidbc@gmail.com'}`}
-                      className="flex items-center gap-2.5 text-slate-700 hover:text-slate-900 font-medium truncate"
-                    >
-                      <div className="w-6 h-6 rounded-lg bg-indigo-100 flex items-center justify-center shrink-0">
-                        <Mail className="w-3.5 h-3.5 text-indigo-700" />
-                      </div>
-                      <span className="truncate">{settings.contactEmail || 'abdwahidbc@gmail.com'}</span>
-                    </a>
-                    <a
-                      href={`https://instagram.com/${settings.contactInstagram || 'abd_l_wahid_'}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2.5 text-slate-700 hover:text-pink-600 font-medium"
-                    >
-                      <div className="w-6 h-6 rounded-lg bg-pink-100 flex items-center justify-center shrink-0">
-                        <svg className="w-3.5 h-3.5 text-pink-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-                          <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-                          <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
-                        </svg>
-                      </div>
-                      <span>@{settings.contactInstagram || 'abd_l_wahid_'}</span>
-                    </a>
+                  <div className="text-slate-600 space-y-1.5 text-[11px] pt-1">
+                    <div className="flex items-start gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-indigo-600 shrink-0 mt-0.5" />
+                      <span>Venue: <strong className="text-slate-800">{fest?.venue || settings.venue || 'Campus Convention Grounds'}</strong></span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                      <span>Dates: <strong className="text-slate-800">{fest?.startDate || settings.startDate} to {fest?.endDate || settings.endDate}</strong></span>
+                    </div>
                   </div>
                 </div>
               </div>
