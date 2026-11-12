@@ -83,10 +83,12 @@ export const FestoriaHomePage: React.FC = () => {
       {/* ==================================================================== */}
       <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-[#e2e8f0] px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-xs">
         <div className="flex items-center gap-3">
-          {/* Brand Mark with Luminous Electric Gradient */}
-          <div className="w-9 h-9 rounded-lg bg-linear-to-br from-[#4648d4] via-[#6063ee] to-[#712ae2] text-white flex items-center justify-center font-black text-base tracking-widest shadow-md shadow-[#4648d4]/25">
-            F
-          </div>
+          {/* Official Festoria Monogram Logo */}
+          <img
+            src="/festoria-logo.jpg"
+            alt="Festoria Logo"
+            className="w-10 h-10 rounded-xl object-contain shadow-sm border border-slate-200/80 bg-white"
+          />
           <div>
             <div className="flex items-center gap-2">
               <span className="text-base font-extrabold tracking-tight text-[#0f172a] leading-tight">
@@ -164,9 +166,11 @@ export const FestoriaHomePage: React.FC = () => {
             <div className="space-y-6">
               <div className="flex items-center justify-between pb-4 border-b border-slate-200">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-linear-to-br from-[#4648d4] to-[#712ae2] text-white flex items-center justify-center font-bold text-sm">
-                    F
-                  </div>
+                  <img
+                    src="/festoria-logo.jpg"
+                    alt="Festoria Logo"
+                    className="w-8 h-8 rounded-lg object-contain shadow-2xs border border-slate-200/80 bg-white"
+                  />
                   <span className="font-bold text-slate-900 text-sm">Festoria Menu</span>
                 </div>
                 <button
@@ -887,9 +891,11 @@ export const FestoriaHomePage: React.FC = () => {
       <footer className="border-t border-[#e2e8f0] bg-white py-10 px-4 sm:px-8 text-xs text-[#64748b]">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-6 h-6 rounded bg-[#4648d4] text-white flex items-center justify-center font-bold text-xs shadow-xs">
-              F
-            </div>
+            <img
+              src="/festoria-logo.jpg"
+              alt="Festoria Logo"
+              className="w-6 h-6 rounded-md object-contain shadow-2xs border border-slate-200/80 bg-white"
+            />
             <span className="text-[#0f172a] font-bold">Festoria Platform</span>
             <span>— Institutional Festival Management Architecture</span>
           </div>

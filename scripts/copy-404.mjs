@@ -20,10 +20,10 @@ if (!fs.existsSync(festoriaSubdir)) {
   fs.mkdirSync(festoriaSubdir, { recursive: true });
 }
 
-// Mirror all HTML files into /dist/festoria/
+// Mirror all HTML and image/icon assets into /dist/festoria/
 const files = fs.readdirSync(distDir);
 for (const file of files) {
-  if (file.endsWith('.html')) {
+  if (file.endsWith('.html') || file.endsWith('.jpg') || file.endsWith('.png') || file.endsWith('.svg') || file.endsWith('.ico')) {
     fs.copyFileSync(path.join(distDir, file), path.join(festoriaSubdir, file));
   }
 }

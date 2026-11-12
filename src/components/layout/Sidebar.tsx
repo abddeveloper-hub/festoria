@@ -148,9 +148,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
         {/* Brand Header */}
         <div className="h-16 px-5 border-b border-slate-200 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded border border-slate-900 bg-slate-900 text-white flex items-center justify-center font-bold text-sm tracking-wide">
-              F
-            </div>
+            <img
+              src="/festoria-logo.jpg"
+              alt="Festoria Logo"
+              className="w-8 h-8 rounded-lg object-contain border border-slate-200/80 bg-white shadow-2xs"
+            />
             <div>
               <div className="text-sm font-bold text-slate-900 tracking-tight leading-tight flex items-center gap-1.5">
                 {settings.festName}

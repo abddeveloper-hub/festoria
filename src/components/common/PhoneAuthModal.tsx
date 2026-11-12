@@ -317,9 +317,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {/* Header */}
         <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-200 flex items-center justify-between bg-white shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-xs tracking-wider shadow-xs">
-              <ShieldCheck className="w-4 h-4" />
-            </div>
+            <img
+              src="/festoria-logo.jpg"
+              alt="Festoria Logo"
+              className="w-10 h-10 rounded-xl object-contain border border-slate-200/80 bg-white shadow-xs"
+            />
             <div>
               <h2 className="text-base sm:text-lg font-bold text-slate-900">
                 {authMode === 'register'

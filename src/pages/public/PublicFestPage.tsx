@@ -225,9 +225,11 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               className="h-9 object-contain"
             />
           ) : (
-            <div className="w-9 h-9 rounded-lg bg-slate-900 text-white flex items-center justify-center font-black text-sm tracking-widest shadow-xs">
-              {festName.slice(0, 2).toUpperCase()}
-            </div>
+            <img
+              src="/festoria-logo.jpg"
+              alt={festName}
+              className="w-9 h-9 rounded-xl object-contain shadow-xs border border-slate-200/80 bg-white"
+            />
           )}
 
           <div>

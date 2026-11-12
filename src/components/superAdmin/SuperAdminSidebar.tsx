@@ -167,9 +167,11 @@ export const SuperAdminSidebar: React.FC<SuperAdminSidebarProps> = ({ mobileOpen
         {/* Brand & Platform Header */}
         <div className="h-16 px-5 border-b border-slate-200 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded border border-slate-900 bg-slate-900 text-white flex items-center justify-center font-bold text-xs tracking-wider">
-              SA
-            </div>
+            <img
+              src="/festoria-logo.jpg"
+              alt="Festoria Logo"
+              className="w-8 h-8 rounded-lg object-contain border border-slate-200/80 bg-white shadow-2xs"
+            />
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="font-semibold text-slate-900 text-sm tracking-tight">Festoria</span>
