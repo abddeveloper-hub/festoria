@@ -36,7 +36,8 @@ import {
   Search,
   Medal,
   Users,
-  CheckCircle2
+  CheckCircle2,
+  Menu
 } from 'lucide-react';
 
 interface PublicFestPageProps {
@@ -88,6 +89,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authRole, setAuthRole] = useState<Role | 'participant' | 'auto'>('participant');
   const [authMode, setAuthMode] = useState<'signin' | 'register'>('signin');
+  const [menuDrawerOpen, setMenuDrawerOpen] = useState(false);
 
   // Video playback state
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -332,24 +334,16 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
           </button>
         </div>
 
-        {/* Action Buttons */}
+        {/* Menu Bar Trigger Button */}
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => openAuth('participant', 'register')}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-900 text-xs font-semibold hover:bg-indigo-100 transition-colors shadow-2xs"
+            onClick={() => setMenuDrawerOpen(true)}
+            aria-label="Open Navigation Menu"
+            className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all shadow-xs active:scale-95 cursor-pointer"
           >
-            <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Register Now</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => openAuth('participant', 'signin')}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-900 bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors shadow-xs"
-          >
-            <User className="w-3.5 h-3.5" />
-            <span>Sign In</span>
+            <Menu className="w-4 h-4 text-white" />
+            <span>Menu</span>
           </button>
         </div>
       </nav>
@@ -727,236 +721,510 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       )}
 
       {/* ==================================================================== */}
-      {/* 4. OVERVIEW SECTION: ABOUT & SCHEDULE HIGHLIGHTS                     */}
+      {/* 4. OVERVIEW SECTION: STRUCTURED BENTO GRID & METRICS                 */}
       {/* ==================================================================== */}
       {activeTabSection === 'overview' && (
-        <section className="py-16 max-w-7xl mx-auto px-4 sm:px-8 space-y-12">
-          {/* Welcome & Highlights Card */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-            <div className="lg:col-span-2 space-y-4">
-              <span className="text-xs font-bold text-indigo-600 uppercase tracking-widest">
-                Welcome
-              </span>
-              <h3 className="text-2xl font-bold tracking-tight text-slate-900">
-                {pageData.content.welcomeTitle}
-              </h3>
-              <p className="text-sm text-slate-600 leading-relaxed">
-                {pageData.content.welcomeMessage}
-              </p>
-              <div className="pt-2">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
-                  Festival Highlights
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {pageData.content.highlights.map((h, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700"
+        <>
+          {/* Festival Quick Metrics Strip */}
+          <section className="border-b border-slate-200 bg-slate-50/90 py-5">
+            <div className="max-w-7xl mx-auto px-4 sm:px-8">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+                <div className="flex items-center gap-3 p-3 sm:p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center shrink-0">
+                    <Award className="w-5 h-5 text-indigo-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="font-mono font-black text-lg sm:text-xl text-slate-900 leading-tight block">
+                      {publishedProgrammes.length > 0 ? publishedProgrammes.length : '40+'}
+                    </span>
+                    <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 uppercase tracking-wider block truncate">
+                      Collegiate Events
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 sm:p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs">
+                  <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center shrink-0">
+                    <Shield className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="font-mono font-black text-lg sm:text-xl text-slate-900 leading-tight block">
+                      {teams.length > 0 ? teams.length : '4'}
+                    </span>
+                    <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 uppercase tracking-wider block truncate">
+                      Competing Houses
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 sm:p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
+                    <Users className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="font-mono font-black text-lg sm:text-xl text-slate-900 leading-tight block">
+                      {festParticipants.length > 0 ? festParticipants.length : '100+'}
+                    </span>
+                    <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 uppercase tracking-wider block truncate">
+                      Contestants
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 sm:p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
+                    <Trophy className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="font-mono font-black text-lg sm:text-xl text-slate-900 leading-tight block">
+                      {publishedResults.length}
+                    </span>
+                    <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 uppercase tracking-wider block truncate">
+                      Ratified Results
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Structured Bento Grid */}
+          <section className="py-12 max-w-7xl mx-auto px-4 sm:px-8 space-y-8">
+            {/* Bento Row 1: Welcome & Highlights (2 cols) + Official Portals Gateway (1 col) */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+              
+              {/* Bento Card 1: Official Festival Brief & Highlights */}
+              <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-8 shadow-xs flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200/60 text-indigo-700 text-xs font-bold uppercase tracking-wider">
+                      <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Official Festival Portal</span>
+                    </span>
+                    <span className="text-xs text-slate-400 font-semibold">
+                      {fest?.edition || settings.festEdition || '2026 Edition'}
+                    </span>
+                  </div>
+
+                  <h3 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-tight">
+                    {pageData.content.welcomeTitle || `Welcome to ${festName}`}
+                  </h3>
+                  
+                  <p className="text-xs sm:text-sm text-slate-600 mt-2.5 leading-relaxed">
+                    {pageData.content.welcomeMessage || fest?.description || 'Join thousands of delegates, participants, and spectators across multiple stages and auditoriums in this premier inter-collegiate cultural and arts summit.'}
+                  </p>
+                </div>
+
+                {/* Highlights Feature Grid */}
+                <div className="mt-6 pt-6 border-t border-slate-100">
+                  <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-3.5">
+                    Festival Highlights & Standards
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {pageData.content.highlights && pageData.content.highlights.length > 0 ? (
+                      pageData.content.highlights.map((h, idx) => (
+                        <div
+                          key={idx}
+                          className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col justify-between"
+                        >
+                          <div className="w-8 h-8 rounded-xl bg-indigo-100/70 text-indigo-700 flex items-center justify-center mb-2">
+                            {idx === 0 ? (
+                              <Trophy className="w-4 h-4" />
+                            ) : idx === 1 ? (
+                              <Shield className="w-4 h-4" />
+                            ) : (
+                              <Award className="w-4 h-4" />
+                            )}
+                          </div>
+                          <span className="font-bold text-xs text-slate-900 line-clamp-3">{h}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <>
+                        <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col justify-between">
+                          <div className="w-8 h-8 rounded-xl bg-indigo-100/70 text-indigo-700 flex items-center justify-center mb-2">
+                            <Trophy className="w-4 h-4" />
+                          </div>
+                          <h5 className="font-bold text-xs text-slate-900">40+ Accredited Events</h5>
+                          <p className="text-[11px] text-slate-500 mt-0.5">Stage, on-stage and off-stage arts competitions.</p>
+                        </div>
+
+                        <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col justify-between">
+                          <div className="w-8 h-8 rounded-xl bg-purple-100/70 text-purple-700 flex items-center justify-center mb-2">
+                            <Shield className="w-4 h-4" />
+                          </div>
+                          <h5 className="font-bold text-xs text-slate-900">Real-Time Scoring</h5>
+                          <p className="text-[11px] text-slate-500 mt-0.5">Instant judge tabulation with transparent ratifications.</p>
+                        </div>
+
+                        <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col justify-between">
+                          <div className="w-8 h-8 rounded-xl bg-emerald-100/70 text-emerald-700 flex items-center justify-center mb-2">
+                            <Award className="w-4 h-4" />
+                          </div>
+                          <h5 className="font-bold text-xs text-slate-900">Certified Honors</h5>
+                          <p className="text-[11px] text-slate-500 mt-0.5">Official medals, trophies, and university certifications.</p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Bento Card 2: Official Portals Gateway */}
+              <div className="bg-slate-950 text-white rounded-3xl p-6 sm:p-7 shadow-xl border border-slate-800 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400 bg-indigo-950/80 border border-indigo-800/80 px-2.5 py-0.5 rounded-full">
+                      Portals
+                    </span>
+                    <span className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-400">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                      <span>Access Open</span>
+                    </span>
+                  </div>
+
+                  <h4 className="text-lg font-bold text-white tracking-tight">
+                    Participant & Leader Portals
+                  </h4>
+                  <p className="text-xs text-slate-300 mt-1.5 leading-relaxed">
+                    Access your live scores, view registered stage entries, or manage house contestant rosters.
+                  </p>
+
+                  <div className="space-y-2.5 mt-5">
+                    <button
+                      type="button"
+                      onClick={() => openAuth('participant', 'signin')}
+                      className="w-full flex items-center justify-between p-3 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 transition-all text-xs font-semibold text-white group"
                     >
-                      <Sparkles className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
-                      <span>{h}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-300 flex items-center justify-center">
+                          <User className="w-4 h-4" />
+                        </div>
+                        <div className="text-left">
+                          <div className="text-xs font-bold text-white">Participant Dashboard</div>
+                          <div className="text-[10px] text-slate-300">View chest # and events</div>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
 
-            {/* Quick Portal Access Card */}
-            <div className="bg-slate-900 text-white rounded-2xl p-6 space-y-5 shadow-xl border border-slate-800">
-              <div>
-                <h4 className="text-sm font-bold tracking-tight text-white">
-                  Participant & Leader Portals
-                </h4>
-                <p className="text-xs text-slate-400 mt-1">
-                  Access live scores, verify team assignments, or register as an official contestant.
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <button
-                  type="button"
-                  onClick={() => openAuth('participant', 'signin')}
-                  className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 transition-colors text-xs font-semibold text-white"
-                >
-                  <div className="flex items-center gap-2">
-                    <User className="w-4 h-4 text-indigo-300" />
-                    <span>Participant Dashboard</span>
+                    <button
+                      type="button"
+                      onClick={() => openAuth('team_leader', 'signin')}
+                      className="w-full flex items-center justify-between p-3 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 transition-all text-xs font-semibold text-white group"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center">
+                          <Shield className="w-4 h-4" />
+                        </div>
+                        <div className="text-left">
+                          <div className="text-xs font-bold text-white">Team Leader Portal</div>
+                          <div className="text-[10px] text-slate-300">Manage house contestants</div>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400" />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => openAuth('team_leader', 'signin')}
-                  className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 transition-colors text-xs font-semibold text-white"
-                >
-                  <div className="flex items-center gap-2">
-                    <Shield className="w-4 h-4 text-emerald-300" />
-                    <span>Team Leader Portal</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400" />
-                </button>
-              </div>
-
-              <div className="pt-3 border-t border-slate-800 text-[11px] text-slate-400 space-y-1.5">
-                <div>Venue: <strong className="text-slate-200">{pageData.content.venueInfo}</strong></div>
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span>Contact:</span>
-                  <a href={`mailto:${pageData.content.contactEmail || 'abdwahidbc@gmail.com'}`} className="text-indigo-400 hover:underline font-medium">
-                    {pageData.content.contactEmail || 'abdwahidbc@gmail.com'}
-                  </a>
-                  <span>•</span>
-                  <a href={`tel:${pageData.content.contactPhone || '9844691633'}`} className="text-emerald-400 hover:underline font-medium">
-                    {pageData.content.contactPhone || '9844691633'}
-                  </a>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span>Instagram:</span>
-                  <a
-                    href={`https://instagram.com/${pageData.content.contactInstagram || 'abd_l_wahid_'}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-pink-400 hover:underline font-medium inline-flex items-center gap-1"
+
+                {/* Fast registration CTA */}
+                <div className="mt-6 pt-5 border-t border-slate-800 flex items-center justify-between">
+                  <span className="text-[11px] text-slate-400">New participant?</span>
+                  <button
+                    type="button"
+                    onClick={() => openAuth('participant', 'register')}
+                    className="px-3.5 py-1.5 rounded-xl bg-white text-slate-950 font-bold text-xs hover:bg-slate-100 transition-colors shadow-xs"
                   >
-                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-                      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-                      <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
-                    </svg>
-                    <span>@{pageData.content.contactInstagram || 'abd_l_wahid_'}</span>
-                  </a>
+                    Register Now →
+                  </button>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Live Championship Spotlight Pod on Overview */}
-          <div className="bg-slate-50 border border-slate-200 rounded-3xl p-6 sm:p-8 space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <span className="text-xs font-bold text-indigo-600 uppercase tracking-widest block">
-                  Live Championship Standings
-                </span>
-                <h4 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight mt-0.5">
-                  Top Scoring Leaders & Houses
-                </h4>
-                <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                  Live ratified points from individual stage competitions and house performances.
-                </p>
-              </div>
+            {/* Bento Row 2: Live Championship Standings Spotlight (Full Width) */}
+            <div className="bg-slate-50 border border-slate-200 rounded-3xl p-6 sm:p-8 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <span className="text-xs font-bold text-indigo-600 uppercase tracking-widest block">
+                    Live Championship Standings
+                  </span>
+                  <h4 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight mt-0.5">
+                    Top Scoring Leaders & Houses
+                  </h4>
+                  <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                    Live ratified points from individual stage competitions and house performances.
+                  </p>
+                </div>
 
-              {/* Toggle Pod: Teams vs Individual */}
-              <div className="flex items-center gap-1.5 p-1 bg-white rounded-xl border border-slate-200 shadow-2xs self-start sm:self-auto">
-                <button
-                  type="button"
-                  onClick={() => setOverviewLeaderboardToggle('team')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    overviewLeaderboardToggle === 'team'
-                      ? 'bg-slate-900 text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Top Teams
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setOverviewLeaderboardToggle('individual')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    overviewLeaderboardToggle === 'individual'
-                      ? 'bg-slate-900 text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Top Students
-                </button>
-              </div>
-            </div>
-
-            {/* Content for Spotlight */}
-            {overviewLeaderboardToggle === 'team' ? (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {leaderboard.slice(0, 3).map((entry, idx) => (
-                  <div
-                    key={entry.team.id}
-                    className={`p-5 rounded-2xl border transition-all ${
-                      idx === 0
-                        ? 'bg-amber-50/70 border-amber-300 shadow-sm'
-                        : idx === 1
-                        ? 'bg-slate-100/80 border-slate-300'
-                        : 'bg-amber-50/40 border-amber-200'
+                {/* Switcher: Top Teams vs Top Students */}
+                <div className="flex items-center gap-1.5 p-1 bg-white rounded-xl border border-slate-200 shadow-2xs self-start sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={() => setOverviewLeaderboardToggle('team')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      overviewLeaderboardToggle === 'team'
+                        ? 'bg-slate-900 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-3">
-                      <span className={`text-xs font-black px-2.5 py-1 rounded-lg ${
-                        idx === 0
-                          ? 'bg-amber-400 text-slate-950'
-                          : idx === 1
-                          ? 'bg-slate-300 text-slate-800'
-                          : 'bg-amber-200 text-amber-900'
-                      }`}>
-                        {idx === 0 ? '🥇 1st Place' : idx === 1 ? '🥈 2nd Place' : '🥉 3rd Place'}
-                      </span>
-                      <span className="font-mono font-black text-lg text-slate-900">
-                        {entry.totalPoints} pts
-                      </span>
-                    </div>
-                    <h5 className="font-bold text-base text-slate-900">{entry.team.name}</h5>
-                    <p className="text-xs text-slate-500 mt-0.5">{entry.team.institution || 'Collegiate House'}</p>
-                    <div className="mt-3 pt-3 border-t border-slate-200/60 flex items-center justify-between text-xs font-medium text-slate-600">
-                      <span>🥇 {entry.firstPlaceCount} Gold</span>
-                      <span>🥈 {entry.secondPlaceCount} Silver</span>
-                      <span>🥉 {entry.thirdPlaceCount} Bronze</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {topIndividualContestants.slice(0, 3).map((entry, idx) => (
-                  <div
-                    key={entry.participant.id}
-                    className={`p-5 rounded-2xl border transition-all ${
-                      idx === 0
-                        ? 'bg-amber-50/70 border-amber-300 shadow-sm'
-                        : idx === 1
-                        ? 'bg-slate-100/80 border-slate-300'
-                        : 'bg-amber-50/40 border-amber-200'
+                    Top Teams
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOverviewLeaderboardToggle('individual')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      overviewLeaderboardToggle === 'individual'
+                        ? 'bg-slate-900 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="font-mono font-bold text-xs bg-slate-900 text-amber-300 px-2.5 py-1 rounded-md">
-                        Chest #{entry.participant.chestNumber || entry.participant.id}
-                      </span>
-                      <span className="font-mono font-black text-lg text-slate-900">
-                        {entry.totalPoints} pts
-                      </span>
-                    </div>
-                    <h5 className="font-bold text-base text-slate-900">{entry.participant.name}</h5>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      {entry.team?.name || 'Independent'} • {entry.category}
-                    </p>
-                    <div className="mt-3 pt-3 border-t border-slate-200/60 flex items-center justify-between text-xs font-medium text-slate-600">
-                      <span>🥇 {entry.firstPlaceCount} 1st</span>
-                      <span>🥈 {entry.secondPlaceCount} 2nd</span>
-                      <span>🥉 {entry.thirdPlaceCount} 3rd</span>
-                    </div>
-                  </div>
-                ))}
+                    Top Students
+                  </button>
+                </div>
               </div>
-            )}
 
-            <div className="pt-2 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setActiveTabSection('leaderboard')}
-                className="text-xs sm:text-sm font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1.5"
-              >
-                <span>View Full Championship Leaderboards</span>
-                <ChevronRight className="w-4 h-4" />
-              </button>
+              {/* Content for Spotlight */}
+              {overviewLeaderboardToggle === 'team' ? (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {leaderboard.length === 0 ? (
+                    <div className="col-span-3 p-6 text-center text-xs text-slate-500 bg-white rounded-2xl border border-slate-200">
+                      Championship house standings will be published once preliminary results are ratified.
+                    </div>
+                  ) : (
+                    leaderboard.slice(0, 3).map((entry, idx) => (
+                      <div
+                        key={entry.team.id}
+                        className={`p-5 rounded-2xl border transition-all ${
+                          idx === 0
+                            ? 'bg-amber-50/70 border-amber-300 shadow-sm'
+                            : idx === 1
+                            ? 'bg-slate-100/80 border-slate-300'
+                            : 'bg-amber-50/40 border-amber-200'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <span className={`text-xs font-black px-2.5 py-1 rounded-lg ${
+                            idx === 0
+                              ? 'bg-amber-400 text-slate-950'
+                              : idx === 1
+                              ? 'bg-slate-300 text-slate-800'
+                              : 'bg-amber-200 text-amber-900'
+                          }`}>
+                            {idx === 0 ? '🥇 1st Place' : idx === 1 ? '🥈 2nd Place' : '🥉 3rd Place'}
+                          </span>
+                          <span className="font-mono font-black text-lg text-slate-900">
+                            {entry.totalPoints} pts
+                          </span>
+                        </div>
+                        <h5 className="font-bold text-base text-slate-900">{entry.team.name}</h5>
+                        <p className="text-xs text-slate-500 mt-0.5">{entry.team.institution || 'Collegiate House'}</p>
+                        <div className="mt-3 pt-3 border-t border-slate-200/60 flex items-center justify-between text-xs font-medium text-slate-600">
+                          <span>🥇 {entry.firstPlaceCount} Gold</span>
+                          <span>🥈 {entry.secondPlaceCount} Silver</span>
+                          <span>🥉 {entry.thirdPlaceCount} Bronze</span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {topIndividualContestants.length === 0 ? (
+                    <div className="col-span-3 p-6 text-center text-xs text-slate-500 bg-white rounded-2xl border border-slate-200">
+                      Individual student standings will appear once competitive stage events are concluded.
+                    </div>
+                  ) : (
+                    topIndividualContestants.slice(0, 3).map((entry, idx) => (
+                      <div
+                        key={entry.participant.id}
+                        className={`p-5 rounded-2xl border transition-all ${
+                          idx === 0
+                            ? 'bg-amber-50/70 border-amber-300 shadow-sm'
+                            : idx === 1
+                            ? 'bg-slate-100/80 border-slate-300'
+                            : 'bg-amber-50/40 border-amber-200'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="font-mono font-bold text-xs bg-slate-900 text-amber-300 px-2.5 py-1 rounded-md">
+                            Chest #{entry.participant.chestNumber || entry.participant.id}
+                          </span>
+                          <span className="font-mono font-black text-lg text-slate-900">
+                            {entry.totalPoints} pts
+                          </span>
+                        </div>
+                        <h5 className="font-bold text-base text-slate-900">{entry.participant.name}</h5>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {entry.team?.name || 'Independent'} • {entry.category}
+                        </p>
+                        <div className="mt-3 pt-3 border-t border-slate-200/60 flex items-center justify-between text-xs font-medium text-slate-600">
+                          <span>🥇 {entry.firstPlaceCount} 1st</span>
+                          <span>🥈 {entry.secondPlaceCount} 2nd</span>
+                          <span>🥉 {entry.thirdPlaceCount} 3rd</span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+              <div className="pt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setActiveTabSection('leaderboard')}
+                  className="text-xs sm:text-sm font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1.5"
+                >
+                  <span>View Full Championship Leaderboards</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-          </div>
-        </section>
+
+            {/* Bento Row 3: Upcoming Programme Schedule (2 cols) + Secretariat & Contact Desk (1 col) */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+              
+              {/* Bento Card 4: Upcoming Schedule Highlights */}
+              <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-7 shadow-xs flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">
+                        Timetable
+                      </span>
+                      <h4 className="text-lg font-bold text-slate-900 tracking-tight">
+                        Upcoming Programme Schedule
+                      </h4>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTabSection('schedule')}
+                      className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+                    >
+                      <span>Full Schedule</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {publishedProgrammes.slice(0, 3).map((prg) => (
+                      <div
+                        key={prg.id}
+                        className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-between gap-3 hover:bg-slate-100/70 transition-colors"
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h5 className="font-bold text-xs sm:text-sm text-slate-900 truncate">{prg.name}</h5>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-600 shrink-0">
+                              {prg.category}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-slate-400" />
+                              {prg.startTime} - {prg.endTime}
+                            </span>
+                            <span>•</span>
+                            <span className="flex items-center gap-1 truncate">
+                              <MapPin className="w-3 h-3 text-slate-400" />
+                              {prg.venue} ({prg.stage})
+                            </span>
+                          </div>
+                        </div>
+
+                        <span className="text-[11px] font-semibold px-2.5 py-1 rounded-xl bg-white border border-slate-200 text-slate-700 shrink-0">
+                          {prg.type === 'individual' ? 'Solo' : 'Group'}
+                        </span>
+                      </div>
+                    ))}
+                    {publishedProgrammes.length === 0 && (
+                      <p className="text-xs text-slate-400 italic py-6 text-center">
+                        Detailed stage schedules are currently being synchronized by the coordinators.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                  <span>Auditoriums, open amphitheatre & main stages</span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTabSection('schedule')}
+                    className="font-bold text-indigo-600 hover:text-indigo-800"
+                  >
+                    View all stages →
+                  </button>
+                </div>
+              </div>
+
+              {/* Bento Card 5: Official Secretariat & Help Desk */}
+              <div className="bg-slate-900 text-white rounded-3xl p-6 sm:p-7 shadow-xl border border-slate-800 flex flex-col justify-between">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-pink-400 bg-pink-950/80 border border-pink-800/80 px-2.5 py-0.5 rounded-full">
+                    Official Helpdesk
+                  </span>
+                  
+                  <h4 className="text-lg font-bold text-white tracking-tight mt-2.5">
+                    Festival Secretariat & Support
+                  </h4>
+                  <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                    Direct official support channels for contestant inquiries, schedule clarifications, and scoring.
+                  </p>
+
+                  <div className="space-y-2.5 mt-4 text-xs">
+                    <a
+                      href={`tel:${settings.contactPhone || '9844691633'}`}
+                      className="flex items-center gap-3 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/10"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                        <Phone className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-slate-400 uppercase font-semibold">Phone Helpline</div>
+                        <div className="font-bold text-white">{settings.contactPhone || '9844691633'}</div>
+                      </div>
+                    </a>
+
+                    <a
+                      href={`mailto:${settings.contactEmail || 'abdwahidbc@gmail.com'}`}
+                      className="flex items-center gap-3 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/10"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0">
+                        <Mail className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-[10px] text-slate-400 uppercase font-semibold">Official Email</div>
+                        <div className="font-bold text-white truncate">{settings.contactEmail || 'abdwahidbc@gmail.com'}</div>
+                      </div>
+                    </a>
+
+                    <a
+                      href={`https://instagram.com/${settings.contactInstagram || 'abd_l_wahid_'}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/10"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-pink-500/20 text-pink-400 flex items-center justify-center shrink-0">
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                          <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                          <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                        </svg>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-slate-400 uppercase font-semibold">Official Instagram</div>
+                        <div className="font-bold text-white">@{settings.contactInstagram || 'abd_l_wahid_'}</div>
+                      </div>
+                    </a>
+                  </div>
+                </div>
+
+                <div className="mt-5 pt-4 border-t border-slate-800 text-[11px] text-slate-400">
+                  <span>Venue: <strong className="text-slate-200">{fest?.venue || settings.venue || pageData.content.venueInfo}</strong></span>
+                </div>
+              </div>
+            </div>
+          </section>
+        </>
       )}
 
       {/* ==================================================================== */}
@@ -2284,6 +2552,247 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
           </div>
         );
       })()}
+
+      {/* ==================================================================== */}
+      {/* SLIDE-OUT NAVIGATION MENU DRAWER                                     */}
+      {/* ==================================================================== */}
+      {menuDrawerOpen && (
+        <div className="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity duration-300"
+            onClick={() => setMenuDrawerOpen(false)}
+          />
+
+          <div className="fixed inset-y-0 right-0 max-w-full flex pl-8 sm:pl-10 z-50">
+            <div className="w-screen max-w-sm sm:max-w-md bg-white shadow-2xl flex flex-col justify-between border-l border-slate-200 animate-in slide-in-from-right duration-300">
+              
+              {/* Drawer Header */}
+              <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/90">
+                <div className="flex items-center gap-3 min-w-0">
+                  {pageData.logo.logoUrl ? (
+                    <img
+                      src={pageData.logo.logoUrl}
+                      alt={festName}
+                      style={{ width: `${pageData.logo.widthPx || 100}px` }}
+                      className="h-8 object-contain"
+                    />
+                  ) : (
+                    <img
+                      src={FESTORIA_LOGO}
+                      alt={festName}
+                      onError={handleLogoError}
+                      className="w-8 h-8 rounded-xl object-contain border border-slate-200 bg-white"
+                    />
+                  )}
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-sm text-slate-900 truncate">{festName}</h3>
+                    <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider truncate">
+                      {fest?.institution ? `${fest.institution} · ` : ''}{fest?.edition || settings.festEdition || 'Official Festival Portal'}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setMenuDrawerOpen(false)}
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors"
+                  aria-label="Close navigation menu"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Drawer Content */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-6">
+                {/* Fast Action Card (Register & Sign In) */}
+                <div className="bg-linear-to-br from-indigo-900 via-indigo-950 to-slate-950 rounded-2xl p-4 text-white shadow-lg space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-300">
+                      Contestant Access
+                    </span>
+                    <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-semibold">
+                      Live
+                    </span>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-white">Join as a Participant</h4>
+                    <p className="text-[11px] text-indigo-200/80 mt-0.5">
+                      Register your entries, verify your chest number, and track live scores.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuDrawerOpen(false);
+                        openAuth('participant', 'register');
+                      }}
+                      className="w-full py-2 px-3 rounded-xl bg-white text-indigo-950 text-xs font-bold hover:bg-indigo-50 transition-colors text-center shadow-xs"
+                    >
+                      Register Now
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuDrawerOpen(false);
+                        openAuth('participant', 'signin');
+                      }}
+                      className="w-full py-2 px-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-semibold transition-colors text-center"
+                    >
+                      Sign In
+                    </button>
+                  </div>
+                </div>
+
+                {/* Festival Navigation Sections */}
+                <div>
+                  <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 px-2">
+                    Festival Navigation
+                  </h4>
+                  <nav className="space-y-1">
+                    {[
+                      { id: 'overview', label: 'Festival Overview', icon: Sparkles, badge: null },
+                      { id: 'leaderboard', label: 'Leaderboard & Standings', icon: Trophy, badge: 'Live' },
+                      { id: 'student_search', label: 'Student Directory & Chest #', icon: Search, badge: `${festParticipants.length}` },
+                      { id: 'results', label: 'Official Published Results', icon: Award, badge: `${publishedResults.length}` },
+                      { id: 'schedule', label: 'Timetable & Stage Schedule', icon: Calendar, badge: `${publishedProgrammes.length}` },
+                      { id: 'teams', label: 'Houses & Competing Teams', icon: Users, badge: `${teams.length}` },
+                      ...(allPhotos.length > 0 ? [{ id: 'gallery', label: 'Official Photo Gallery', icon: ImageIcon, badge: `${allPhotos.length}` }] : []),
+                      { id: 'bulletin', label: 'Bulletins & Announcements', icon: Bell, badge: `${publicAnnouncements.length}` },
+                    ].map((item) => {
+                      const IconComp = item.icon;
+                      const isActive = activeTabSection === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => {
+                            setActiveTabSection(item.id as any);
+                            setMenuDrawerOpen(false);
+                          }}
+                          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                            isActive
+                              ? 'bg-indigo-50 text-indigo-950 font-bold border border-indigo-200/80 shadow-2xs'
+                              : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <IconComp className={`w-4 h-4 ${isActive ? 'text-indigo-600' : 'text-slate-500'}`} />
+                            <span>{item.label}</span>
+                          </div>
+                          {item.badge && (
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                              isActive ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'
+                            }`}>
+                              {item.badge}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </nav>
+                </div>
+
+                {/* Portals & Management Access */}
+                <div>
+                  <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 px-2">
+                    Portals & Management
+                  </h4>
+                  <div className="space-y-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuDrawerOpen(false);
+                        openAuth('team_leader', 'signin');
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Shield className="w-4 h-4 text-emerald-600" />
+                        <span>Team Leader Portal</span>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-slate-400" />
+                    </button>
+
+                    <a
+                      href={getAppUrl('admin.html')}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <User className="w-4 h-4 text-purple-600" />
+                        <span>Fest Admin Console</span>
+                      </div>
+                      <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                    </a>
+
+                    <a
+                      href={getAppUrl()}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Sparkles className="w-4 h-4 text-indigo-600" />
+                        <span>Festoria Platform Home</span>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-slate-400" />
+                    </a>
+                  </div>
+                </div>
+
+                {/* Secretariat Help & Contact */}
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h5 className="text-xs font-bold text-slate-900">Festival Secretariat</h5>
+                    <span className="text-[10px] bg-indigo-100 text-indigo-800 font-semibold px-2 py-0.5 rounded-full">
+                      Help & Support
+                    </span>
+                  </div>
+                  <div className="space-y-2 text-xs">
+                    <a
+                      href={`tel:${settings.contactPhone || '9844691633'}`}
+                      className="flex items-center gap-2.5 text-slate-700 hover:text-slate-900 font-medium"
+                    >
+                      <div className="w-6 h-6 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+                        <Phone className="w-3.5 h-3.5 text-emerald-700" />
+                      </div>
+                      <span>{settings.contactPhone || '9844691633'}</span>
+                    </a>
+                    <a
+                      href={`mailto:${settings.contactEmail || 'abdwahidbc@gmail.com'}`}
+                      className="flex items-center gap-2.5 text-slate-700 hover:text-slate-900 font-medium truncate"
+                    >
+                      <div className="w-6 h-6 rounded-lg bg-indigo-100 flex items-center justify-center shrink-0">
+                        <Mail className="w-3.5 h-3.5 text-indigo-700" />
+                      </div>
+                      <span className="truncate">{settings.contactEmail || 'abdwahidbc@gmail.com'}</span>
+                    </a>
+                    <a
+                      href={`https://instagram.com/${settings.contactInstagram || 'abd_l_wahid_'}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2.5 text-slate-700 hover:text-pink-600 font-medium"
+                    >
+                      <div className="w-6 h-6 rounded-lg bg-pink-100 flex items-center justify-center shrink-0">
+                        <svg className="w-3.5 h-3.5 text-pink-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                          <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                          <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                        </svg>
+                      </div>
+                      <span>@{settings.contactInstagram || 'abd_l_wahid_'}</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              {/* Drawer Footer */}
+              <div className="p-4 border-t border-slate-200 bg-slate-50 text-center text-[11px] text-slate-500">
+                <span>© 2026 {festName} · Powered by Festoria</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Unified Authentication Modal */}
       <AuthModal
