@@ -2125,6 +2125,153 @@ async function acceptFestInvitationHandler(request, deps = {}) {
 }
 
 /**
+ * 21. Submit Team Programme Entry with Concurrency & Race Condition Locks
+ * Enforces atomic member limits, max entries per team, and festival active status inside a Firestore transaction.
+ */
+async function submitTeamProgrammeEntryHandler(request, deps = {}) {
+  const currentDb = deps.db || db;
+
+  if (!request.auth || !request.auth.uid) {
+    throw new HttpsError('unauthenticated', 'User must be authenticated.');
+  }
+
+  const {
+    festId,
+    teamId,
+    programmeId,
+    entryName,
+    categoryId,
+    participantIds
+  } = request.data || {};
+
+  if (!festId || typeof festId !== 'string' || !festId.trim()) {
+    throw new HttpsError('invalid-argument', 'Missing or invalid festId parameter.');
+  }
+  if (!teamId || typeof teamId !== 'string' || !teamId.trim()) {
+    throw new HttpsError('invalid-argument', 'Missing or invalid teamId parameter.');
+  }
+  if (!programmeId || typeof programmeId !== 'string' || !programmeId.trim()) {
+    throw new HttpsError('invalid-argument', 'Missing or invalid programmeId parameter.');
+  }
+  if (!Array.isArray(participantIds) || participantIds.length === 0) {
+    throw new HttpsError('invalid-argument', 'Team entry must contain at least one member.');
+  }
+
+  const callerUid = request.auth.uid;
+  const userDoc = await currentDb.collection('users').doc(callerUid).get();
+  if (!userDoc.exists) {
+    throw new HttpsError('permission-denied', 'Caller user account not found.');
+  }
+  const userData = userDoc.data();
+  if (userData.status !== 'active') {
+    throw new HttpsError('permission-denied', 'Caller account is suspended or inactive.');
+  }
+
+  const isSuperAdmin = userData.role === 'super_admin';
+  const isFestAdmin = isSuperAdmin || ((userData.role === 'admin' || userData.role === 'fest_admin') && userData.festId === festId);
+  const isTeamLeader = isFestAdmin || (userData.role === 'team_leader' && userData.festId === festId && userData.linkedTeamId === teamId);
+
+  if (!isTeamLeader) {
+    throw new HttpsError('permission-denied', 'Caller is not authorized to register team entries for this team.');
+  }
+
+  // ATOMIC TRANSACTION: Check limits, verify festival status, and create entry
+  let entryResult;
+  try {
+    entryResult = await currentDb.runTransaction(async (transaction) => {
+      // 1. Check Fest Document
+      const festDocRef = currentDb.collection('fests').doc(festId);
+      const festDoc = await transaction.get(festDocRef);
+      if (festDoc.exists && festDoc.data().status === 'suspended') {
+        throw new HttpsError('failed-precondition', 'Cannot submit entry: Festival is currently suspended.');
+      }
+
+      // 2. Check Programme Document
+      const progDocRef = currentDb.collection('programmes').doc(programmeId);
+      const progDoc = await transaction.get(progDocRef);
+      if (!progDoc.exists) {
+        throw new HttpsError('not-found', `Programme ${programmeId} not found.`);
+      }
+      const progData = progDoc.data();
+      if (progData.festId && progData.festId !== festId) {
+        throw new HttpsError('permission-denied', 'Programme does not belong to the specified fest.');
+      }
+      if (progData.programmeType && progData.programmeType !== 'team') {
+        throw new HttpsError('failed-precondition', 'Specified programme is an individual competition, not a team programme.');
+      }
+
+      const minMembers = Number(progData.minTeamMembers) || 1;
+      const maxMembers = Number(progData.maxTeamMembers) || 20;
+      const maxEntries = Number(progData.maxEntriesPerTeam) || 1;
+
+      if (participantIds.length < minMembers) {
+        throw new HttpsError('failed-precondition', `Insufficient team members: minimum required is ${minMembers}, but received ${participantIds.length}.`);
+      }
+      if (participantIds.length > maxMembers) {
+        throw new HttpsError('failed-precondition', `Exceeded maximum team size: maximum allowed is ${maxMembers}, but received ${participantIds.length}.`);
+      }
+
+      // 3. Check existing entries for this team & programme
+      const entriesQuery = await currentDb
+        .collection('team_programme_entries')
+        .where('festId', '==', festId)
+        .where('programmeId', '==', programmeId)
+        .where('teamId', '==', teamId)
+        .get();
+
+      if (entriesQuery.size >= maxEntries) {
+        throw new HttpsError('failed-precondition', `Maximum entries reached: Team has already registered ${entriesQuery.size} / ${maxEntries} allowed entry/entries for this programme.`);
+      }
+
+      // 4. Create Entry Document
+      const entryRef = currentDb.collection('team_programme_entries').doc();
+      const newEntry = {
+        id: entryRef.id,
+        festId,
+        programmeId,
+        programmeName: progData.name || 'Team Competition',
+        teamId,
+        entryName: (entryName && typeof entryName === 'string' && entryName.trim()) ? entryName.trim() : `${progData.name} - Entry ${entriesQuery.size + 1}`,
+        categoryId: categoryId || progData.categoryId || 'general',
+        participantIds,
+        memberCount: participantIds.length,
+        status: 'registered',
+        createdBy: callerUid,
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp()
+      };
+
+      transaction.set(entryRef, newEntry);
+
+      // 5. Append immutable audit record
+      const auditRef = currentDb.collection('audit_logs').doc();
+      transaction.set(auditRef, {
+        id: auditRef.id,
+        festId,
+        userId: callerUid,
+        userName: userData.name || 'Team Leader',
+        action: 'SUBMIT_REGISTRATION',
+        targetType: 'team_programme_entry',
+        targetId: entryRef.id,
+        details: `Registered team entry "${newEntry.entryName}" with ${participantIds.length} members for programme ${progData.name}.`,
+        timestamp: FieldValue.serverTimestamp()
+      });
+
+      return newEntry;
+    });
+  } catch (err) {
+    if (err instanceof HttpsError) throw err;
+    throw new HttpsError('internal', `Transaction error while registering team entry: ${err.message}`);
+  }
+
+  return {
+    success: true,
+    message: 'Team programme entry successfully registered.',
+    entry: entryResult
+  };
+}
+
+/**
  * Callable Cloud Functions (v2)
  */
 exports.createTeamLeaderInvite = onCall(async (request) => {
@@ -2191,6 +2338,10 @@ exports.acceptFestInvitation = onCall(async (request) => {
   return await acceptFestInvitationHandler(request);
 });
 
+exports.submitTeamProgrammeEntry = onCall(async (request) => {
+  return await submitTeamProgrammeEntryHandler(request);
+});
+
 /**
  * Unit & Security Test Harness Exports
  */
@@ -2214,5 +2365,6 @@ exports._handlers = {
   createFestInvitationHandler,
   revokeFestInvitationHandler,
   validateInvitationTokenHandler,
-  acceptFestInvitationHandler
+  acceptFestInvitationHandler,
+  submitTeamProgrammeEntryHandler
 };
