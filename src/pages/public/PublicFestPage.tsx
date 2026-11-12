@@ -38,7 +38,8 @@ import {
   Medal,
   Users,
   CheckCircle2,
-  Menu
+  Menu,
+  Crown
 } from 'lucide-react';
 
 interface PublicFestPageProps {
@@ -91,6 +92,48 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
   const [authRole, setAuthRole] = useState<Role | 'participant' | 'auto'>('participant');
   const [authMode, setAuthMode] = useState<'signin' | 'register'>('signin');
   const [menuDrawerOpen, setMenuDrawerOpen] = useState(false);
+
+  // Real-time Festival Countdown Clock State
+  const [countdown, setCountdown] = useState<{
+    days: number;
+    hours: number;
+    minutes: number;
+    seconds: number;
+    status: 'upcoming' | 'live' | 'concluded';
+  }>({ days: 0, hours: 0, minutes: 0, seconds: 0, status: 'upcoming' });
+
+  useEffect(() => {
+    const startStr = fest?.startDate || settings.startDate || '2027-01-08';
+    const endStr = fest?.endDate || settings.endDate || '2027-01-10';
+
+    const updateCountdown = () => {
+      const now = new Date().getTime();
+      const startDate = new Date(startStr).getTime();
+      const endDate = new Date(`${endStr}T23:59:59`).getTime();
+
+      if (isNaN(startDate)) {
+        setCountdown({ days: 0, hours: 0, minutes: 0, seconds: 0, status: 'upcoming' });
+        return;
+      }
+
+      if (now < startDate) {
+        const diff = Math.max(0, startDate - now);
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        setCountdown({ days, hours, minutes, seconds, status: 'upcoming' });
+      } else if (now >= startDate && now <= endDate) {
+        setCountdown({ days: 0, hours: 0, minutes: 0, seconds: 0, status: 'live' });
+      } else {
+        setCountdown({ days: 0, hours: 0, minutes: 0, seconds: 0, status: 'concluded' });
+      }
+    };
+
+    updateCountdown();
+    const timer = setInterval(updateCountdown, 1000);
+    return () => clearInterval(timer);
+  }, [fest?.startDate, fest?.endDate, settings.startDate, settings.endDate]);
 
   // Video playback state
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -378,6 +421,61 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
             </div>
           </div>
 
+          {/* Dynamic Countdown Clock / Status Indicator */}
+          <div className="pt-2">
+            {countdown.status === 'upcoming' && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-center gap-1.5 sm:gap-2.5">
+                  <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-3 py-2 sm:px-4 sm:py-2.5 text-center min-w-[58px] sm:min-w-[72px] shadow-lg">
+                    <span className="font-mono font-black text-lg sm:text-2xl text-white block leading-none">
+                      {countdown.days}
+                    </span>
+                    <span className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-300 tracking-wider">Days</span>
+                  </div>
+                  <span className="text-white/60 font-black text-lg leading-none">:</span>
+                  <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-3 py-2 sm:px-4 sm:py-2.5 text-center min-w-[58px] sm:min-w-[72px] shadow-lg">
+                    <span className="font-mono font-black text-lg sm:text-2xl text-white block leading-none">
+                      {String(countdown.hours).padStart(2, '0')}
+                    </span>
+                    <span className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-300 tracking-wider">Hours</span>
+                  </div>
+                  <span className="text-white/60 font-black text-lg leading-none">:</span>
+                  <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-3 py-2 sm:px-4 sm:py-2.5 text-center min-w-[58px] sm:min-w-[72px] shadow-lg">
+                    <span className="font-mono font-black text-lg sm:text-2xl text-white block leading-none">
+                      {String(countdown.minutes).padStart(2, '0')}
+                    </span>
+                    <span className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-300 tracking-wider">Mins</span>
+                  </div>
+                  <span className="text-white/60 font-black text-lg leading-none">:</span>
+                  <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-3 py-2 sm:px-4 sm:py-2.5 text-center min-w-[58px] sm:min-w-[72px] shadow-lg">
+                    <span className="font-mono font-black text-lg sm:text-2xl text-amber-400 block leading-none">
+                      {String(countdown.seconds).padStart(2, '0')}
+                    </span>
+                    <span className="text-[9px] sm:text-[10px] uppercase font-bold text-amber-300 tracking-wider">Secs</span>
+                  </div>
+                </div>
+                <p className="text-[11px] text-slate-400 font-medium">Countdown to Opening Ceremony & Stage Competitions</p>
+              </div>
+            )}
+
+            {countdown.status === 'live' && (
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/20 backdrop-blur-md border border-emerald-400/50 text-emerald-300 text-xs font-bold uppercase tracking-wider shadow-lg">
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                </span>
+                <span>Festival Is Live · Competitions in Progress</span>
+              </div>
+            )}
+
+            {countdown.status === 'concluded' && (
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/20 backdrop-blur-md border border-amber-400/40 text-amber-300 text-xs font-bold uppercase tracking-wider">
+                <Trophy className="w-4 h-4 text-amber-400" />
+                <span>Festival Concluded · Official Ratified Standings</span>
+              </div>
+            )}
+          </div>
+
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-3 w-full sm:w-auto">
             <button
@@ -401,7 +499,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
           {/* Quick Chest Number Student Search Bar directly in Hero */}
           <div className="w-full max-w-xl mx-auto pt-6 text-left">
-            <div className="relative bg-white/95 backdrop-blur-md rounded-2xl p-1.5 sm:p-2 shadow-2xl border border-white/30">
+            <div className="relative bg-white/95 backdrop-blur-md rounded-2xl p-2 sm:p-2.5 shadow-2xl border border-white/30 space-y-2">
               <div className="flex items-center gap-2">
                 <div className="pl-3 text-slate-400">
                   <Search className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600" />
@@ -435,9 +533,34 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                       setActiveTabSection('student_search');
                     }
                   }}
-                  className="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors shrink-0 shadow-xs"
+                  className="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors shrink-0 shadow-xs cursor-pointer"
                 >
                   Search
+                </button>
+              </div>
+
+              {/* Fast Search Pills */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-1 px-2 text-[11px] text-slate-400">
+                <span className="font-semibold text-slate-500">Quick Lookups:</span>
+                {festParticipants.slice(0, 3).map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => {
+                      setStudentSearchQuery(p.chestNumber || p.name);
+                      setActiveTabSection('student_search');
+                    }}
+                    className="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-mono font-bold transition-colors cursor-pointer"
+                  >
+                    #{p.chestNumber || p.id}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setActiveTabSection('student_search')}
+                  className="px-2 py-0.5 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold transition-colors cursor-pointer"
+                >
+                  Student Directory →
                 </button>
               </div>
 
@@ -787,18 +910,21 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               </div>
             </div>
 
-            {/* Bento Row 2: Live Championship Standings Spotlight (Full Width) */}
-            <div className="bg-slate-50 border border-slate-200 rounded-3xl p-6 sm:p-8 space-y-6">
+            {/* Bento Row 2: 3D Stepped Championship Podium (Olympic Style) */}
+            <div className="bg-slate-50 border border-slate-200/90 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xs">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <span className="text-xs font-bold text-indigo-600 uppercase tracking-widest block">
-                    Live Championship Standings
-                  </span>
-                  <h4 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight mt-0.5">
-                    Top Scoring Leaders & Houses
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-200/80 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                      Live Championship Spotlight
+                    </span>
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  </div>
+                  <h4 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight mt-1">
+                    Championship Standings & Leaders
                   </h4>
-                  <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                    Live ratified points from individual stage competitions and house performances.
+                  <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                    Real-time ratified scores from stage competitions and house performances.
                   </p>
                 </div>
 
@@ -807,109 +933,220 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                   <button
                     type="button"
                     onClick={() => setOverviewLeaderboardToggle('team')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                       overviewLeaderboardToggle === 'team'
                         ? 'bg-slate-900 text-white shadow-xs'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    Top Teams
+                    House Championship
                   </button>
                   <button
                     type="button"
                     onClick={() => setOverviewLeaderboardToggle('individual')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                       overviewLeaderboardToggle === 'individual'
                         ? 'bg-slate-900 text-white shadow-xs'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    Top Students
+                    Star Contestants
                   </button>
                 </div>
               </div>
 
-              {/* Content for Spotlight */}
+              {/* Stepped 3D Podium Visualization */}
               {overviewLeaderboardToggle === 'team' ? (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
                   {leaderboard.length === 0 ? (
-                    <div className="col-span-3 p-6 text-center text-xs text-slate-500 bg-white rounded-2xl border border-slate-200">
-                      Championship house standings will be published once preliminary results are ratified.
+                    <div className="p-8 text-center text-xs text-slate-500 bg-white rounded-2xl border border-slate-200">
+                      Championship house standings will appear once competitive events are ratified.
                     </div>
                   ) : (
-                    leaderboard.slice(0, 3).map((entry, idx) => (
-                      <div
-                        key={entry.team.id}
-                        className={`p-5 rounded-2xl border transition-all ${
-                          idx === 0
-                            ? 'bg-amber-50/70 border-amber-300 shadow-sm'
-                            : idx === 1
-                            ? 'bg-slate-100/80 border-slate-300'
-                            : 'bg-amber-50/40 border-amber-200'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-3">
-                          <span className={`text-xs font-black px-2.5 py-1 rounded-lg ${
-                            idx === 0
-                              ? 'bg-amber-400 text-slate-950'
-                              : idx === 1
-                              ? 'bg-slate-300 text-slate-800'
-                              : 'bg-amber-200 text-amber-900'
-                          }`}>
-                            {idx === 0 ? '🥇 1st Place' : idx === 1 ? '🥈 2nd Place' : '🥉 3rd Place'}
-                          </span>
-                          <span className="font-mono font-black text-lg text-slate-900">
-                            {entry.totalPoints} pts
-                          </span>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 items-end pt-4">
+                      {/* Step 2: Silver / 2nd Place (Left) */}
+                      {leaderboard[1] && (
+                        <div className="order-2 md:order-1 bg-white border-2 border-slate-300 rounded-3xl p-5 md:pt-7 md:pb-6 flex flex-col justify-between shadow-md relative min-h-[220px]">
+                          <div>
+                            <div className="flex items-center justify-between mb-3">
+                              <span className="text-xs font-black bg-slate-200 text-slate-800 px-3 py-1 rounded-xl shadow-2xs flex items-center gap-1.5">
+                                <Medal className="w-3.5 h-3.5 text-slate-700" />
+                                <span>2nd Place</span>
+                              </span>
+                              <span className="font-mono font-black text-xl text-slate-900">
+                                {leaderboard[1].totalPoints} pts
+                              </span>
+                            </div>
+                            <h5 className="font-black text-base text-slate-900">{leaderboard[1].team.name}</h5>
+                            <p className="text-xs text-slate-500 mt-0.5">{leaderboard[1].team.institution || 'Collegiate House'}</p>
+                          </div>
+                          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-medium text-slate-600">
+                            <span>🥇 {leaderboard[1].firstPlaceCount} Gold</span>
+                            <span>🥈 {leaderboard[1].secondPlaceCount} Silver</span>
+                            <span>🥉 {leaderboard[1].thirdPlaceCount} Bronze</span>
+                          </div>
                         </div>
-                        <h5 className="font-bold text-base text-slate-900">{entry.team.name}</h5>
-                        <p className="text-xs text-slate-500 mt-0.5">{entry.team.institution || 'Collegiate House'}</p>
-                        <div className="mt-3 pt-3 border-t border-slate-200/60 flex items-center justify-between text-xs font-medium text-slate-600">
-                          <span>🥇 {entry.firstPlaceCount} Gold</span>
-                          <span>🥈 {entry.secondPlaceCount} Silver</span>
-                          <span>🥉 {entry.thirdPlaceCount} Bronze</span>
+                      )}
+
+                      {/* Step 1: Gold / 1st Place Champion (Center - Elevated) */}
+                      {leaderboard[0] && (
+                        <div className="order-1 md:order-2 bg-linear-to-b from-amber-50 via-yellow-50/70 to-white border-2 border-amber-400 rounded-3xl p-6 md:pt-9 md:pb-7 flex flex-col justify-between shadow-xl relative ring-4 ring-amber-400/20 md:-translate-y-3 z-10 min-h-[250px]">
+                          <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-amber-400 text-slate-950 font-black text-[11px] px-3.5 py-0.5 rounded-full shadow-md flex items-center gap-1 uppercase tracking-wider">
+                            <Crown className="w-3.5 h-3.5 text-slate-950 fill-slate-950" />
+                            <span>Championship Leader</span>
+                          </div>
+                          <div>
+                            <div className="flex items-center justify-between mb-3 mt-1">
+                              <span className="text-xs font-black bg-amber-400 text-slate-950 px-3.5 py-1.5 rounded-xl shadow-xs flex items-center gap-1.5">
+                                <Trophy className="w-4 h-4 text-slate-950" />
+                                <span>1st Place</span>
+                              </span>
+                              <span className="font-mono font-black text-2xl text-slate-950">
+                                {leaderboard[0].totalPoints} pts
+                              </span>
+                            </div>
+                            <h5 className="font-black text-lg text-slate-950">{leaderboard[0].team.name}</h5>
+                            <p className="text-xs text-slate-600 font-medium mt-0.5">{leaderboard[0].team.institution || 'Collegiate House'}</p>
+                          </div>
+                          <div className="mt-4 pt-3 border-t border-amber-200/70 flex items-center justify-between text-xs font-bold text-slate-800">
+                            <span>🥇 {leaderboard[0].firstPlaceCount} Gold</span>
+                            <span>🥈 {leaderboard[0].secondPlaceCount} Silver</span>
+                            <span>🥉 {leaderboard[0].thirdPlaceCount} Bronze</span>
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      )}
+
+                      {/* Step 3: Bronze / 3rd Place (Right) */}
+                      {leaderboard[2] && (
+                        <div className="order-3 md:order-3 bg-white border-2 border-amber-200 rounded-3xl p-5 md:pt-6 md:pb-5 flex flex-col justify-between shadow-2xs relative min-h-[200px]">
+                          <div>
+                            <div className="flex items-center justify-between mb-3">
+                              <span className="text-xs font-black bg-amber-100 text-amber-900 px-3 py-1 rounded-xl shadow-2xs flex items-center gap-1.5">
+                                <Medal className="w-3.5 h-3.5 text-amber-800" />
+                                <span>3rd Place</span>
+                              </span>
+                              <span className="font-mono font-black text-xl text-slate-900">
+                                {leaderboard[2].totalPoints} pts
+                              </span>
+                            </div>
+                            <h5 className="font-black text-base text-slate-900">{leaderboard[2].team.name}</h5>
+                            <p className="text-xs text-slate-500 mt-0.5">{leaderboard[2].team.institution || 'Collegiate House'}</p>
+                          </div>
+                          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-medium text-slate-600">
+                            <span>🥇 {leaderboard[2].firstPlaceCount} Gold</span>
+                            <span>🥈 {leaderboard[2].secondPlaceCount} Silver</span>
+                            <span>🥉 {leaderboard[2].thirdPlaceCount} Bronze</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
                   {topIndividualContestants.length === 0 ? (
-                    <div className="col-span-3 p-6 text-center text-xs text-slate-500 bg-white rounded-2xl border border-slate-200">
-                      Individual student standings will appear once competitive stage events are concluded.
+                    <div className="p-8 text-center text-xs text-slate-500 bg-white rounded-2xl border border-slate-200">
+                      Individual student standings will appear once competitive events are concluded.
                     </div>
                   ) : (
-                    topIndividualContestants.slice(0, 3).map((entry, idx) => (
-                      <div
-                        key={entry.participant.id}
-                        className={`p-5 rounded-2xl border transition-all ${
-                          idx === 0
-                            ? 'bg-amber-50/70 border-amber-300 shadow-sm'
-                            : idx === 1
-                            ? 'bg-slate-100/80 border-slate-300'
-                            : 'bg-amber-50/40 border-amber-200'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="font-mono font-bold text-xs bg-slate-900 text-amber-300 px-2.5 py-1 rounded-md">
-                            Chest #{entry.participant.chestNumber || entry.participant.id}
-                          </span>
-                          <span className="font-mono font-black text-lg text-slate-900">
-                            {entry.totalPoints} pts
-                          </span>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 items-end pt-4">
+                      {/* Step 2: Silver Contestant (Left) */}
+                      {topIndividualContestants[1] && (
+                        <div
+                          onClick={() => {
+                            setSelectedStudentForModal(topIndividualContestants[1].participant);
+                            setActiveTabSection('student_search');
+                          }}
+                          className="order-2 md:order-1 bg-white border-2 border-slate-300 rounded-3xl p-5 md:pt-7 md:pb-6 flex flex-col justify-between shadow-md relative min-h-[220px] cursor-pointer hover:border-slate-400 transition-all"
+                        >
+                          <div>
+                            <div className="flex items-center justify-between mb-3">
+                              <span className="font-mono font-bold text-xs bg-slate-200 text-slate-800 px-2.5 py-1 rounded-lg">
+                                Chest #{topIndividualContestants[1].participant.chestNumber || topIndividualContestants[1].participant.id}
+                              </span>
+                              <span className="font-mono font-black text-xl text-slate-900">
+                                {topIndividualContestants[1].totalPoints} pts
+                              </span>
+                            </div>
+                            <h5 className="font-black text-base text-slate-900">{topIndividualContestants[1].participant.name}</h5>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              {topIndividualContestants[1].team?.name || 'Independent'} • {topIndividualContestants[1].category}
+                            </p>
+                          </div>
+                          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-medium text-slate-600">
+                            <span>🥇 {topIndividualContestants[1].firstPlaceCount} 1st</span>
+                            <span>🥈 {topIndividualContestants[1].secondPlaceCount} 2nd</span>
+                            <span>🥉 {topIndividualContestants[1].thirdPlaceCount} 3rd</span>
+                          </div>
                         </div>
-                        <h5 className="font-bold text-base text-slate-900">{entry.participant.name}</h5>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          {entry.team?.name || 'Independent'} • {entry.category}
-                        </p>
-                        <div className="mt-3 pt-3 border-t border-slate-200/60 flex items-center justify-between text-xs font-medium text-slate-600">
-                          <span>🥇 {entry.firstPlaceCount} 1st</span>
-                          <span>🥈 {entry.secondPlaceCount} 2nd</span>
-                          <span>🥉 {entry.thirdPlaceCount} 3rd</span>
+                      )}
+
+                      {/* Step 1: Gold / Top Contestant (Center - Elevated) */}
+                      {topIndividualContestants[0] && (
+                        <div
+                          onClick={() => {
+                            setSelectedStudentForModal(topIndividualContestants[0].participant);
+                            setActiveTabSection('student_search');
+                          }}
+                          className="order-1 md:order-2 bg-linear-to-b from-amber-50 via-yellow-50/70 to-white border-2 border-amber-400 rounded-3xl p-6 md:pt-9 md:pb-7 flex flex-col justify-between shadow-xl relative ring-4 ring-amber-400/20 md:-translate-y-3 z-10 min-h-[250px] cursor-pointer hover:border-amber-500 transition-all"
+                        >
+                          <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-amber-400 text-slate-950 font-black text-[11px] px-3.5 py-0.5 rounded-full shadow-md flex items-center gap-1 uppercase tracking-wider">
+                            <Crown className="w-3.5 h-3.5 text-slate-950 fill-slate-950" />
+                            <span>Golden Performer</span>
+                          </div>
+                          <div>
+                            <div className="flex items-center justify-between mb-3 mt-1">
+                              <span className="font-mono font-bold text-xs bg-slate-950 text-amber-300 px-2.5 py-1 rounded-lg">
+                                Chest #{topIndividualContestants[0].participant.chestNumber || topIndividualContestants[0].participant.id}
+                              </span>
+                              <span className="font-mono font-black text-2xl text-slate-950">
+                                {topIndividualContestants[0].totalPoints} pts
+                              </span>
+                            </div>
+                            <h5 className="font-black text-lg text-slate-950">{topIndividualContestants[0].participant.name}</h5>
+                            <p className="text-xs text-slate-600 font-medium mt-0.5">
+                              {topIndividualContestants[0].team?.name || 'Independent'} • {topIndividualContestants[0].category}
+                            </p>
+                          </div>
+                          <div className="mt-4 pt-3 border-t border-amber-200/70 flex items-center justify-between text-xs font-bold text-slate-800">
+                            <span>🥇 {topIndividualContestants[0].firstPlaceCount} 1st</span>
+                            <span>🥈 {topIndividualContestants[0].secondPlaceCount} 2nd</span>
+                            <span>🥉 {topIndividualContestants[0].thirdPlaceCount} 3rd</span>
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      )}
+
+                      {/* Step 3: Bronze Contestant (Right) */}
+                      {topIndividualContestants[2] && (
+                        <div
+                          onClick={() => {
+                            setSelectedStudentForModal(topIndividualContestants[2].participant);
+                            setActiveTabSection('student_search');
+                          }}
+                          className="order-3 md:order-3 bg-white border-2 border-amber-200 rounded-3xl p-5 md:pt-6 md:pb-5 flex flex-col justify-between shadow-2xs relative min-h-[200px] cursor-pointer hover:border-amber-300 transition-all"
+                        >
+                          <div>
+                            <div className="flex items-center justify-between mb-3">
+                              <span className="font-mono font-bold text-xs bg-amber-100 text-amber-900 px-2.5 py-1 rounded-lg">
+                                Chest #{topIndividualContestants[2].participant.chestNumber || topIndividualContestants[2].participant.id}
+                              </span>
+                              <span className="font-mono font-black text-xl text-slate-900">
+                                {topIndividualContestants[2].totalPoints} pts
+                              </span>
+                            </div>
+                            <h5 className="font-black text-base text-slate-900">{topIndividualContestants[2].participant.name}</h5>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              {topIndividualContestants[2].team?.name || 'Independent'} • {topIndividualContestants[2].category}
+                            </p>
+                          </div>
+                          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-medium text-slate-600">
+                            <span>🥇 {topIndividualContestants[2].firstPlaceCount} 1st</span>
+                            <span>🥈 {topIndividualContestants[2].secondPlaceCount} 2nd</span>
+                            <span>🥉 {topIndividualContestants[2].thirdPlaceCount} 3rd</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               )}
@@ -918,7 +1155,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveTabSection('leaderboard')}
-                  className="text-xs sm:text-sm font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1.5"
+                  className="text-xs sm:text-sm font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1.5 cursor-pointer"
                 >
                   <span>View Full Championship Leaderboards</span>
                   <ChevronRight className="w-4 h-4" />

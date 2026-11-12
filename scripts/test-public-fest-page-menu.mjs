@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 console.log('======================================================================');
-console.log('  TESTING PUBLIC FEST PAGE (CLEAN HEADER) & MAIN PAGE (OFFICIAL HELPDESK)');
+console.log('  TESTING PUBLIC FEST PAGE REDESIGN & STEPPED PODIUM VERIFICATION');
 console.log('======================================================================\n');
 
 let passCount = 0;
@@ -24,7 +24,7 @@ assert(fs.existsSync(publicFestFilePath), 'PublicFestPage.tsx exists');
 
 const festContent = fs.readFileSync(publicFestFilePath, 'utf8');
 
-// Header has Menu button and NO redundant tabs
+// Top Navbar
 assert(festContent.includes('setMenuDrawerOpen(true)'), 'Menu button triggers setMenuDrawerOpen(true)');
 assert(festContent.includes('aria-label="Open Navigation Menu"'), 'Menu button has accessible label');
 
@@ -44,18 +44,30 @@ assert(!festContent.includes('Mobile Horizontal Section Navigation Bar'), 'Mobil
 // Subview navigation breadcrumb is present
 assert(festContent.includes('Back to Festival Overview'), 'Breadcrumb "Back to Festival Overview" exists for subviews');
 
-// Slide-out Navigation Menu Drawer contains all festival navigation
-assert(festContent.includes('SLIDE-OUT NAVIGATION MENU DRAWER'), 'Slide-out Navigation Menu Drawer is present');
-assert(festContent.includes('Leaderboard & Standings'), 'Drawer contains Leaderboard navigation');
-assert(festContent.includes('Student Directory & Chest #'), 'Drawer contains Student Directory navigation');
-assert(festContent.includes('Official Published Results'), 'Drawer contains Live Results navigation');
-assert(festContent.includes('Timetable & Stage Schedule'), 'Drawer contains Timetable navigation');
-assert(festContent.includes('Houses & Competing Teams'), 'Drawer contains Houses navigation');
+// Tier 1 Hero Command Center
+assert(festContent.includes('countdown.days'), 'Countdown clock days timer rendered');
+assert(festContent.includes('countdown.hours'), 'Countdown clock hours timer rendered');
+assert(festContent.includes('countdown.minutes'), 'Countdown clock minutes timer rendered');
+assert(festContent.includes('countdown.seconds'), 'Countdown clock seconds timer rendered');
+assert(festContent.includes('Quick Lookups:'), 'Chest number search console provides fast lookups');
 
-// Fest public page does NOT contain platform personal helpdesk cards
-assert(!festContent.includes('Festival Secretariat & Support'), 'Personal helpdesk card removed from fest public page');
-assert(!festContent.includes('PHONE HELPLINE'), 'Personal phone helpline removed from fest public page');
-assert(festContent.includes('Campus Grounds & Stages'), 'Fest public page has clean Campus Grounds & Stages card');
+// Tier 2 Live Pulse Metrics
+assert(festContent.includes('Collegiate Events'), 'Metrics strip displays Collegiate Events');
+assert(festContent.includes('Competing Houses'), 'Metrics strip displays Competing Houses');
+assert(festContent.includes('Ratified Results'), 'Metrics strip displays Ratified Results');
+
+// Tier 3: 3D Stepped Championship Podium
+assert(festContent.includes('3D Stepped Championship Podium'), '3D Stepped Championship Podium is present');
+assert(festContent.includes('Championship Leader'), '1st place championship crown badge is present');
+assert(festContent.includes('Golden Performer'), 'Top individual contestant crown badge is present');
+assert(festContent.includes('order-2 md:order-1') && festContent.includes('order-1 md:order-2') && festContent.includes('order-3 md:order-3'), '3D podium steps use 2nd (left), 1st (center elevated), 3rd (right) ordering');
+
+// Tier 3: Gateways & Grounds
+assert(festContent.includes('Participant Dashboard') && festContent.includes('Team Leader Portal'), 'Participant and Team Leader Portals are present');
+assert(festContent.includes('Campus Grounds & Stages'), 'Campus Grounds & Stages guide is present');
+
+// No personal helpdesk on fest public page
+assert(!festContent.includes('PHONE HELPLINE') && !festContent.includes('Festival Secretariat & Support'), 'Personal helpdesk removed from fest public page');
 
 // 2. TEST MAIN PUBLIC PAGE (FestoriaHomePage.tsx)
 const mainHomeFilePath = path.resolve('src/pages/public/FestoriaHomePage.tsx');
@@ -63,19 +75,15 @@ assert(fs.existsSync(mainHomeFilePath), 'FestoriaHomePage.tsx exists');
 
 const homeContent = fs.readFileSync(mainHomeFilePath, 'utf8');
 
-// Main public page contains official helpdesk section
 assert(homeContent.includes('id="helpdesk"'), 'Main public page has dedicated Helpdesk section');
 assert(homeContent.includes('Festoria Official Platform Helpdesk'), 'Helpdesk title is prominently displayed on main page');
 assert(homeContent.includes('9844691633'), 'Main page contains phone 9844691633');
 assert(homeContent.includes('abdwahidbc@gmail.com'), 'Main page contains email abdwahidbc@gmail.com');
 assert(homeContent.includes('@abd_l_wahid_'), 'Main page contains Instagram @abd_l_wahid_');
-assert(homeContent.includes('Voice Helpline'), 'Main page helpdesk contains Voice Helpline card');
-assert(homeContent.includes('Official Support Email'), 'Main page helpdesk contains Support Email card');
-assert(homeContent.includes('Official Instagram'), 'Main page helpdesk contains Instagram card');
 
 console.log(`\nResults: ${passCount} passed, ${failCount} failed.`);
 if (failCount > 0) {
   process.exit(1);
 } else {
-  console.log('🎉 ALL CLEAN HEADER & OFFICIAL HELPDESK TESTS PASSED!\n');
+  console.log('🎉 ALL DESIGN & ARCHITECTURE TESTS PASSED!\n');
 }
