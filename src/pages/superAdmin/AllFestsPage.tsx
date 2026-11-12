@@ -59,12 +59,16 @@ export const AllFestsPage: React.FC = () => {
   const [editExpectedParticipants, setEditExpectedParticipants] = useState(0);
 
   const filteredFests = useMemo(() => {
+    const q = (searchQuery || '').trim().toLowerCase();
     return fests.filter((f) => {
+      if (!f) return false;
       const matchSearch =
-        f.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        f.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        f.institution.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        f.adminName.toLowerCase().includes(searchQuery.toLowerCase());
+        !q ||
+        (f.name || '').toLowerCase().includes(q) ||
+        (f.id || '').toLowerCase().includes(q) ||
+        (f.institution || '').toLowerCase().includes(q) ||
+        (f.adminName || '').toLowerCase().includes(q) ||
+        (f.adminEmail || '').toLowerCase().includes(q);
       const matchStatus = statusFilter === 'all' || f.status === statusFilter;
       const matchCategory = categoryFilter === 'all' || f.category === categoryFilter;
       const matchPublic =
@@ -216,8 +220,108 @@ export const AllFestsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Central Table */}
-      <div className="border border-slate-200 rounded overflow-hidden bg-white">
+      {/* Mobile Fests Card View */}
+      <div className="block lg:hidden space-y-3">
+        {filteredFests.length === 0 ? (
+          <div className="p-6 text-center text-slate-400 bg-white border border-slate-200 rounded text-xs">
+            No fests match the current filters.
+          </div>
+        ) : (
+          filteredFests.map((fest) => (
+            <div key={fest.id} className="p-4 bg-white border border-slate-200 rounded-lg space-y-3 text-xs">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <span className="font-mono font-semibold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 text-[11px]">
+                    {fest.id}
+                  </span>
+                  <div className="font-semibold text-slate-900 text-sm mt-1.5">{fest.name} {fest.edition}</div>
+                  <div className="text-[11px] text-slate-500">{fest.category}</div>
+                </div>
+
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded capitalize ${
+                    fest.status === 'ongoing'
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      : fest.status === 'suspended'
+                      ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                      : fest.status === 'setup'
+                      ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                      : fest.status === 'completed'
+                      ? 'bg-slate-100 text-slate-700 border border-slate-200'
+                      : 'bg-amber-50 text-amber-700 border border-amber-200'
+                  }`}>
+                    {fest.status.replace('_', ' ')}
+                  </span>
+                  {fest.publicPagePublished ? (
+                    <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded inline-flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+                      Live
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                      Unpublished
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 p-2.5 bg-slate-50 border border-slate-100 rounded text-[11px]">
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-semibold">Institution</span>
+                  <span className="font-medium text-slate-800 truncate block">{fest.institution}</span>
+                  <span className="text-slate-400 text-[10px] truncate block">{fest.venue}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-semibold">Fest Admin</span>
+                  <span className="font-medium text-slate-800 truncate block">{fest.adminName}</span>
+                  <span className="text-slate-400 text-[10px] truncate block">{fest.adminEmail}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-semibold">Event Dates</span>
+                  <span className="font-mono text-slate-700 text-[10px] block">{fest.startDate} &rarr; {fest.endDate}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-semibold">Scale</span>
+                  <span className="font-semibold text-slate-900">{fest.expectedParticipants}</span> pts • {fest.plannedProgrammesCount} progs
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                <button
+                  onClick={() => {
+                    setActiveFestId(fest.id);
+                    setSuperAdminTab('fest_monitoring');
+                  }}
+                  className="px-2.5 py-1 text-xs font-medium border border-slate-200 rounded text-slate-700 hover:bg-slate-50 inline-flex items-center gap-1"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>Monitor</span>
+                </button>
+
+                <div className="inline-flex items-center gap-1">
+                  <button
+                    onClick={() => handleOpenEdit(fest)}
+                    className="px-2.5 py-1 text-xs font-medium border border-slate-200 rounded text-slate-700 hover:bg-slate-50 inline-flex items-center gap-1"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                    <span>Edit</span>
+                  </button>
+                  <button
+                    onClick={() => switchPortal('fest_admin', fest.id)}
+                    className="px-2.5 py-1 text-xs font-semibold bg-slate-900 text-white rounded hover:bg-slate-800 inline-flex items-center gap-1"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Admin Panel</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Desktop Central Table */}
+      <div className="hidden lg:block border border-slate-200 rounded overflow-hidden bg-white">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs divide-y divide-slate-200">
             <thead className="bg-slate-50 text-slate-600 font-semibold uppercase tracking-wider text-[10px]">
@@ -243,7 +347,7 @@ export const AllFestsPage: React.FC = () => {
               ) : (
                 filteredFests.map((fest) => (
                   <tr key={fest.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="px-4 py-3 font-mono font-medium text-slate-900">
+                    <td className="px-4 py-3 font-mono font-medium text-slate-900 whitespace-nowrap">
                       {fest.id}
                     </td>
                     <td className="px-4 py-3">

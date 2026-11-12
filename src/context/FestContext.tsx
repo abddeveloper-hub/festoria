@@ -657,9 +657,8 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
           setScores(fsScores);
           setFestRequests(fsFestRequests);
           if (fsUsers && fsUsers.length > 0) {
-            const superAdmins = fsUsers.filter(u => u.role === 'super_admin');
-            setUsers(superAdmins);
-            StorageService.saveUsers(superAdmins);
+            setUsers(fsUsers);
+            StorageService.saveUsers(fsUsers);
           }
         } catch {}
       } else if (currentUser.role === 'admin' || currentUser.role === 'fest_admin' || currentUser.role === 'judge') {
@@ -740,11 +739,8 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     if (isFirebaseConfigured && currentUser.role === 'super_admin') {
       fetchUsersFromFirestore().then(fsUsers => {
         if (fsUsers && fsUsers.length > 0) {
-          const authorizedAdmins = fsUsers.filter(
-            (u) => u.role === 'super_admin' || ((u.role === 'admin' || u.role === 'fest_admin') && u.status === 'active')
-          );
-          setUsers(authorizedAdmins);
-          StorageService.saveUsers(authorizedAdmins);
+          setUsers(fsUsers);
+          StorageService.saveUsers(fsUsers);
         }
       }).catch(() => {});
       fetchFestRequests().then(reqs => setFestRequests(reqs)).catch(() => {});

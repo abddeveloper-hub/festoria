@@ -71,23 +71,16 @@ table {
   max-width: 100%;
 }
 
-/* 4. Prevent iOS Safari Input Auto-Zoom */
-@media screen and (max-width: 767px) {
-  input,
-  select,
-  textarea {
-    font-size: 16px !important;
-  }
+/* 4. Responsive inputs & form controls */
+input,
+select,
+textarea {
+  max-width: 100%;
 }
 
-/* 5. Mobile Touch Targets & Sticky Hover State Prevention */
-@media (max-width: 767px) {
-  button,
-  [role="button"],
-  input[type="button"],
-  input[type="submit"] {
-    min-height: 44px;
-  }
+/* 5. Touch target utility class when explicit 44px height is desired */
+.touch-target {
+  min-height: 44px;
 }
 
 /* On touch devices, disable persistent sticky hover elevations/transforms */

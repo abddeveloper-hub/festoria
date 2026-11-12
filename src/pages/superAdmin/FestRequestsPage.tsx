@@ -78,14 +78,18 @@ export const FestRequestsPage: React.FC = () => {
   const [newDescription, setNewDescription] = useState('');
 
   const filteredRequests = useMemo(() => {
-    return festRequests.filter((r) => {
+    const q = (searchQuery || '').trim().toLowerCase();
+    return (festRequests || []).filter((r) => {
+      if (!r) return false;
       const matchSearch =
-        r.festName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        r.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        r.institution.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        r.requestingAdminName.toLowerCase().includes(searchQuery.toLowerCase());
+        !q ||
+        (r.festName || '').toLowerCase().includes(q) ||
+        (r.id || '').toLowerCase().includes(q) ||
+        (r.institution || '').toLowerCase().includes(q) ||
+        (r.requestingAdminName || '').toLowerCase().includes(q) ||
+        (r.requestingAdminEmail || '').toLowerCase().includes(q);
 
-      const normStatus = r.status.toLowerCase();
+      const normStatus = (r.status || '').toLowerCase();
       const matchStatus =
         statusFilter === 'all' ||
         normStatus === statusFilter.toLowerCase() ||
@@ -204,26 +208,55 @@ export const FestRequestsPage: React.FC = () => {
         </button>
       </div>
 
-      {/* 5 Statistics Summary Cards */}
+      {/* 5 Statistics Summary Cards with uniform circle badges and balanced responsive grid */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <div className="bg-white border border-slate-200 rounded-lg p-3.5 shadow-2xs">
-          <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Total Applications</div>
+        <div className="col-span-2 sm:col-span-1 bg-white border border-slate-200 rounded-lg p-3.5 shadow-2xs h-full min-h-[96px] flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Total Applications</span>
+            <div className="w-7 h-7 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-slate-600">
+              <FileText className="w-3.5 h-3.5" />
+            </div>
+          </div>
           <div className="text-2xl font-bold text-slate-900 mt-1">{stats.total}</div>
         </div>
-        <div className="bg-white border border-blue-200 bg-blue-50/30 rounded-lg p-3.5 shadow-2xs">
-          <div className="text-[11px] font-semibold text-blue-700 uppercase tracking-wider">Pending Review</div>
+
+        <div className="bg-white border border-blue-200 bg-blue-50/30 rounded-lg p-3.5 shadow-2xs h-full min-h-[96px] flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-blue-700 uppercase tracking-wider">Pending Review</span>
+            <div className="w-7 h-7 rounded-full bg-blue-100/60 border border-blue-200 flex items-center justify-center shrink-0 text-blue-700">
+              <Clock className="w-3.5 h-3.5" />
+            </div>
+          </div>
           <div className="text-2xl font-bold text-blue-700 mt-1">{stats.pending}</div>
         </div>
-        <div className="bg-white border border-indigo-200 bg-indigo-50/30 rounded-lg p-3.5 shadow-2xs">
-          <div className="text-[11px] font-semibold text-indigo-700 uppercase tracking-wider">Under Review</div>
+
+        <div className="bg-white border border-indigo-200 bg-indigo-50/30 rounded-lg p-3.5 shadow-2xs h-full min-h-[96px] flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-indigo-700 uppercase tracking-wider">Under Review</span>
+            <div className="w-7 h-7 rounded-full bg-indigo-100/60 border border-indigo-200 flex items-center justify-center shrink-0 text-indigo-700">
+              <Eye className="w-3.5 h-3.5" />
+            </div>
+          </div>
           <div className="text-2xl font-bold text-indigo-700 mt-1">{stats.underReview}</div>
         </div>
-        <div className="bg-white border border-emerald-200 bg-emerald-50/30 rounded-lg p-3.5 shadow-2xs">
-          <div className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider">Approved</div>
+
+        <div className="bg-white border border-emerald-200 bg-emerald-50/30 rounded-lg p-3.5 shadow-2xs h-full min-h-[96px] flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider">Approved</span>
+            <div className="w-7 h-7 rounded-full bg-emerald-100/60 border border-emerald-200 flex items-center justify-center shrink-0 text-emerald-700">
+              <Check className="w-3.5 h-3.5" />
+            </div>
+          </div>
           <div className="text-2xl font-bold text-emerald-700 mt-1">{stats.approved}</div>
         </div>
-        <div className="bg-white border border-rose-200 bg-rose-50/30 rounded-lg p-3.5 shadow-2xs">
-          <div className="text-[11px] font-semibold text-rose-700 uppercase tracking-wider">Rejected</div>
+
+        <div className="bg-white border border-rose-200 bg-rose-50/30 rounded-lg p-3.5 shadow-2xs h-full min-h-[96px] flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-rose-700 uppercase tracking-wider">Rejected</span>
+            <div className="w-7 h-7 rounded-full bg-rose-100/60 border border-rose-200 flex items-center justify-center shrink-0 text-rose-700">
+              <X className="w-3.5 h-3.5" />
+            </div>
+          </div>
           <div className="text-2xl font-bold text-rose-700 mt-1">{stats.rejected}</div>
         </div>
       </div>
@@ -302,8 +335,79 @@ export const FestRequestsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Requests Table */}
-      <div className="border border-slate-200 rounded overflow-hidden bg-white">
+      {/* Mobile Requests Card View */}
+      <div className="block lg:hidden space-y-3">
+        {filteredRequests.length === 0 ? (
+          <div className="p-6 text-center text-slate-400 bg-white border border-slate-200 rounded text-xs">
+            No fest requests match the selected filters.
+          </div>
+        ) : (
+          filteredRequests.map((req) => (
+            <div key={req.id} className="p-4 bg-white border border-slate-200 rounded-lg space-y-3 text-xs">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <span className="font-mono font-semibold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 text-[11px]">
+                    {req.id}
+                  </span>
+                  <div className="font-semibold text-slate-900 text-sm mt-1.5">{req.festName} {req.edition}</div>
+                  <div className="text-[11px] text-slate-500">{req.category}</div>
+                </div>
+
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded capitalize shrink-0 ${
+                  req.status === 'approved'
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                    : req.status === 'rejected'
+                    ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                    : req.status === 'more_info_required'
+                    ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                    : req.status === 'under_review'
+                    ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                    : req.status === 'pending'
+                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                    : 'bg-slate-100 text-slate-700 border border-slate-200'
+                }`}>
+                  {req.status.replace('_', ' ')}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 p-2.5 bg-slate-50 border border-slate-100 rounded text-[11px]">
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-semibold">Institution</span>
+                  <span className="font-medium text-slate-800 truncate block">{req.institution}</span>
+                  <span className="text-slate-400 text-[10px] truncate block">{req.venue}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-semibold">Requesting Admin</span>
+                  <span className="font-medium text-slate-800 truncate block">{req.requestingAdminName}</span>
+                  <span className="text-slate-400 text-[10px] truncate block">{req.requestingAdminEmail}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-semibold">Festival Dates</span>
+                  <span className="font-mono text-slate-700 text-[10px] block">{req.startDate} to {req.endDate}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-semibold">Reviewer</span>
+                  <span className="font-medium text-slate-800 text-[11px] block">{req.assignedReviewerName || 'Unassigned'}</span>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-[10px] text-slate-400 font-mono">Submitted: {req.submissionDate}</span>
+                <button
+                  onClick={() => setSelectedRequest(req)}
+                  className="px-3 py-1.5 text-xs font-semibold bg-slate-900 text-white rounded hover:bg-slate-800 inline-flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>Review Application</span>
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Desktop Requests Table */}
+      <div className="hidden lg:block border border-slate-200 rounded overflow-hidden bg-white">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs divide-y divide-slate-200">
             <thead className="bg-slate-50 text-slate-600 font-semibold uppercase tracking-wider text-[10px]">
@@ -329,7 +433,7 @@ export const FestRequestsPage: React.FC = () => {
               ) : (
                 filteredRequests.map((req) => (
                   <tr key={req.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="px-4 py-3 font-mono text-slate-900 font-medium">
+                    <td className="px-4 py-3 font-mono text-slate-900 font-medium whitespace-nowrap">
                       {req.id}
                     </td>
                     <td className="px-4 py-3">
@@ -377,7 +481,7 @@ export const FestRequestsPage: React.FC = () => {
                     <td className="px-4 py-3 text-right">
                       <button
                         onClick={() => setSelectedRequest(req)}
-                        className="px-2.5 py-1 text-xs font-medium border border-slate-200 rounded text-slate-700 hover:text-slate-900 hover:bg-slate-50 inline-flex items-center gap-1 shadow-2xs"
+                        className="px-2.5 py-1 text-xs font-medium border border-slate-200 rounded text-slate-700 hover:text-slate-900 hover:bg-slate-50 inline-flex items-center gap-1 shadow-2xs cursor-pointer"
                       >
                         <Eye className="w-3.5 h-3.5" />
                         <span>Review</span>

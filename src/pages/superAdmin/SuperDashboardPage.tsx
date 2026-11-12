@@ -3,12 +3,12 @@ import { useFest } from '../../context/FestContext';
 import {
   Landmark,
   Inbox,
-  CheckCircle2,
-  XCircle,
-  PlayCircle,
+  Check,
+  X,
+  Activity,
   Calendar,
   CheckCheck,
-  Ban,
+  ShieldAlert,
   UserCheck,
   Users,
   GraduationCap,
@@ -88,7 +88,7 @@ export const SuperDashboardPage: React.FC = () => {
       title: 'Approved Fests',
       value: approvedFests,
       desc: 'Chartered & active',
-      icon: CheckCircle2,
+      icon: Check,
       color: 'emerald',
       tab: 'all_fests' as SuperAdminNavigationTab,
     },
@@ -96,7 +96,7 @@ export const SuperDashboardPage: React.FC = () => {
       title: 'Rejected Requests',
       value: rejectedRequests,
       desc: 'Declined submissions',
-      icon: XCircle,
+      icon: X,
       color: 'rose',
       tab: 'fest_requests' as SuperAdminNavigationTab,
     },
@@ -104,7 +104,7 @@ export const SuperDashboardPage: React.FC = () => {
       title: 'Active / Live Fests',
       value: activeFests,
       desc: 'Currently in progress',
-      icon: PlayCircle,
+      icon: Activity,
       color: 'indigo',
       tab: 'all_fests' as SuperAdminNavigationTab,
     },
@@ -128,7 +128,7 @@ export const SuperDashboardPage: React.FC = () => {
       title: 'Suspended Fests',
       value: suspendedFests,
       desc: 'Under administrative hold',
-      icon: Ban,
+      icon: ShieldAlert,
       color: 'rose',
       tab: 'all_fests' as SuperAdminNavigationTab,
     },
@@ -235,7 +235,7 @@ export const SuperDashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 12 Summary Cards Grid */}
+      {/* 12 Summary Cards Grid with uniform height and identical circular icon badges */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
         {summaryCards.map((card, idx) => {
           const Icon = card.icon;
@@ -243,28 +243,30 @@ export const SuperDashboardPage: React.FC = () => {
             <button
               key={idx}
               onClick={() => setSuperAdminTab(card.tab)}
-              className="p-3.5 rounded border border-slate-200 bg-white hover:border-slate-300 hover:shadow-xs transition-all text-left flex flex-col justify-between group"
+              className="h-full min-h-[136px] p-3.5 rounded-lg border border-slate-200 bg-white hover:border-slate-300 hover:shadow-xs transition-all text-left flex flex-col justify-between group cursor-pointer"
             >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-medium text-slate-500 truncate">{card.title}</span>
-                <Icon
-                  className={`w-4 h-4 shrink-0 ${
+              <div className="flex items-start justify-between gap-1.5 mb-2">
+                <span className="text-[11px] font-semibold text-slate-500 leading-tight line-clamp-2">{card.title}</span>
+                <div
+                  className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 border ${
                     card.color === 'amber'
-                      ? 'text-amber-600'
+                      ? 'bg-amber-50 text-amber-600 border-amber-200'
                       : card.color === 'emerald'
-                      ? 'text-emerald-600'
+                      ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
                       : card.color === 'rose'
-                      ? 'text-rose-600'
+                      ? 'bg-rose-50 text-rose-600 border-rose-200'
                       : card.color === 'indigo'
-                      ? 'text-indigo-600'
+                      ? 'bg-indigo-50 text-indigo-600 border-indigo-200'
                       : card.color === 'sky'
-                      ? 'text-sky-600'
-                      : 'text-slate-500'
+                      ? 'bg-sky-50 text-sky-600 border-sky-200'
+                      : 'bg-slate-100 text-slate-700 border-slate-200'
                   }`}
-                />
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                </div>
               </div>
-              <div>
-                <div className="text-xl font-bold text-slate-900 tracking-tight">{card.value}</div>
+              <div className="my-auto">
+                <div className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">{card.value}</div>
                 <div className="text-[10px] text-slate-400 truncate mt-0.5">{card.desc}</div>
               </div>
               <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-500 font-medium group-hover:text-slate-900">

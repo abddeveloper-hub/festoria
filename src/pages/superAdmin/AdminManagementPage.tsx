@@ -49,31 +49,92 @@ export const AdminManagementPage: React.FC = () => {
   const [newDepartment, setNewDepartment] = useState('Fest Administration');
   const [newRole, setNewRole] = useState<'fest_admin' | 'super_admin' | 'programme_manager'>('fest_admin');
 
-  // Filter Fest Admins
+  // Filter Fest Admins with safety against null/undefined records
   const adminUsers = useMemo(() => {
-    return users.filter((u) => u.role === 'fest_admin' || u.role === 'admin' || u.role === 'super_admin');
-  }, [users]);
+    const directAdmins = users.filter((u) => u && (u.role === 'fest_admin' || u.role === 'admin' || u.role === 'super_admin'));
+    const existingIds = new Set(directAdmins.map((u) => u.id));
+    const existingEmails = new Set(directAdmins.map((u) => (u.email || '').toLowerCase()).filter(Boolean));
+
+    const extraAdmins: User[] = [];
+
+    // Synthesize admin accounts from active fests if not already present
+    (fests || []).forEach((f) => {
+      const fEmail = (f.adminEmail || '').toLowerCase();
+      if (f.adminId && !existingIds.has(f.adminId) && (!fEmail || !existingEmails.has(fEmail))) {
+        existingIds.add(f.adminId);
+        if (fEmail) existingEmails.add(fEmail);
+        extraAdmins.push({
+          id: f.adminId,
+          name: f.adminName || 'Fest Administrator',
+          email: f.adminEmail || '',
+          role: 'fest_admin',
+          department: f.institution || 'Festival Committee',
+          status: 'active',
+          permissions: ['manage_fest', 'manage_programmes', 'manage_scores'],
+          createdAt: f.createdAt || '2026-01-10',
+        });
+      }
+    });
+
+    // Synthesize admin accounts from fest applications
+    (festRequests || []).forEach((r) => {
+      const rEmail = (r.requestingAdminEmail || '').toLowerCase();
+      if (r.requestingAdminId && !existingIds.has(r.requestingAdminId) && (!rEmail || !existingEmails.has(rEmail))) {
+        existingIds.add(r.requestingAdminId);
+        if (rEmail) existingEmails.add(rEmail);
+        extraAdmins.push({
+          id: r.requestingAdminId,
+          name: r.requestingAdminName || 'Applicant Admin',
+          email: r.requestingAdminEmail || '',
+          role: 'fest_admin',
+          department: r.institution || 'Institutional Applicant',
+          status: 'active',
+          permissions: ['manage_fest'],
+          createdAt: r.submissionDate || '2026-01-10',
+        });
+      }
+    });
+
+    return [...directAdmins, ...extraAdmins];
+  }, [users, fests, festRequests]);
 
   const filteredAdmins = useMemo(() => {
+    const q = (searchQuery || '').trim().toLowerCase();
     return adminUsers.filter((u) => {
+      if (!u) return false;
       const matchSearch =
-        u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        u.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (u.department && u.department.toLowerCase().includes(searchQuery.toLowerCase()));
+        !q ||
+        (u.name || '').toLowerCase().includes(q) ||
+        (u.email || '').toLowerCase().includes(q) ||
+        (u.id || '').toLowerCase().includes(q) ||
+        (u.department ? u.department.toLowerCase().includes(q) : false);
       const matchStatus = statusFilter === 'all' || u.status === statusFilter;
       return matchSearch && matchStatus;
     });
   }, [adminUsers, searchQuery, statusFilter]);
 
-  // Find fests managed by a specific admin
-  const getFestsForAdmin = (adminId: string, adminEmail: string) => {
-    return fests.filter((f) => f.adminId === adminId || f.adminEmail.toLowerCase() === adminEmail.toLowerCase());
+  // Find fests managed by a specific admin (null-safe)
+  const getFestsForAdmin = (adminId?: string, adminEmail?: string) => {
+    const aId = adminId || '';
+    const aEmail = (adminEmail || '').trim().toLowerCase();
+    return (fests || []).filter((f) => {
+      if (!f) return false;
+      const fId = f.adminId || '';
+      const fEmail = (f.adminEmail || '').trim().toLowerCase();
+      return (aId && fId === aId) || (aEmail && fEmail && fEmail === aEmail);
+    });
   };
 
-  // Find requests submitted by a specific admin
-  const getRequestsForAdmin = (adminId: string, adminEmail: string) => {
-    return festRequests.filter((r) => r.requestingAdminId === adminId || r.requestingAdminEmail.toLowerCase() === adminEmail.toLowerCase());
+  // Find requests submitted by a specific admin (null-safe)
+  const getRequestsForAdmin = (adminId?: string, adminEmail?: string) => {
+    const aId = adminId || '';
+    const aEmail = (adminEmail || '').trim().toLowerCase();
+    return (festRequests || []).filter((r) => {
+      if (!r) return false;
+      const rId = r.requestingAdminId || '';
+      const rEmail = (r.requestingAdminEmail || '').trim().toLowerCase();
+      return (aId && rId === aId) || (aEmail && rEmail && rEmail === aEmail);
+    });
   };
 
   const handleCreateAdmin = (e: React.FormEvent) => {
@@ -169,8 +230,107 @@ export const AdminManagementPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Table of Admins */}
-      <div className="border border-slate-200 rounded overflow-hidden bg-white">
+      {/* Mobile Card List (shown on small screens) */}
+      <div className="block lg:hidden space-y-3">
+        {filteredAdmins.length === 0 ? (
+          <div className="p-6 text-center text-slate-400 bg-white border border-slate-200 rounded text-xs">
+            No administrator accounts match the query.
+          </div>
+        ) : (
+          filteredAdmins.map((admin) => {
+            const managedFests = getFestsForAdmin(admin.id, admin.email);
+            const requests = getRequestsForAdmin(admin.id, admin.email);
+            return (
+              <div key={admin.id} className="p-4 bg-white border border-slate-200 rounded-lg space-y-3 text-xs">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-semibold text-slate-900 truncate">{admin.name || 'Unnamed Admin'}</div>
+                    <div className="text-[11px] text-slate-500 truncate">{admin.email || 'No email specified'}</div>
+                    <div className="text-[10px] text-slate-400 font-mono mt-0.5">{admin.id}</div>
+                  </div>
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded capitalize shrink-0 ${
+                    admin.status === 'active'
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      : 'bg-rose-50 text-rose-700 border border-rose-200'
+                  }`}>
+                    {admin.status || 'active'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 p-2.5 bg-slate-50 border border-slate-100 rounded text-[11px]">
+                  <div>
+                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">Department</span>
+                    <span className="font-medium text-slate-800 truncate block">{admin.department || 'General Administration'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">Platform Role</span>
+                    <span className="font-medium text-slate-800 capitalize">{admin.role ? admin.role.replace('_', ' ') : 'Admin'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">Assigned Fests</span>
+                    <span className="font-medium text-slate-800">{managedFests.length} assigned</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">Requests</span>
+                    <span className="font-medium text-slate-800">{requests.length} submitted</span>
+                  </div>
+                </div>
+
+                {managedFests.length > 0 && (
+                  <div className="text-[11px] space-y-1">
+                    <span className="text-slate-500 font-medium">Assigned: </span>
+                    {managedFests.map((f) => (
+                      <span key={f.id} className="inline-flex items-center gap-1 mr-2 px-1.5 py-0.5 rounded bg-slate-100 text-slate-800">
+                        {f.name}
+                        <button
+                          onClick={() => setReassignFestModal(f)}
+                          className="text-[10px] text-indigo-600 underline font-medium"
+                        >
+                          Reassign
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                  <span className="text-[10px] text-slate-400">2FA Enforced</span>
+                  <div className="inline-flex items-center gap-1.5">
+                    <button
+                      onClick={() => setSelectedAdmin(admin)}
+                      className="px-2.5 py-1 rounded border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-medium inline-flex items-center gap-1"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Profile</span>
+                    </button>
+                    <button
+                      onClick={() => handleTriggerRecovery(admin)}
+                      className="px-2 py-1 rounded border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs"
+                      title="Dispatch Account Recovery Link"
+                    >
+                      <KeyRound className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleToggleAdminStatus(admin)}
+                      className={`px-2 py-1 rounded border text-xs ${
+                        admin.status === 'active'
+                          ? 'border-slate-200 text-rose-600 hover:bg-rose-50'
+                          : 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'
+                      }`}
+                      title={admin.status === 'active' ? 'Suspend Account' : 'Reactivate Account'}
+                    >
+                      {admin.status === 'active' ? <Ban className="w-3.5 h-3.5" /> : <RotateCcw className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Desktop Table of Admins */}
+      <div className="hidden lg:block border border-slate-200 rounded overflow-hidden bg-white">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs divide-y divide-slate-200">
             <thead className="bg-slate-50 text-slate-600 font-semibold uppercase tracking-wider text-[10px]">
@@ -198,8 +358,8 @@ export const AdminManagementPage: React.FC = () => {
                   return (
                     <tr key={admin.id} className="hover:bg-slate-50/70 transition-colors">
                       <td className="px-4 py-3">
-                        <div className="font-semibold text-slate-900">{admin.name}</div>
-                        <div className="text-[11px] text-slate-500">{admin.email}</div>
+                        <div className="font-semibold text-slate-900">{admin.name || 'Unnamed Admin'}</div>
+                        <div className="text-[11px] text-slate-500">{admin.email || 'No email'}</div>
                         <div className="text-[10px] text-slate-400 font-mono mt-0.5">{admin.id}</div>
                       </td>
                       <td className="px-4 py-3 text-slate-700">
@@ -207,7 +367,7 @@ export const AdminManagementPage: React.FC = () => {
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-800 capitalize">
-                          {admin.role.replace('_', ' ')}
+                          {admin.role ? admin.role.replace('_', ' ') : 'Admin'}
                         </span>
                       </td>
                       <td className="px-4 py-3">
@@ -240,7 +400,7 @@ export const AdminManagementPage: React.FC = () => {
                             ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                             : 'bg-rose-50 text-rose-700 border border-rose-200'
                         }`}>
-                          {admin.status}
+                          {admin.status || 'active'}
                         </span>
                         <div className="text-[10px] text-slate-400 mt-0.5">2FA Enforced</div>
                       </td>
@@ -302,11 +462,11 @@ export const AdminManagementPage: React.FC = () => {
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-3 border border-slate-200 rounded bg-slate-50">
                 <div>
                   <span className="text-slate-400 block text-[10px] uppercase font-semibold">Role</span>
-                  <span className="font-semibold text-slate-900 capitalize">{selectedAdmin.role.replace('_', ' ')}</span>
+                  <span className="font-semibold text-slate-900 capitalize">{selectedAdmin.role ? selectedAdmin.role.replace('_', ' ') : 'Fest Admin'}</span>
                 </div>
                 <div>
                   <span className="text-slate-400 block text-[10px] uppercase font-semibold">Account Status</span>
-                  <span className="font-semibold text-emerald-700 capitalize">{selectedAdmin.status}</span>
+                  <span className="font-semibold text-emerald-700 capitalize">{selectedAdmin.status || 'active'}</span>
                 </div>
                 <div>
                   <span className="text-slate-400 block text-[10px] uppercase font-semibold">Account Created</span>
