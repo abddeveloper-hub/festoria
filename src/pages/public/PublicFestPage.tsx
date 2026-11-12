@@ -258,7 +258,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
   const categories = ['All', ...Array.from(new Set(allPhotos.map((p) => p.category || 'General')))];
 
   return (
-    <div className="min-h-screen min-h-dvh bg-white text-slate-900 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen min-h-dvh bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-slate-900 selection:text-white">
       {/* ==================================================================== */}
       {/* 1. PUBLIC TOP NAVIGATION                                             */}
       {/* ==================================================================== */}
@@ -360,20 +360,8 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
             className="absolute inset-0 w-full h-full object-cover object-center z-0 opacity-40"
           />
         ) : (
-          /* CSS-Designed Vector/Gradient Fallback */
-          <div className="absolute inset-0 z-0 bg-linear-to-br from-slate-950 via-indigo-950/80 to-slate-950">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(99,102,241,0.15),transparent_60%)]" />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_70%,rgba(168,85,247,0.12),transparent_60%)]" />
-            {/* Vector grid overlay */}
-            <div
-              className="absolute inset-0 opacity-10"
-              style={{
-                backgroundImage:
-                  'linear-gradient(#ffffff 1px, transparent 1px), linear-gradient(90deg, #ffffff 1px, transparent 1px)',
-                backgroundSize: '40px 40px'
-              }}
-            />
-          </div>
+          /* Simple, Clean Slate Gradient */
+          <div className="absolute inset-0 z-0 bg-linear-to-b from-slate-950 via-slate-900 to-slate-950" />
         )}
 
         {/* Vignette Overlay */}
@@ -911,7 +899,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
             </div>
 
             {/* Bento Row 2: 3D Stepped Championship Podium (Olympic Style) */}
-            <div className="bg-slate-50 border border-slate-200/90 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xs">
+            <div className="bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xs">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2">
