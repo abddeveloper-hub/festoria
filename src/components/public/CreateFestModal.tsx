@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FESTORIA_LOGO } from '../../utils/logo';
+import { FESTORIA_LOGO, handleLogoError } from '../../utils/logo';
 import {
   Sparkles,
   Building,
@@ -485,6 +485,7 @@ export const CreateFestModal: React.FC<CreateFestModalProps> = ({
             <img
               src={FESTORIA_LOGO}
               alt="Festoria Logo"
+              onError={handleLogoError}
               className="w-9 h-9 rounded-lg object-contain border border-slate-700 bg-white shadow-xs"
             />
             <div>

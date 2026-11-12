@@ -4,7 +4,7 @@ import { PhoneAuthModal as AuthModal } from '../../components/common/PhoneAuthMo
 import { CreateFestModal } from '../../components/public/CreateFestModal';
 import { Role } from '../../types';
 import { getAppUrl, navigateTo } from '../../utils/navigation';
-import { FESTORIA_LOGO } from '../../utils/logo';
+import { FESTORIA_LOGO, handleLogoError } from '../../utils/logo';
 import {
   Sparkles,
   Layers,
@@ -88,6 +88,7 @@ export const FestoriaHomePage: React.FC = () => {
           <img
             src={FESTORIA_LOGO}
             alt="Festoria Logo"
+            onError={handleLogoError}
             className="w-10 h-10 rounded-xl object-contain shadow-sm border border-slate-200/80 bg-white"
           />
           <div>
@@ -170,6 +171,7 @@ export const FestoriaHomePage: React.FC = () => {
                   <img
                     src={FESTORIA_LOGO}
                     alt="Festoria Logo"
+                    onError={handleLogoError}
                     className="w-8 h-8 rounded-lg object-contain shadow-2xs border border-slate-200/80 bg-white"
                   />
                   <span className="font-bold text-slate-900 text-sm">Festoria Menu</span>
@@ -895,6 +897,7 @@ export const FestoriaHomePage: React.FC = () => {
             <img
               src={FESTORIA_LOGO}
               alt="Festoria Logo"
+              onError={handleLogoError}
               className="w-6 h-6 rounded-md object-contain shadow-2xs border border-slate-200/80 bg-white"
             />
             <span className="text-[#0f172a] font-bold">Festoria Platform</span>

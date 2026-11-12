@@ -517,7 +517,7 @@ export const SuperDashboardPage: React.FC = () => {
                   </div>
                   <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">{log.details}</p>
                   <div className="text-[10px] text-slate-400 mt-1">
-                    Acting User: <span className="font-medium text-slate-600">{log.actorName}</span> ({log.actorRole.replace('_', ' ')})
+                    Acting User: <span className="font-medium text-slate-600">{log.actorName}</span> ({typeof log.actorRole === 'string' ? log.actorRole.replace('_', ' ') : 'Staff'})
                   </div>
                 </div>
                 <span className="text-[10px] text-slate-400 whitespace-nowrap shrink-0">{log.timestamp.slice(5, 16)}</span>

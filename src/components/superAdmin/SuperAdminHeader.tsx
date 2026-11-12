@@ -209,7 +209,9 @@ export const SuperAdminHeader: React.FC<SuperAdminHeaderProps> = ({ setMobileOpe
                             <span className="font-medium text-slate-900">{u.name}</span>
                             <span className="text-[10px] text-slate-500 ml-2">{u.email}</span>
                           </div>
-                          <span className="text-[10px] text-slate-500 capitalize">{u.role.replace('_', ' ')}</span>
+                          <span className="text-[10px] text-slate-500 capitalize">
+                            {typeof u.role === 'string' ? u.role.replace('_', ' ') : 'User'}
+                          </span>
                         </button>
                       ))}
                     </div>

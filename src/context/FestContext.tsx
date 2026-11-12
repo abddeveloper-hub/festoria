@@ -421,14 +421,50 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     return 'public';
   });
 
-  const [superAdminTab, setSuperAdminTab] = useState<SuperAdminNavigationTab>(() => {
+  const [superAdminTab, setSuperAdminTabState] = useState<SuperAdminNavigationTab>(() => {
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
-      const tabParam = urlParams.get('subtab') as SuperAdminNavigationTab;
-      if (tabParam) return tabParam;
+      const tabParam = (urlParams.get('subtab') || urlParams.get('tab') || urlParams.get('view')) as string;
+      if (tabParam) {
+        if (tabParam === 'users' || tabParam === 'platform_users') return 'platform_users';
+        if (tabParam === 'participants' || tabParam === 'platform_participants') return 'platform_participants';
+        if (tabParam === 'programmes' || tabParam === 'platform_programmes') return 'platform_programmes';
+        if (tabParam === 'scores' || tabParam === 'platform_scores') return 'platform_scores';
+        if (tabParam === 'schedule' || tabParam === 'platform_schedule') return 'platform_schedule';
+        if (tabParam === 'reports' || tabParam === 'platform_reports') return 'platform_reports';
+        if (tabParam === 'notifications' || tabParam === 'platform_notifications') return 'platform_notifications';
+        if (tabParam === 'audit_logs' || tabParam === 'platform_audit_logs') return 'platform_audit_logs';
+        if (tabParam === 'settings' || tabParam === 'platform_settings') return 'platform_settings';
+        return tabParam as SuperAdminNavigationTab;
+      }
+      try {
+        const saved = localStorage.getItem('festflow_super_admin_tab') as SuperAdminNavigationTab;
+        if (saved) return saved;
+      } catch {}
     }
     return 'super_dashboard';
   });
+
+  const setSuperAdminTab = (tab: SuperAdminNavigationTab | string) => {
+    let resolvedTab = tab as SuperAdminNavigationTab;
+    if ((tab as string) === 'users') resolvedTab = 'platform_users';
+    else if ((tab as string) === 'participants') resolvedTab = 'platform_participants';
+    else if ((tab as string) === 'programmes') resolvedTab = 'platform_programmes';
+    else if ((tab as string) === 'scores') resolvedTab = 'platform_scores';
+    else if ((tab as string) === 'schedule') resolvedTab = 'platform_schedule';
+    else if ((tab as string) === 'reports') resolvedTab = 'platform_reports';
+    else if ((tab as string) === 'notifications') resolvedTab = 'platform_notifications';
+    else if ((tab as string) === 'audit_logs') resolvedTab = 'platform_audit_logs';
+    else if ((tab as string) === 'settings') resolvedTab = 'platform_settings';
+
+    setSuperAdminTabState(resolvedTab);
+    try {
+      localStorage.setItem('festflow_super_admin_tab', resolvedTab);
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', resolvedTab);
+      window.history.replaceState({}, '', url.toString());
+    } catch {}
+  };
 
   const [teamLeaderTab, setTeamLeaderTab] = useState<TeamLeaderNavigationTab>(() => {
     if (typeof window !== 'undefined') {
@@ -690,16 +726,16 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     }
   }, []);
 
-  // Retain authorized platform administrators (Super Admins and active Fest Admins)
+  // Retain all valid registered user accounts (Super Admins, Fest Admins, Judges, Team Leaders, and Participants)
   useEffect(() => {
     try {
       const storedUsers = StorageService.getUsers();
-      const authorizedAdmins = storedUsers.filter(
-        (u) => u.role === 'super_admin' || ((u.role === 'admin' || u.role === 'fest_admin') && u.status === 'active')
-      );
-      if (authorizedAdmins.length !== storedUsers.length) {
-        StorageService.saveUsers(authorizedAdmins);
-        setUsers(authorizedAdmins);
+      if (Array.isArray(storedUsers) && storedUsers.length > 0) {
+        const cleanUsers = storedUsers.filter((u) => u && u.id);
+        if (cleanUsers.length !== storedUsers.length) {
+          StorageService.saveUsers(cleanUsers);
+          setUsers(cleanUsers);
+        }
       }
     } catch {}
   }, []);
@@ -853,6 +889,14 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
   };
 
   const hasPermission = (allowedRoles: Role[]): boolean => {
+    if (!currentUser || !currentUser.role) return false;
+    if (currentUser.role === 'super_admin') return true;
+    if (
+      (currentUser.role === 'fest_admin' || currentUser.role === 'admin') &&
+      (allowedRoles.includes('fest_admin') || allowedRoles.includes('admin'))
+    ) {
+      return true;
+    }
     return allowedRoles.includes(currentUser.role);
   };
 
@@ -1387,7 +1431,12 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
 
   // User Management
   const addUser = (data: Omit<User, 'id' | 'createdAt'>): boolean => {
-    const exists = users.some((u) => u.email.toLowerCase() === data.email.toLowerCase());
+    if (!data?.name || !data?.email) {
+      addToast('error', 'Missing Data', 'User name and email are required.');
+      return false;
+    }
+    const targetEmail = (data.email || '').toLowerCase().trim();
+    const exists = (users || []).some((u) => u?.email && u.email.toLowerCase().trim() === targetEmail);
     if (exists) {
       addToast('error', 'Duplicate Email', `User with email ${data.email} already exists.`);
       return false;
@@ -1398,27 +1447,43 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       id: newId,
       createdAt: new Date().toISOString().slice(0, 10),
     };
-    setUsers((prev) => [...prev, newUser]);
+    setUsers((prev) => {
+      const updated = [...prev, newUser];
+      StorageService.saveUsers(updated);
+      return updated;
+    });
+    saveUserToFirestore(newUser).catch(() => {});
     logActivity('CREATE_USER', 'user', newId, `Created user ${data.name} with role ${data.role}.`);
     addToast('success', 'User Created', `Account for ${data.name} created.`);
     return true;
   };
 
   const updateUser = (id: string, updates: Partial<User>) => {
-    setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, ...updates } : u)));
-    if (currentUser.id === id) {
+    if (!id) return;
+    setUsers((prev) => {
+      const updated = prev.map((u) => (u?.id === id ? { ...u, ...updates } : u));
+      StorageService.saveUsers(updated);
+      return updated;
+    });
+    if (currentUser?.id === id) {
       setCurrentUser((prev) => ({ ...prev, ...updates }));
     }
+    saveUserToFirestore({ id, ...updates } as User).catch(() => {});
     logActivity('UPDATE_USER', 'user', id, `Updated user details for ${id}.`);
     addToast('success', 'User Updated', 'Account permissions updated.');
   };
 
   const deleteUser = (id: string) => {
-    if (currentUser.id === id) {
+    if (!id) return;
+    if (currentUser?.id === id) {
       addToast('error', 'Action Denied', 'You cannot delete your own active session account.');
       return;
     }
-    setUsers((prev) => prev.filter((u) => u.id !== id));
+    setUsers((prev) => {
+      const updated = prev.filter((u) => u?.id !== id);
+      StorageService.saveUsers(updated);
+      return updated;
+    });
     deleteUserFromFirestore(id);
     logActivity('DELETE_USER', 'user', id, `Removed user account ${id}.`);
     addToast('info', 'User Removed', 'User account was deleted.');

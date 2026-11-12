@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useFest } from '../../context/FestContext';
-import { FESTORIA_LOGO } from '../../utils/logo';
+import { FESTORIA_LOGO, handleLogoError } from '../../utils/logo';
 import {
   formatPhoneDisplay,
   normalizePhoneNumber,
@@ -321,6 +321,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <img
               src={FESTORIA_LOGO}
               alt="Festoria Logo"
+              onError={handleLogoError}
               className="w-10 h-10 rounded-xl object-contain border border-slate-200/80 bg-white shadow-xs"
             />
             <div>

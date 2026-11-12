@@ -124,7 +124,7 @@ export const UsersPage: React.FC = () => {
     }
   };
 
-  const canManageUsers = hasPermission(['super_admin', 'admin']);
+  const canManageUsers = hasPermission(['super_admin', 'admin', 'fest_admin']);
 
   return (
     <div className="space-y-6">

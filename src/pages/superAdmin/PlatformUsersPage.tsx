@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 
 export const PlatformUsersPage: React.FC = () => {
-  const { users, fests, addUser, updateUser, deleteUser, currentUser } = useFest();
+  const { users, fests, teams, judges, addUser, updateUser, deleteUser, currentUser, addToast } = useFest();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
@@ -36,12 +36,19 @@ export const PlatformUsersPage: React.FC = () => {
 
   const [viewTab, setViewTab] = useState<'directory' | 'permissions_matrix'>('directory');
 
-  // Combined users list ensuring fests' admins are included even if not yet in users collection
+  // Combined users list ensuring fests' admins, currentUser, judges and team leaders are included
   const allPlatformUsers = useMemo(() => {
-    const rawUsers = Array.isArray(users) ? users : [];
+    const rawUsers = Array.isArray(users) ? users.filter(Boolean) : [];
     const existingIds = new Set(rawUsers.map((u) => u?.id).filter(Boolean));
     const extra: User[] = [];
 
+    // 1. Ensure current session super admin is present
+    if (currentUser?.id && !existingIds.has(currentUser.id)) {
+      existingIds.add(currentUser.id);
+      extra.push(currentUser);
+    }
+
+    // 2. Include Fest administrators from fests
     (fests || []).forEach((f) => {
       if (f?.adminId && !existingIds.has(f.adminId)) {
         existingIds.add(f.adminId);
@@ -58,8 +65,45 @@ export const PlatformUsersPage: React.FC = () => {
       }
     });
 
+    // 3. Include Judges if registered
+    (judges || []).forEach((j) => {
+      if (j?.id && !existingIds.has(j.id)) {
+        existingIds.add(j.id);
+        extra.push({
+          id: j.id,
+          name: j.name || 'Platform Judge',
+          email: j.email || '',
+          phone: j.phone || '',
+          role: 'judge',
+          department: j.designation || 'Adjudication Panel',
+          status: 'active',
+          permissions: ['view_scores'],
+          createdAt: '2026-01-15',
+        });
+      }
+    });
+
+    // 4. Include Team Leaders if registered
+    (teams || []).forEach((t) => {
+      const leaderKey = `TL-${t.id}`;
+      if (t?.teamLeaderName && !existingIds.has(leaderKey)) {
+        existingIds.add(leaderKey);
+        extra.push({
+          id: leaderKey,
+          name: t.teamLeaderName,
+          email: `${t.code?.toLowerCase() || 'leader'}@festoria.edu`,
+          phone: t.teamLeaderContact || '',
+          role: 'team_leader',
+          department: t.institution || t.name,
+          status: 'active',
+          permissions: ['view_dashboard'],
+          createdAt: t.createdAt || '2026-01-15',
+        });
+      }
+    });
+
     return [...rawUsers, ...extra];
-  }, [users, fests]);
+  }, [users, fests, judges, teams, currentUser]);
 
   const filteredUsers = useMemo(() => {
     const q = (searchQuery || '').trim().toLowerCase();
@@ -70,7 +114,10 @@ export const PlatformUsersPage: React.FC = () => {
         (u.name || '').toLowerCase().includes(q) ||
         (u.email || '').toLowerCase().includes(q) ||
         (u.id || '').toLowerCase().includes(q);
-      const matchRole = roleFilter === 'all' || u.role === roleFilter;
+      const matchRole =
+        roleFilter === 'all' ||
+        u.role === roleFilter ||
+        (roleFilter === 'fest_admin' && (u.role === 'admin' || (u.role as string) === 'fest_admin'));
       const matchStatus = statusFilter === 'all' || u.status === statusFilter;
       return matchSearch && matchRole && matchStatus;
     });
@@ -78,20 +125,23 @@ export const PlatformUsersPage: React.FC = () => {
 
   const handleCreateUser = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formName || !formEmail) return;
+    if (!formName.trim() || !formEmail.trim()) return;
 
-    addUser({
-      name: formName,
-      email: formEmail,
+    const ok = addUser({
+      name: formName.trim(),
+      email: formEmail.trim(),
       role: formRole,
-      department: formDepartment || 'Campus Operations',
+      department: formDepartment.trim() || 'Campus Operations',
       status: 'active',
       permissions: ['view_dashboard'],
     });
 
-    setShowAddModal(false);
-    setFormName('');
-    setFormEmail('');
+    if (ok !== false) {
+      setShowAddModal(false);
+      setFormName('');
+      setFormEmail('');
+      setFormDepartment('');
+    }
   };
 
   const handleSaveEdit = (e: React.FormEvent) => {
@@ -99,10 +149,10 @@ export const PlatformUsersPage: React.FC = () => {
     if (!editingUser) return;
 
     updateUser(editingUser.id, {
-      name: formName,
-      email: formEmail,
+      name: formName.trim(),
+      email: formEmail.trim(),
       role: formRole,
-      department: formDepartment,
+      department: formDepartment.trim(),
     });
 
     setEditingUser(null);
@@ -110,10 +160,26 @@ export const PlatformUsersPage: React.FC = () => {
 
   const handleOpenEdit = (user: User) => {
     setEditingUser(user);
-    setFormName(user.name);
-    setFormEmail(user.email);
-    setFormRole(user.role);
+    setFormName(user.name || '');
+    setFormEmail(user.email || '');
+    setFormRole(user.role || 'fest_admin');
     setFormDepartment(user.department || '');
+  };
+
+  const handleDeleteUser = (userId: string, userName?: string) => {
+    if (!userId) return;
+    if (currentUser?.id === userId) {
+      if (typeof addToast === 'function') {
+        addToast('error', 'Action Denied', 'You cannot delete your own active super admin account.');
+      }
+      return;
+    }
+    const confirmed = window.confirm(
+      `Are you sure you want to delete user account "${userName || userId}"? This action will revoke their platform credentials.`
+    );
+    if (confirmed) {
+      deleteUser(userId);
+    }
   };
 
   // RBAC Matrix Definitions
@@ -258,12 +324,23 @@ export const PlatformUsersPage: React.FC = () => {
           {/* Mobile Card List (shown on small screens) */}
           <div className="block lg:hidden space-y-3">
             {filteredUsers.length === 0 ? (
-              <div className="p-6 text-center text-slate-400 bg-white border border-slate-200 rounded text-xs">
-                No user accounts match your filters.
+              <div className="p-8 text-center text-slate-400 bg-white border border-slate-200 rounded text-xs space-y-2">
+                <p>No user accounts match your filters.</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setRoleFilter('all');
+                    setStatusFilter('all');
+                  }}
+                  className="px-2.5 py-1 text-[11px] font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded transition-colors"
+                >
+                  Clear Filters
+                </button>
               </div>
             ) : (
-              filteredUsers.map((u) => (
-                <div key={u.id} className="p-4 bg-white border border-slate-200 rounded-lg space-y-3 text-xs">
+              filteredUsers.map((u, idx) => (
+                <div key={u.id || `usr-m-${idx}`} className="p-4 bg-white border border-slate-200 rounded-lg space-y-3 text-xs">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="font-semibold text-slate-900 truncate">{u.name || 'Unnamed User'}</div>
@@ -286,7 +363,9 @@ export const PlatformUsersPage: React.FC = () => {
                     </div>
                     <div>
                       <span className="text-slate-400 block text-[10px] uppercase font-semibold">System Role</span>
-                      <span className="font-medium text-slate-800 capitalize">{u.role ? u.role.replace('_', ' ') : 'User'}</span>
+                      <span className="font-medium text-slate-800 capitalize">
+                        {typeof u.role === 'string' ? u.role.replace('_', ' ') : 'User'}
+                      </span>
                     </div>
                     <div>
                       <span className="text-slate-400 block text-[10px] uppercase font-semibold">Account Created</span>
@@ -304,7 +383,7 @@ export const PlatformUsersPage: React.FC = () => {
                     </button>
                     {currentUser?.id !== u.id && (
                       <button
-                        onClick={() => deleteUser(u.id)}
+                        onClick={() => handleDeleteUser(u.id, u.name)}
                         className="px-2.5 py-1 rounded border border-slate-200 text-rose-600 hover:bg-rose-50 text-xs font-medium inline-flex items-center gap-1"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -340,8 +419,8 @@ export const PlatformUsersPage: React.FC = () => {
                       </td>
                     </tr>
                   ) : (
-                    filteredUsers.map((u) => (
-                      <tr key={u.id} className="hover:bg-slate-50/70 transition-colors">
+                    filteredUsers.map((u, idx) => (
+                      <tr key={u.id || `usr-d-${idx}`} className="hover:bg-slate-50/70 transition-colors">
                         <td className="px-4 py-3 font-mono font-medium text-slate-900">{u.id}</td>
                         <td className="px-4 py-3">
                           <div className="font-semibold text-slate-900">{u.name || 'Unnamed User'}</div>
@@ -352,11 +431,11 @@ export const PlatformUsersPage: React.FC = () => {
                           <span className={`text-[10px] font-semibold px-2 py-0.5 rounded capitalize ${
                             u.role === 'super_admin'
                               ? 'bg-slate-900 text-white'
-                              : u.role === 'fest_admin'
+                              : u.role === 'fest_admin' || u.role === 'admin'
                               ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
                               : 'bg-slate-100 text-slate-800 border border-slate-200'
                           }`}>
-                            {u.role ? u.role.replace('_', ' ') : 'User'}
+                            {typeof u.role === 'string' ? u.role.replace('_', ' ') : 'User'}
                           </span>
                         </td>
                         <td className="px-4 py-3 font-mono text-[11px] text-slate-500">{u.createdAt || '2026-01-15'}</td>
@@ -380,7 +459,7 @@ export const PlatformUsersPage: React.FC = () => {
                             </button>
                             {currentUser?.id !== u.id && (
                               <button
-                                onClick={() => deleteUser(u.id)}
+                                onClick={() => handleDeleteUser(u.id, u.name)}
                                 className="p-1 rounded border border-slate-200 text-rose-600 hover:bg-rose-50"
                                 title="Delete user"
                               >

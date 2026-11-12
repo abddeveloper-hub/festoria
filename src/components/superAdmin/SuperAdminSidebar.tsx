@@ -1,7 +1,7 @@
 import React from 'react';
 import { useFest } from '../../context/FestContext';
 import { SuperAdminNavigationTab } from '../../types';
-import { FESTORIA_LOGO } from '../../utils/logo';
+import { FESTORIA_LOGO, handleLogoError } from '../../utils/logo';
 import {
   LayoutDashboard,
   Inbox,
@@ -171,6 +171,7 @@ export const SuperAdminSidebar: React.FC<SuperAdminSidebarProps> = ({ mobileOpen
             <img
               src={FESTORIA_LOGO}
               alt="Festoria Logo"
+              onError={handleLogoError}
               className="w-8 h-8 rounded-lg object-contain border border-slate-200/80 bg-white shadow-2xs"
             />
             <div>
