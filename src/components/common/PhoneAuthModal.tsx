@@ -54,6 +54,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setActiveTeamId,
     setActiveParticipantId,
     addToast,
+    activeFestId,
   } = useFest();
 
   const isSuperAdminVisible = showSuperAdmin || defaultRole === 'super_admin';
@@ -254,6 +255,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         classOrDivision: regClass.trim(),
         category: regCategory,
         requestedTeamId: regTeamId,
+        festId: activeFestId || 'FEST-01',
       });
 
       if (regResult.success) {

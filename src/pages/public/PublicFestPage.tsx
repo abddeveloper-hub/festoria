@@ -50,13 +50,16 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
     results,
     announcements,
     activeFestId,
-    setActiveFestId
+    setActiveFestId,
+    fests
   } = useFest();
 
   const targetFestId = propFestId || activeFestId || 'FEST-01';
+  const fest = fests.find((f) => f.id === targetFestId);
+  const festName = fest ? `${fest.name} ${fest.edition || ''}`.trim() : (settings.festName || 'Festoria 2026');
 
   const [pageData, setPageData] = useState<FestPublicPageData>(
-    previewData || getDefaultFestPublicPage(targetFestId, settings.festName)
+    previewData || getDefaultFestPublicPage(targetFestId, festName)
   );
 
   const [activeTabSection, setActiveTabSection] = useState<
@@ -86,7 +89,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
     let isMounted = true;
     async function loadPublished() {
       try {
-        const published = await fetchPublishedFestPage(targetFestId, settings.festName);
+        const published = await fetchPublishedFestPage(targetFestId, festName);
         if (isMounted && published) {
           setPageData(published);
         }
@@ -98,7 +101,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [targetFestId, previewData, settings.festName]);
+  }, [targetFestId, previewData, festName]);
 
   const toggleVideoPlayback = () => {
     if (!videoRef.current) return;
@@ -157,22 +160,22 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
           {pageData.logo.logoUrl ? (
             <img
               src={pageData.logo.logoUrl}
-              alt={settings.festName}
+              alt={festName}
               style={{ width: `${pageData.logo.widthPx || 120}px` }}
               className="h-9 object-contain"
             />
           ) : (
             <div className="w-9 h-9 rounded-lg bg-slate-900 text-white flex items-center justify-center font-black text-sm tracking-widest shadow-xs">
-              {settings.festName.slice(0, 2).toUpperCase()}
+              {festName.slice(0, 2).toUpperCase()}
             </div>
           )}
 
           <div>
             <h1 className="text-sm font-bold tracking-tight text-slate-900 leading-tight">
-              {settings.festName}
+              {festName}
             </h1>
             <p className="text-[10px] text-slate-500 font-semibold tracking-wide uppercase">
-              {settings.festEdition || 'Official Festival Portal'}
+              {fest?.institution ? `${fest.institution} · ` : ''}{fest?.edition || settings.festEdition || 'Official Festival Portal'}
             </p>
           </div>
         </div>
@@ -337,28 +340,28 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
           {/* Festival Pill */}
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-indigo-300 text-xs font-semibold tracking-wide uppercase">
             <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-            <span>{settings.festEdition || 'Annual Inter-Collegiate Fest'}</span>
+            <span>{fest ? `${fest.name} · ${fest.institution || ''}` : (settings.festEdition || 'Annual Inter-Collegiate Fest')}</span>
           </div>
 
           {/* Heading */}
           <h2 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-tight drop-shadow-md">
-            {pageData.hero.heading}
+            {pageData.hero.heading && !pageData.hero.heading.includes('Celebrate Passion') ? pageData.hero.heading : `Welcome to ${festName}`}
           </h2>
 
           {/* Description */}
           <p className="text-sm sm:text-lg text-slate-300 max-w-2xl mx-auto font-normal leading-relaxed">
-            {pageData.hero.description}
+            {fest?.description || pageData.hero.description}
           </p>
 
           {/* Meta Info Bar (Dates, Venue, Host) */}
           <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 pt-2 text-xs font-medium text-slate-300">
             <div className="flex items-center gap-2 bg-white/5 backdrop-blur-xs px-3 py-1.5 rounded-lg border border-white/10">
               <Calendar className="w-4 h-4 text-indigo-400" />
-              <span>{settings.startDate} to {settings.endDate}</span>
+              <span>{fest?.startDate || settings.startDate} to {fest?.endDate || settings.endDate}</span>
             </div>
             <div className="flex items-center gap-2 bg-white/5 backdrop-blur-xs px-3 py-1.5 rounded-lg border border-white/10">
               <MapPin className="w-4 h-4 text-indigo-400" />
-              <span>{settings.venue || 'Grand University Campus'}</span>
+              <span>{fest ? `${fest.venue || ''}${fest.institution ? `, ${fest.institution}` : ''}` : (settings.venue || 'Grand University Campus')}</span>
             </div>
           </div>
 

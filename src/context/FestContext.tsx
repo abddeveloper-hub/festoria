@@ -325,15 +325,38 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
         return portalParam;
       }
 
-      // Hash-based subroute detection (e.g. for GitHub Pages SPA navigation)
+      const pathname = (window.location.pathname || '').toLowerCase();
       const hash = (window.location.hash || '').toLowerCase();
+
+      // 1. Explicit public parameters override any stored administrative session:
+      // ?fest=..., ?festId=..., ?action=register, ?register=..., ?invite=..., ?token=..., /f/..., /invite...
+      const isExplicitPublicRoute =
+        urlParams.has('fest') ||
+        urlParams.has('festId') ||
+        urlParams.get('action') === 'register' ||
+        urlParams.has('register') ||
+        urlParams.has('token') ||
+        urlParams.has('invite') ||
+        pathname.includes('/f/') ||
+        pathname.includes('/invite') ||
+        hash.includes('/f/') ||
+        hash.includes('/invite') ||
+        portalParam === 'public';
+
+      if (isExplicitPublicRoute) {
+        try {
+          localStorage.setItem('festflow_portal', 'public');
+        } catch {}
+        return 'public';
+      }
+
+      // Hash-based subroute detection (e.g. for GitHub Pages SPA navigation)
       if (hash.includes('super-admin') || hash.includes('super_admin')) return 'super_admin';
       if (hash.includes('team-leader') || hash.includes('team_leader')) return 'team_leader';
       if (hash.includes('participant')) return 'participant';
       if (hash.includes('admin')) return 'fest_admin';
 
       // Path-based route detection (Multi-Page and Single-Page under base path)
-      const pathname = (window.location.pathname || '').toLowerCase();
       if (pathname.includes('super-admin')) return 'super_admin';
       if (pathname.includes('team-leader')) return 'team_leader';
       if (pathname.includes('participant')) return 'participant';
@@ -418,7 +441,14 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
   const [milestones, setMilestones] = useState<FestMilestone[]>(() => StorageService.getMilestones());
   const [platformNotifications, setPlatformNotifications] = useState<PlatformNotification[]>(() => StorageService.getPlatformNotifications());
   const [platformAuditLogs, setPlatformAuditLogs] = useState<PlatformAuditLog[]>(() => StorageService.getPlatformAuditLogs());
-  const [activeFestId, setActiveFestId] = useState<string>('FEST-01');
+  const [activeFestId, setActiveFestId] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const queryFest = urlParams.get('fest') || urlParams.get('festId');
+      if (queryFest) return queryFest;
+    }
+    return 'FEST-01';
+  });
 
   // Team Leader State
   const [activeTeamId, setActiveTeamId] = useState<string>(() => {
@@ -505,6 +535,46 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       // ignore
     }
   }, [currentPortal]);
+
+  // Dynamically respond to URL query parameter changes (e.g. ?fest=FEST-01, ?action=register)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleUrlChange = () => {
+      const search = new URLSearchParams(window.location.search);
+      const queryFest = search.get('fest') || search.get('festId');
+      const action = search.get('action') || search.get('register');
+      const token = search.get('token') || search.get('invite');
+      const portalParam = search.get('portal') as PortalType;
+      const pathname = (window.location.pathname || '').toLowerCase();
+      const hash = (window.location.hash || '').toLowerCase();
+
+      if (queryFest) {
+        setActiveFestId(queryFest);
+      }
+
+      if (
+        queryFest ||
+        action === 'register' ||
+        action === 'true' ||
+        action === 'participant' ||
+        token ||
+        portalParam === 'public' ||
+        pathname.includes('/f/') ||
+        pathname.includes('/invite') ||
+        hash.includes('/f/')
+      ) {
+        setCurrentPortal('public');
+        try {
+          localStorage.setItem('festflow_portal', 'public');
+        } catch {}
+      }
+    };
+
+    handleUrlChange();
+    window.addEventListener('popstate', handleUrlChange);
+    return () => window.removeEventListener('popstate', handleUrlChange);
+  }, []);
 
   // Firebase Live Sync State
   const [firebaseStatus, setFirebaseStatus] = useState<{

@@ -33,9 +33,23 @@ export const FestoriaHomePage: React.FC = () => {
 
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authRole, setAuthRole] = useState<Role | 'participant' | 'auto'>('auto');
+  const [authModalMode, setAuthModalMode] = useState<'signin' | 'register'>('signin');
   const [createFestModalOpen, setCreateFestModalOpen] = useState(false);
   const [createFestInitialTab, setCreateFestInitialTab] = useState<'apply' | 'track'>('apply');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Respond to URL action parameters (e.g. ?action=register)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const search = new URLSearchParams(window.location.search);
+      const action = search.get('action') || search.get('register');
+      if (action === 'register' || action === 'true' || action === 'participant') {
+        setAuthRole('participant');
+        setAuthModalMode('register');
+        setAuthModalOpen(true);
+      }
+    }
+  }, []);
 
   // Lock body scroll when mobile menu is active
   useEffect(() => {
@@ -896,6 +910,7 @@ export const FestoriaHomePage: React.FC = () => {
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
         defaultRole={authRole}
+        initialMode={authModalMode}
         showSuperAdmin={false}
       />
 
