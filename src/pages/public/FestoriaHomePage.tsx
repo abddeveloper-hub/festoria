@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useFest } from '../../context/FestContext';
 import { PhoneAuthModal as AuthModal } from '../../components/common/PhoneAuthModal';
 import { CreateFestModal } from '../../components/public/CreateFestModal';
+import { Background3DThreadsAndShapes } from '../../components/public/Background3DThreadsAndShapes';
 import { Role } from '../../types';
 import { getAppUrl, navigateTo } from '../../utils/navigation';
 import { FESTORIA_LOGO, handleLogoError } from '../../utils/logo';
@@ -84,6 +85,8 @@ export const FestoriaHomePage: React.FC = () => {
 
   return (
     <div className="min-h-screen min-h-dvh bg-[#faf8ff] text-[#0f172a] flex flex-col font-display selection:bg-[#6366f1] selection:text-white relative overflow-x-hidden">
+      {/* 3D Flowing Threads & Floating Geometric Polyhedra Shapes Background */}
+      <Background3DThreadsAndShapes opacity={0.88} />
       {/* ==================================================================== */}
       {/* 1. TOP NAVBAR — 3D LAYERED GLASSMORPHISM SPEC                       */}
       {/* ==================================================================== */}
@@ -926,7 +929,7 @@ export const FestoriaHomePage: React.FC = () => {
       {/* ==================================================================== */}
       {/* 4. GOVERNANCE LIFECYCLE: 3D STEPPED PIPELINE                         */}
       {/* ==================================================================== */}
-      <section className="py-24 bg-[#f8fafc] border-y border-slate-200/80">
+      <section className="py-24 bg-[#f8fafc]/80 backdrop-blur-xs border-y border-slate-200/80 relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-8 space-y-14">
           <div className="text-center space-y-3 max-w-2xl mx-auto">
             <span className="text-xs font-black text-indigo-700 uppercase tracking-widest px-3.5 py-1 rounded-full bg-indigo-50 border border-indigo-200/80 shadow-2xs">
@@ -1077,7 +1080,7 @@ export const FestoriaHomePage: React.FC = () => {
       {/* ==================================================================== */}
       {/* 6. CALL TO ACTION: 3D GLOW BANNER                                   */}
       {/* ==================================================================== */}
-      <section className="py-24 px-4 sm:px-8 border-t border-slate-200/80 bg-[#faf8ff]">
+      <section className="py-24 px-4 sm:px-8 border-t border-slate-200/80 bg-transparent relative z-10">
         <div className="max-w-4xl mx-auto rounded-3xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 text-white p-8 sm:p-14 text-center space-y-7 shadow-[0_25px_60px_-15px_rgba(79,70,229,0.35)] border-t border-white/30 relative overflow-hidden">
           {/* Subtle Ambient Decorative Gradients */}
           <div className="absolute -top-24 -left-24 w-72 h-72 bg-white/15 rounded-full blur-2xl pointer-events-none" />
@@ -1122,7 +1125,7 @@ export const FestoriaHomePage: React.FC = () => {
       {/* ==================================================================== */}
       {/* 6.5. OFFICIAL HELPDESK & PLATFORM SUPPORT (3D SUPPORT PODIUMS)       */}
       {/* ==================================================================== */}
-      <section id="helpdesk" className="py-24 px-4 sm:px-8 border-t border-slate-200/80 bg-white">
+      <section id="helpdesk" className="py-24 px-4 sm:px-8 border-t border-slate-200/80 bg-white/80 backdrop-blur-xs relative z-10">
         <div className="max-w-5xl mx-auto space-y-12">
           <div className="text-center space-y-3">
             <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-black uppercase tracking-wider shadow-2xs">
@@ -1227,7 +1230,7 @@ export const FestoriaHomePage: React.FC = () => {
       {/* ==================================================================== */}
       {/* 7. FOOTER                                                            */}
       {/* ==================================================================== */}
-      <footer className="border-t border-slate-200 bg-white py-10 px-4 sm:px-8 text-xs text-slate-500">
+      <footer className="border-t border-slate-200 bg-white/90 backdrop-blur-md py-10 px-4 sm:px-8 text-xs text-slate-500 relative z-10">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
             <img

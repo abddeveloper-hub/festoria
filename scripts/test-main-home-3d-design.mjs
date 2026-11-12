@@ -1,10 +1,14 @@
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
 
 console.log('🧪 Verifying Festoria Main Public Page 3D & Structured Tailwind Design...');
 
 const filePath = resolve('src/pages/public/FestoriaHomePage.tsx');
 const content = readFileSync(filePath, 'utf8');
+
+const bgFilePath = resolve('src/components/public/Background3DThreadsAndShapes.tsx');
+const bgExists = existsSync(bgFilePath);
+const bgContent = bgExists ? readFileSync(bgFilePath, 'utf8') : '';
 
 const tests = [
   // 1. Structural Sections
@@ -36,7 +40,16 @@ const tests = [
 
   // 3. 3D Tailwind classes verification
   { name: '3D shadow-depths and inset highlights used', test: () => content.includes('shadow-[0_') && content.includes('inset_0_1px_0_rgba(255,255,255') },
-  { name: '3D hover lift transformations applied', test: () => content.includes('hover:-translate-y-') }
+  { name: '3D hover lift transformations applied', test: () => content.includes('hover:-translate-y-') },
+
+  // 4. 3D Moving Threads & Background Shapes Verification
+  { name: 'Background3DThreadsAndShapes component exists', test: () => bgExists },
+  { name: 'Background3DThreadsAndShapes is mounted on homepage', test: () => content.includes('<Background3DThreadsAndShapes') },
+  { name: 'Moving 3D threads wave simulation implemented', test: () => bgContent.includes('quadraticCurveTo') && bgContent.includes('getThreadPoint') },
+  { name: 'Traveling energy particles moving along threads', test: () => bgContent.includes('particles.forEach') && bgContent.includes('haloGrad') },
+  { name: '3D Polyhedra mathematical wireframe shapes defined', test: () => bgContent.includes('createIcosahedron') && bgContent.includes('createCube') && bgContent.includes('createOctahedron') && bgContent.includes('createTetrahedron') && bgContent.includes('createGyroscopeRings') },
+  { name: '3D projection camera with perspective scaling (fov)', test: () => bgContent.includes('project3D') && bgContent.includes('scale = fov / (fov + z') },
+  { name: 'Interactive mouse parallax tracking implemented', test: () => bgContent.includes('handleMouseMove') && bgContent.includes('targetMouseX') }
 ];
 
 let failed = 0;
