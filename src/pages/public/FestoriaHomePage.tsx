@@ -26,7 +26,9 @@ import {
   ExternalLink,
   Activity,
   Menu,
-  X
+  X,
+  Mail,
+  Phone
 } from 'lucide-react';
 
 export const FestoriaHomePage: React.FC = () => {
@@ -250,6 +252,26 @@ export const FestoriaHomePage: React.FC = () => {
                 <span>Super Admin Governance</span>
                 <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
               </a>
+
+              <div className="pt-3 border-t border-slate-100 space-y-2 text-[11px] text-slate-600">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Help & Support Desk</span>
+                <a href="mailto:abdwahidbc@gmail.com" className="flex items-center gap-2 hover:text-slate-900">
+                  <Mail className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                  <span className="truncate">abdwahidbc@gmail.com</span>
+                </a>
+                <a href="tel:9844691633" className="flex items-center gap-2 hover:text-slate-900">
+                  <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>9844691633</span>
+                </a>
+                <a href="https://instagram.com/abd_l_wahid_" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-pink-600">
+                  <svg className="w-3.5 h-3.5 text-pink-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                  </svg>
+                  <span>@abd_l_wahid_</span>
+                </a>
+              </div>
             </div>
           </div>
         </div>
@@ -892,16 +914,49 @@ export const FestoriaHomePage: React.FC = () => {
       {/* 7. FOOTER                                                            */}
       {/* ==================================================================== */}
       <footer className="border-t border-[#e2e8f0] bg-white py-10 px-4 sm:px-8 text-xs text-[#64748b]">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-3">
             <img
               src={FESTORIA_LOGO}
               alt="Festoria Logo"
               onError={handleLogoError}
-              className="w-6 h-6 rounded-md object-contain shadow-2xs border border-slate-200/80 bg-white"
+              className="w-7 h-7 rounded-lg object-contain shadow-2xs border border-slate-200/80 bg-white"
             />
-            <span className="text-[#0f172a] font-bold">Festoria Platform</span>
-            <span>— Institutional Festival Management Architecture</span>
+            <div>
+              <span className="text-[#0f172a] font-bold">Festoria Platform</span>
+              <span className="text-slate-400 block text-[11px]">Unified Collegiate Festival Management</span>
+            </div>
+          </div>
+
+          {/* Help & Support Desk Contact Information */}
+          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-xs text-[#475569]">
+            <a
+              href="mailto:abdwahidbc@gmail.com"
+              className="inline-flex items-center gap-1.5 hover:text-[#0f172a] transition-colors"
+            >
+              <Mail className="w-3.5 h-3.5 text-indigo-600" />
+              <span>abdwahidbc@gmail.com</span>
+            </a>
+            <a
+              href="tel:9844691633"
+              className="inline-flex items-center gap-1.5 hover:text-[#0f172a] transition-colors"
+            >
+              <Phone className="w-3.5 h-3.5 text-emerald-600" />
+              <span>9844691633</span>
+            </a>
+            <a
+              href="https://instagram.com/abd_l_wahid_"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 hover:text-pink-600 transition-colors font-medium"
+            >
+              <svg className="w-3.5 h-3.5 text-pink-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+              </svg>
+              <span>@abd_l_wahid_</span>
+            </a>
           </div>
 
           <div className="flex items-center gap-6 text-xs text-[#64748b]">

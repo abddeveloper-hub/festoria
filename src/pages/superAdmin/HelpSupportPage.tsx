@@ -144,20 +144,51 @@ export const HelpSupportPage: React.FC = () => {
           For technical issues, emergency fest suspensions, or account recovery escalations:
         </p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
           <div className="p-3 border border-slate-200 rounded bg-slate-50 flex items-center gap-3">
-            <Mail className="w-5 h-5 text-slate-500 shrink-0" />
-            <div>
+            <Mail className="w-5 h-5 text-indigo-600 shrink-0" />
+            <div className="min-w-0">
               <span className="text-slate-400 text-[10px] block uppercase font-semibold">Support Desk</span>
-              <span className="font-semibold text-slate-900">{platformSettings.supportEmail}</span>
+              <a
+                href={`mailto:${platformSettings.supportEmail || 'abdwahidbc@gmail.com'}`}
+                className="font-semibold text-slate-900 hover:text-indigo-600 truncate block"
+              >
+                {platformSettings.supportEmail || 'abdwahidbc@gmail.com'}
+              </a>
             </div>
           </div>
 
           <div className="p-3 border border-slate-200 rounded bg-slate-50 flex items-center gap-3">
-            <Phone className="w-5 h-5 text-slate-500 shrink-0" />
-            <div>
+            <Phone className="w-5 h-5 text-emerald-600 shrink-0" />
+            <div className="min-w-0">
               <span className="text-slate-400 text-[10px] block uppercase font-semibold">Emergency Helpline</span>
-              <span className="font-semibold text-slate-900">{platformSettings.supportPhone}</span>
+              <a
+                href={`tel:${platformSettings.supportPhone || '9844691633'}`}
+                className="font-semibold text-slate-900 hover:text-emerald-600 truncate block"
+              >
+                {platformSettings.supportPhone || '9844691633'}
+              </a>
+            </div>
+          </div>
+
+          <div className="p-3 border border-slate-200 rounded bg-slate-50 flex items-center gap-3">
+            <div className="w-5 h-5 flex items-center justify-center shrink-0">
+              <svg className="w-5 h-5 text-pink-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+              </svg>
+            </div>
+            <div className="min-w-0">
+              <span className="text-slate-400 text-[10px] block uppercase font-semibold">Official Instagram</span>
+              <a
+                href="https://instagram.com/abd_l_wahid_"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-slate-900 hover:text-pink-600 truncate block"
+              >
+                @abd_l_wahid_
+              </a>
             </div>
           </div>
         </div>

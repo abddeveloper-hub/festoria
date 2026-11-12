@@ -1002,13 +1002,14 @@ export const PublicPageManagement: React.FC = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Official Contact Email
               </label>
               <input
                 type="email"
+                placeholder="abdwahidbc@gmail.com"
                 value={pageData.content.contactEmail}
                 onChange={(e) =>
                   setPageData((prev) => ({
@@ -1025,11 +1026,29 @@ export const PublicPageManagement: React.FC = () => {
               </label>
               <input
                 type="tel"
+                placeholder="9844691633"
                 value={pageData.content.contactPhone}
                 onChange={(e) =>
                   setPageData((prev) => ({
                     ...prev,
                     content: { ...prev.content, contactPhone: e.target.value }
+                  }))
+                }
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Official Instagram Handle
+              </label>
+              <input
+                type="text"
+                placeholder="abd_l_wahid_"
+                value={pageData.content.contactInstagram || ''}
+                onChange={(e) =>
+                  setPageData((prev) => ({
+                    ...prev,
+                    content: { ...prev.content, contactInstagram: e.target.value }
                   }))
                 }
                 className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900"

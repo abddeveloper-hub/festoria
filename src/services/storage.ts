@@ -78,8 +78,9 @@ export const DEFAULT_PRODUCTION_SETTINGS: FestSettings = {
   endDate: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0],
   venue: 'Grand Central Convention Campus',
   organizer: 'Council of Cultural & Fine Arts',
-  contactEmail: 'contact@festoria.app',
-  contactPhone: '',
+  contactEmail: 'abdwahidbc@gmail.com',
+  contactPhone: '9844691633',
+  contactInstagram: 'abd_l_wahid_',
   pointRules: {
     firstPlace: 10,
     secondPlace: 7,
@@ -99,8 +100,9 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   platformName: 'Festoria Platform',
   platformLogo: '',
   platformDescription: 'Unified Inter-Collegiate Fest Management & Governance System',
-  supportEmail: 'support@festoria.app',
-  supportPhone: '',
+  supportEmail: 'abdwahidbc@gmail.com',
+  supportPhone: '9844691633',
+  supportInstagram: 'abd_l_wahid_',
   defaultTimezone: 'Asia/Kolkata',
   defaultLanguage: 'en',
   maintenanceMode: false,
@@ -178,7 +180,17 @@ export const GUEST_USER: User = {
 
 export const StorageService = {
   getSettings(): FestSettings {
-    return getStorageItem(STORAGE_KEYS.SETTINGS, DEFAULT_PRODUCTION_SETTINGS);
+    const stored = getStorageItem<FestSettings>(STORAGE_KEYS.SETTINGS, DEFAULT_PRODUCTION_SETTINGS);
+    return {
+      ...DEFAULT_PRODUCTION_SETTINGS,
+      ...stored,
+      contactEmail:
+        stored.contactEmail && stored.contactEmail !== 'contact@festoria.app'
+          ? stored.contactEmail
+          : DEFAULT_PRODUCTION_SETTINGS.contactEmail,
+      contactPhone: stored.contactPhone || DEFAULT_PRODUCTION_SETTINGS.contactPhone,
+      contactInstagram: stored.contactInstagram || DEFAULT_PRODUCTION_SETTINGS.contactInstagram,
+    };
   },
   saveSettings(settings: FestSettings): void {
     setStorageItem(STORAGE_KEYS.SETTINGS, settings);
@@ -319,7 +331,17 @@ export const StorageService = {
   },
 
   getPlatformSettings(): PlatformSettings {
-    return getStorageItem(STORAGE_KEYS.PLATFORM_SETTINGS, DEFAULT_PLATFORM_SETTINGS);
+    const stored = getStorageItem<PlatformSettings>(STORAGE_KEYS.PLATFORM_SETTINGS, DEFAULT_PLATFORM_SETTINGS);
+    return {
+      ...DEFAULT_PLATFORM_SETTINGS,
+      ...stored,
+      supportEmail:
+        stored.supportEmail && stored.supportEmail !== 'support@festoria.app'
+          ? stored.supportEmail
+          : DEFAULT_PLATFORM_SETTINGS.supportEmail,
+      supportPhone: stored.supportPhone || DEFAULT_PLATFORM_SETTINGS.supportPhone,
+      supportInstagram: stored.supportInstagram || DEFAULT_PLATFORM_SETTINGS.supportInstagram,
+    };
   },
   savePlatformSettings(settings: PlatformSettings): void {
     setStorageItem(STORAGE_KEYS.PLATFORM_SETTINGS, settings);

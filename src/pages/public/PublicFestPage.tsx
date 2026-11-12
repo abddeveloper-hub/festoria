@@ -798,9 +798,34 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                 </button>
               </div>
 
-              <div className="pt-3 border-t border-slate-800 text-[11px] text-slate-400 space-y-1">
+              <div className="pt-3 border-t border-slate-800 text-[11px] text-slate-400 space-y-1.5">
                 <div>Venue: <strong className="text-slate-200">{pageData.content.venueInfo}</strong></div>
-                <div>Contact: <a href={`mailto:${pageData.content.contactEmail}`} className="text-indigo-400 hover:underline">{pageData.content.contactEmail}</a></div>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span>Contact:</span>
+                  <a href={`mailto:${pageData.content.contactEmail || 'abdwahidbc@gmail.com'}`} className="text-indigo-400 hover:underline font-medium">
+                    {pageData.content.contactEmail || 'abdwahidbc@gmail.com'}
+                  </a>
+                  <span>•</span>
+                  <a href={`tel:${pageData.content.contactPhone || '9844691633'}`} className="text-emerald-400 hover:underline font-medium">
+                    {pageData.content.contactPhone || '9844691633'}
+                  </a>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span>Instagram:</span>
+                  <a
+                    href={`https://instagram.com/${pageData.content.contactInstagram || 'abd_l_wahid_'}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-pink-400 hover:underline font-medium inline-flex items-center gap-1"
+                  >
+                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                      <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                    </svg>
+                    <span>@{pageData.content.contactInstagram || 'abd_l_wahid_'}</span>
+                  </a>
+                </div>
               </div>
             </div>
           </div>
@@ -2090,8 +2115,43 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       {/* FOOTER                                                               */}
       {/* ==================================================================== */}
       <footer className="mt-auto border-t border-slate-200 bg-slate-50 py-8 px-4 sm:px-8 text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>© 2026 {settings.festName}. Powered by Festoria Festival Management System.</p>
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+          <div>
+            <p className="font-medium text-slate-700">© 2026 {settings.festName}. Powered by Festoria Festival Management Platform.</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">Unified collegiate governance & scoring infrastructure.</p>
+          </div>
+
+          {/* Help & Secretariat Support Contact */}
+          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-xs text-slate-600">
+            <a
+              href={`mailto:${settings.contactEmail || 'abdwahidbc@gmail.com'}`}
+              className="inline-flex items-center gap-1.5 hover:text-slate-900 transition-colors"
+            >
+              <Mail className="w-3.5 h-3.5 text-indigo-600" />
+              <span>{settings.contactEmail || 'abdwahidbc@gmail.com'}</span>
+            </a>
+            <a
+              href={`tel:${settings.contactPhone || '9844691633'}`}
+              className="inline-flex items-center gap-1.5 hover:text-slate-900 transition-colors"
+            >
+              <Phone className="w-3.5 h-3.5 text-emerald-600" />
+              <span>{settings.contactPhone || '9844691633'}</span>
+            </a>
+            <a
+              href={`https://instagram.com/${settings.contactInstagram || 'abd_l_wahid_'}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 hover:text-pink-600 transition-colors font-medium"
+            >
+              <svg className="w-3.5 h-3.5 text-pink-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+              </svg>
+              <span>@{settings.contactInstagram || 'abd_l_wahid_'}</span>
+            </a>
+          </div>
+
           <div className="flex items-center gap-4">
             <a href={getAppUrl()} className="hover:text-slate-900 font-semibold min-h-[44px] inline-flex items-center">Festoria Home</a>
             <a href={getAppUrl('admin.html')} className="hover:text-slate-900 font-semibold min-h-[44px] inline-flex items-center">Admin Sign In</a>

@@ -1419,8 +1419,9 @@ export function getDefaultFestPublicPage(festId: string, festName?: string): Fes
       welcomeMessage: 'Join thousands of delegates, participants, and spectators across multiple stages and auditoriums.',
       aboutFest: 'A multi-day symposium of performing arts, literary contests, design hackathons, and intellectual debates.',
       venueInfo: 'Grand Campus Convention Center & Amphitheatre',
-      contactEmail: 'convenor@festoria.app',
-      contactPhone: '+91 98401 23001',
+      contactEmail: 'abdwahidbc@gmail.com',
+      contactPhone: '9844691633',
+      contactInstagram: 'abd_l_wahid_',
       highlights: [
         'Over 40+ accredited collegiate events and competitions',
         'Official transparent judge scoring with real-time ratifications',

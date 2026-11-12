@@ -186,7 +186,32 @@ export const SettingsPage: React.FC = () => {
                 type="email"
                 disabled={!canEdit}
                 value={formData.contactEmail}
+                placeholder="abdwahidbc@gmail.com"
                 onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
+                className="w-full border border-slate-300 rounded px-2.5 py-1.5 disabled:bg-slate-50"
+              />
+            </div>
+
+            <div>
+              <label className="block font-medium text-slate-700 mb-1">Contact Phone</label>
+              <input
+                type="text"
+                disabled={!canEdit}
+                value={formData.contactPhone || ''}
+                placeholder="9844691633"
+                onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
+                className="w-full border border-slate-300 rounded px-2.5 py-1.5 disabled:bg-slate-50"
+              />
+            </div>
+
+            <div>
+              <label className="block font-medium text-slate-700 mb-1">Official Instagram</label>
+              <input
+                type="text"
+                disabled={!canEdit}
+                value={formData.contactInstagram || ''}
+                placeholder="abd_l_wahid_"
+                onChange={(e) => setFormData({ ...formData, contactInstagram: e.target.value })}
                 className="w-full border border-slate-300 rounded px-2.5 py-1.5 disabled:bg-slate-50"
               />
             </div>

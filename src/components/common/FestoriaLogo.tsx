@@ -42,3 +42,4 @@ export const FestoriaLogo: React.FC<FestoriaLogoProps> = ({
     />
   );
 };
+

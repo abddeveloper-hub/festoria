@@ -180,14 +180,28 @@ export const ParticipantHelpPage: React.FC = () => {
           <p className="text-xs text-slate-600 mb-3">
             For campus-wide security, medical emergency, or official competition governance disputes.
           </p>
-          <div className="space-y-1.5 text-xs text-slate-700 font-medium">
+          <div className="space-y-2 text-xs text-slate-700 font-medium">
             <div className="flex items-center gap-2">
-              <Phone className="w-3.5 h-3.5 text-slate-400" />
-              <span>{settings.contactPhone || '+91 98400 12345'}</span>
+              <Phone className="w-3.5 h-3.5 text-emerald-600" />
+              <a href={`tel:${settings.contactPhone || '9844691633'}`} className="hover:text-emerald-700">
+                {settings.contactPhone || '9844691633'}
+              </a>
             </div>
             <div className="flex items-center gap-2">
-              <Mail className="w-3.5 h-3.5 text-slate-400" />
-              <span>{settings.contactEmail || 'fest-support@festoria.edu'}</span>
+              <Mail className="w-3.5 h-3.5 text-indigo-600" />
+              <a href={`mailto:${settings.contactEmail || 'abdwahidbc@gmail.com'}`} className="hover:text-indigo-700">
+                {settings.contactEmail || 'abdwahidbc@gmail.com'}
+              </a>
+            </div>
+            <div className="flex items-center gap-2">
+              <svg className="w-3.5 h-3.5 text-pink-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+              </svg>
+              <a href="https://instagram.com/abd_l_wahid_" target="_blank" rel="noopener noreferrer" className="hover:text-pink-600">
+                @{settings.contactInstagram || 'abd_l_wahid_'}
+              </a>
             </div>
           </div>
         </div>

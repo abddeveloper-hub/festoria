@@ -379,6 +379,7 @@ export interface FestSettings {
   organizer: string;
   contactEmail: string;
   contactPhone: string;
+  contactInstagram?: string;
   pointRules: ScoringPointRules;
   tieBreakPolicy: 'average_marks' | 'highest_single_judge' | 're_evaluation';
   publicResultsVisible: boolean;
@@ -525,6 +526,7 @@ export interface PlatformSettings {
   platformDescription: string;
   supportEmail: string;
   supportPhone: string;
+  supportInstagram?: string;
   defaultTimezone: string;
   defaultLanguage: string;
   maintenanceMode: boolean;
@@ -747,6 +749,7 @@ export interface FestPublicPageContent {
   venueInfo: string;
   contactEmail: string;
   contactPhone: string;
+  contactInstagram?: string;
   highlights: string[];
 }
 

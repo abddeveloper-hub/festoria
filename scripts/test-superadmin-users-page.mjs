@@ -125,3 +125,4 @@ if (passedTests === totalTests) {
 } else {
   process.exitCode = 1;
 }
+

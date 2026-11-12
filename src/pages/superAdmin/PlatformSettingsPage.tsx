@@ -154,12 +154,13 @@ export const PlatformSettingsPage: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="font-semibold text-slate-700 block mb-1">Support Contact Email</label>
                   <input
                     type="email"
-                    value={settings.supportEmail}
+                    value={settings.supportEmail || ''}
+                    placeholder="e.g. abdwahidbc@gmail.com"
                     onChange={(e) => handleChange('supportEmail', e.target.value)}
                     className="w-full p-2 border border-slate-200 rounded text-slate-900 focus:outline-none focus:border-slate-400"
                   />
@@ -169,8 +170,20 @@ export const PlatformSettingsPage: React.FC = () => {
                   <label className="font-semibold text-slate-700 block mb-1">Support Helpline Phone</label>
                   <input
                     type="text"
-                    value={settings.supportPhone}
+                    value={settings.supportPhone || ''}
+                    placeholder="e.g. 9844691633"
                     onChange={(e) => handleChange('supportPhone', e.target.value)}
+                    className="w-full p-2 border border-slate-200 rounded text-slate-900 focus:outline-none focus:border-slate-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Official Instagram Handle</label>
+                  <input
+                    type="text"
+                    value={settings.supportInstagram || ''}
+                    placeholder="e.g. abd_l_wahid_"
+                    onChange={(e) => handleChange('supportInstagram', e.target.value)}
                     className="w-full p-2 border border-slate-200 rounded text-slate-900 focus:outline-none focus:border-slate-400"
                   />
                 </div>
