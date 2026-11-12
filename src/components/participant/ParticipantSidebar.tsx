@@ -36,6 +36,7 @@ export const ParticipantSidebar: React.FC<{ isOpen?: boolean; onClose?: () => vo
     platformNotifications,
     programmes,
     switchPortal,
+    currentUser,
   } = useFest();
 
   const assignedTeam = teams.find((t) => t.id === activeParticipant?.teamId);
@@ -192,14 +193,16 @@ export const ParticipantSidebar: React.FC<{ isOpen?: boolean; onClose?: () => vo
           <span>Return to Public Portal</span>
           <ArrowRight className="w-3.5 h-3.5" />
         </button>
-        <button
-          type="button"
-          onClick={() => switchPortal('team_leader')}
-          className="w-full flex items-center justify-between px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
-        >
-          <span>Switch to Team Leader</span>
-          <ArrowRight className="w-3.5 h-3.5" />
-        </button>
+        {(currentUser.role === 'team_leader' || currentUser.role === 'admin' || currentUser.role === 'super_admin') && (
+          <button
+            type="button"
+            onClick={() => switchPortal('team_leader')}
+            className="w-full flex items-center justify-between px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
+          >
+            <span>Switch to Team Leader</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
     </aside>
   );

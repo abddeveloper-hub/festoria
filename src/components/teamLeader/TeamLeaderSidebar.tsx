@@ -42,6 +42,7 @@ export const TeamLeaderSidebar: React.FC<{ isOpen?: boolean; onClose?: () => voi
     activeTeamId,
     participants,
     switchPortal,
+    currentUser,
   } = useFest();
 
   const pendingRequestsCount = participants.filter(
@@ -211,30 +212,31 @@ export const TeamLeaderSidebar: React.FC<{ isOpen?: boolean; onClose?: () => voi
         })}
       </div>
 
-      {/* Portal Switcher Footer */}
+      {/* Portal Footer */}
       <div className="p-3 border-t border-slate-200 bg-slate-50 space-y-2">
-        <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 px-1">
-          Switch Workspace
-        </div>
-        <div className="grid grid-cols-2 gap-1.5">
-          <button
-            onClick={() => switchPortal('fest_admin')}
-            className="flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-md hover:bg-slate-100 transition-colors shadow-2xs"
-          >
-            <Layers size={13} className="text-slate-500" />
-            <span>Fest Admin</span>
-          </button>
-          <button
-            onClick={() => switchPortal('super_admin')}
-            className="flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-md hover:bg-slate-100 transition-colors shadow-2xs"
-          >
-            <ShieldCheck size={13} className="text-slate-500" />
-            <span>Super Admin</span>
-          </button>
-        </div>
+        {/* Only show return link if an administrator is previewing this portal */}
+        {(currentUser.role === 'admin' || currentUser.role === 'fest_admin' || currentUser.role === 'super_admin') && (
+          <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-1.5">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-amber-800 flex items-center gap-1">
+              <ShieldCheck size={12} />
+              <span>Admin Preview Mode</span>
+            </div>
+            <p className="text-[10px] text-amber-700 leading-tight">
+              Signed in as {currentUser.name} ({currentUser.role.replace('_', ' ')}).
+            </p>
+            <button
+              onClick={() => switchPortal(currentUser.role === 'super_admin' ? 'super_admin' : 'fest_admin')}
+              className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-slate-900 bg-white border border-amber-300 rounded hover:bg-amber-100 transition-colors shadow-2xs"
+            >
+              <Layers size={12} className="text-slate-600" />
+              <span>Return to {currentUser.role === 'super_admin' ? 'Super Admin' : 'Fest Admin'}</span>
+            </button>
+          </div>
+        )}
+
         <button
           onClick={() => switchPortal('public')}
-          className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-blue-700 bg-blue-50/60 border border-blue-200 rounded-md hover:bg-blue-100/70 transition-colors"
+          className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-md hover:bg-slate-100 transition-colors shadow-2xs"
         >
           <span>View Public Fest Portal</span>
           <ArrowRight size={13} />
