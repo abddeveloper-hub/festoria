@@ -54,12 +54,14 @@ export const UsersPage: React.FC = () => {
   });
 
   const filteredUsers = useMemo(() => {
-    return users.filter((u) => {
-      const s = search.toLowerCase();
+    const s = (search || '').trim().toLowerCase();
+    return (users || []).filter((u) => {
+      if (!u) return false;
       const matchesSearch =
-        u.name.toLowerCase().includes(s) ||
-        u.id.toLowerCase().includes(s) ||
-        u.email.toLowerCase().includes(s);
+        !s ||
+        (u.name || '').toLowerCase().includes(s) ||
+        (u.id || '').toLowerCase().includes(s) ||
+        (u.email || '').toLowerCase().includes(s);
       if (!matchesSearch) return false;
 
       if (roleFilter !== 'all' && u.role !== roleFilter) return false;
@@ -189,8 +191,101 @@ export const UsersPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Users Table */}
-      <div className="bg-white border border-slate-200 rounded-lg shadow-xs overflow-hidden">
+      {/* Mobile Card List (shown on small screens) */}
+      <div className="block lg:hidden space-y-3">
+        {filteredUsers.length === 0 ? (
+          <div className="p-6 text-center text-slate-400 bg-white border border-slate-200 rounded-lg text-xs shadow-xs">
+            No users match the search and filter criteria.
+          </div>
+        ) : (
+          filteredUsers.map((user) => {
+            const isCurrent = user.id === currentUser?.id;
+            const linkedJudge = (judges || []).find((j) => j.id === user.linkedJudgeId);
+            const linkedTeam = (teams || []).find((t) => t.id === user.linkedTeamId);
+
+            return (
+              <div key={user.id} className="p-4 bg-white border border-slate-200 rounded-lg space-y-3 text-xs shadow-xs">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                      {(user.name || 'U').charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-slate-900 flex items-center gap-1.5 truncate">
+                        <span className="truncate">{user.name || 'Unnamed User'}</span>
+                        {isCurrent && (
+                          <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 border border-emerald-200 rounded font-normal shrink-0">
+                            Current
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-slate-500 truncate">{user.email || 'No email registered'}</div>
+                      <div className="text-[10px] text-slate-400 font-mono mt-0.5">{user.id}</div>
+                    </div>
+                  </div>
+
+                  <Badge variant={user.status || 'active'} size="sm">
+                    {user.status || 'active'}
+                  </Badge>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 p-2.5 bg-slate-50 border border-slate-100 rounded text-[11px]">
+                  <div>
+                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">System Role</span>
+                    <span className="font-medium text-slate-800 capitalize">
+                      {(user.role || 'user').replace('_', ' ')}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">Linked Entity</span>
+                    <span className="font-medium text-slate-800 truncate block">
+                      {linkedJudge ? `Judge: ${linkedJudge.name}` : linkedTeam ? `Team: ${linkedTeam.name}` : 'Direct Staff'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    Last active: {user.lastLogin || 'Never'}
+                  </span>
+                  {canManageUsers && (
+                    <div className="inline-flex items-center gap-1">
+                      <button
+                        onClick={() => setResettingUser(user)}
+                        className="px-2.5 py-1 text-xs border border-slate-200 rounded text-slate-700 hover:bg-slate-50 inline-flex items-center gap-1"
+                        title="Reset Password"
+                      >
+                        <KeyRound className="w-3.5 h-3.5" />
+                        <span>Reset</span>
+                      </button>
+                      <button
+                        onClick={() => handleOpenEdit(user)}
+                        className="px-2.5 py-1 text-xs border border-slate-200 rounded text-slate-700 hover:bg-slate-50 inline-flex items-center gap-1"
+                        title="Edit User"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                        <span>Edit</span>
+                      </button>
+                      {!isCurrent && (
+                        <button
+                          onClick={() => setDeletingId(user.id)}
+                          className="px-2 py-1 text-xs border border-slate-200 rounded text-rose-600 hover:bg-rose-50"
+                          title="Delete User"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Desktop Users Table */}
+      <div className="hidden lg:block bg-white border border-slate-200 rounded-lg shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
@@ -204,83 +299,91 @@ export const UsersPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredUsers.map((user) => {
-                const isCurrent = user.id === currentUser.id;
-                const linkedJudge = judges.find((j) => j.id === user.linkedJudgeId);
-                const linkedTeam = teams.find((t) => t.id === user.linkedTeamId);
+              {filteredUsers.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-8 px-4 text-center text-slate-400">
+                    No users match the search and filter criteria.
+                  </td>
+                </tr>
+              ) : (
+                filteredUsers.map((user) => {
+                  const isCurrent = user.id === currentUser?.id;
+                  const linkedJudge = (judges || []).find((j) => j.id === user.linkedJudgeId);
+                  const linkedTeam = (teams || []).find((t) => t.id === user.linkedTeamId);
 
-                return (
-                  <tr key={user.id} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="py-3 px-3">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-[10px]">
-                          {user.name.charAt(0)}
-                        </div>
-                        <div>
-                          <div className="font-semibold text-slate-900 flex items-center gap-1.5">
-                            <span>{user.name}</span>
-                            {isCurrent && (
-                              <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.2 border border-emerald-200 rounded font-normal">
-                                Current Session
-                              </span>
-                            )}
+                  return (
+                    <tr key={user.id} className="hover:bg-slate-50/60 transition-colors">
+                      <td className="py-3 px-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-[10px]">
+                            {(user.name || 'U').charAt(0).toUpperCase()}
                           </div>
-                          <div className="text-[11px] text-slate-500">{user.email}</div>
+                          <div>
+                            <div className="font-semibold text-slate-900 flex items-center gap-1.5">
+                              <span>{user.name || 'Unnamed User'}</span>
+                              {isCurrent && (
+                                <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.2 border border-emerald-200 rounded font-normal">
+                                  Current Session
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-slate-500">{user.email || 'No email registered'}</div>
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="py-3 px-3">
-                      <span className="inline-block px-2 py-0.5 rounded text-[11px] font-semibold font-mono bg-slate-100 text-slate-800 border border-slate-200 capitalize">
-                        {user.role.replace('_', ' ')}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 text-slate-600">
-                      {linkedJudge && <span>Judge: {linkedJudge.name}</span>}
-                      {linkedTeam && <span>Team: {linkedTeam.name}</span>}
-                      {!linkedJudge && !linkedTeam && <span className="text-slate-400">Direct Staff</span>}
-                    </td>
-                    <td className="py-3 px-2 text-center">
-                      <Badge variant={user.status} size="sm">
-                        {user.status}
-                      </Badge>
-                    </td>
-                    <td className="py-3 px-3 font-mono text-slate-500 text-[11px]">
-                      {user.lastLogin || 'Never'}
-                    </td>
-                    <td className="py-3 px-3 text-right">
-                      <div className="inline-flex items-center gap-1">
-                        {canManageUsers && (
-                          <>
-                            <button
-                              onClick={() => setResettingUser(user)}
-                              className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100"
-                              title="Reset Password"
-                            >
-                              <KeyRound className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => handleOpenEdit(user)}
-                              className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100"
-                              title="Edit User"
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-                            {!isCurrent && (
+                      </td>
+                      <td className="py-3 px-3">
+                        <span className="inline-block px-2 py-0.5 rounded text-[11px] font-semibold font-mono bg-slate-100 text-slate-800 border border-slate-200 capitalize">
+                          {(user.role || 'user').replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 text-slate-600">
+                        {linkedJudge && <span>Judge: {linkedJudge.name}</span>}
+                        {linkedTeam && <span>Team: {linkedTeam.name}</span>}
+                        {!linkedJudge && !linkedTeam && <span className="text-slate-400">Direct Staff</span>}
+                      </td>
+                      <td className="py-3 px-2 text-center">
+                        <Badge variant={user.status || 'active'} size="sm">
+                          {user.status || 'active'}
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-3 font-mono text-slate-500 text-[11px]">
+                        {user.lastLogin || 'Never'}
+                      </td>
+                      <td className="py-3 px-3 text-right">
+                        <div className="inline-flex items-center gap-1">
+                          {canManageUsers && (
+                            <>
                               <button
-                                onClick={() => setDeletingId(user.id)}
-                                className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50"
-                                title="Delete User"
+                                onClick={() => setResettingUser(user)}
+                                className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                                title="Reset Password"
                               >
-                                <Trash2 className="w-3.5 h-3.5" />
+                                <KeyRound className="w-3.5 h-3.5" />
                               </button>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+                              <button
+                                onClick={() => handleOpenEdit(user)}
+                                className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                                title="Edit User"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              {!isCurrent && (
+                                <button
+                                  onClick={() => setDeletingId(user.id)}
+                                  className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                                  title="Delete User"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
@@ -296,18 +399,18 @@ export const UsersPage: React.FC = () => {
             </h3>
           </div>
           <span className="text-[11px] font-mono text-slate-500">
-            {activityLogs.length} Logged Actions
+            {(activityLogs || []).length} Logged Actions
           </span>
         </div>
 
         <div className="mt-3 divide-y divide-slate-100 max-h-72 overflow-y-auto">
-          {activityLogs.map((log) => (
+          {(activityLogs || []).map((log) => (
             <div key={log.id} className="py-2.5 flex items-start justify-between text-xs">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-slate-900">{log.userName}</span>
+                  <span className="font-semibold text-slate-900">{log.userName || 'System'}</span>
                   <span className="text-[10px] text-slate-400 font-mono">
-                    ({log.userRole.replace('_', ' ')})
+                    ({(log.userRole || 'staff').replace('_', ' ')})
                   </span>
                   <span className="font-mono text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-200">
                     {log.action}

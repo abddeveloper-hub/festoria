@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 
 export const PlatformUsersPage: React.FC = () => {
-  const { users, addUser, updateUser, deleteUser, currentUser } = useFest();
+  const { users, fests, addUser, updateUser, deleteUser, currentUser } = useFest();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
@@ -36,9 +36,34 @@ export const PlatformUsersPage: React.FC = () => {
 
   const [viewTab, setViewTab] = useState<'directory' | 'permissions_matrix'>('directory');
 
+  // Combined users list ensuring fests' admins are included even if not yet in users collection
+  const allPlatformUsers = useMemo(() => {
+    const rawUsers = Array.isArray(users) ? users : [];
+    const existingIds = new Set(rawUsers.map((u) => u?.id).filter(Boolean));
+    const extra: User[] = [];
+
+    (fests || []).forEach((f) => {
+      if (f?.adminId && !existingIds.has(f.adminId)) {
+        existingIds.add(f.adminId);
+        extra.push({
+          id: f.adminId,
+          name: f.adminName || 'Fest Administrator',
+          email: f.adminEmail || '',
+          role: 'fest_admin',
+          department: f.institution || 'Campus Administration',
+          status: 'active',
+          permissions: ['manage_fest', 'manage_programmes', 'manage_scores'],
+          createdAt: f.createdAt || '2026-01-10',
+        });
+      }
+    });
+
+    return [...rawUsers, ...extra];
+  }, [users, fests]);
+
   const filteredUsers = useMemo(() => {
     const q = (searchQuery || '').trim().toLowerCase();
-    return users.filter((u) => {
+    return allPlatformUsers.filter((u) => {
       if (!u) return false;
       const matchSearch =
         !q ||
@@ -49,7 +74,7 @@ export const PlatformUsersPage: React.FC = () => {
       const matchStatus = statusFilter === 'all' || u.status === statusFilter;
       return matchSearch && matchRole && matchStatus;
     });
-  }, [users, searchQuery, roleFilter, statusFilter]);
+  }, [allPlatformUsers, searchQuery, roleFilter, statusFilter]);
 
   const handleCreateUser = (e: React.FormEvent) => {
     e.preventDefault();
@@ -140,7 +165,7 @@ export const PlatformUsersPage: React.FC = () => {
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-semibold text-slate-900 tracking-tight">Platform User & RBAC Directory</h2>
             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
-              {users.length} ACCOUNTS
+              {allPlatformUsers.length} ACCOUNTS
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
@@ -277,7 +302,7 @@ export const PlatformUsersPage: React.FC = () => {
                       <Edit2 className="w-3.5 h-3.5" />
                       <span>Edit</span>
                     </button>
-                    {currentUser.id !== u.id && (
+                    {currentUser?.id !== u.id && (
                       <button
                         onClick={() => deleteUser(u.id)}
                         className="px-2.5 py-1 rounded border border-slate-200 text-rose-600 hover:bg-rose-50 text-xs font-medium inline-flex items-center gap-1"
@@ -353,7 +378,7 @@ export const PlatformUsersPage: React.FC = () => {
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
-                            {currentUser.id !== u.id && (
+                            {currentUser?.id !== u.id && (
                               <button
                                 onClick={() => deleteUser(u.id)}
                                 className="p-1 rounded border border-slate-200 text-rose-600 hover:bg-rose-50"
