@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useFest } from '../../context/FestContext';
+import { FESTORIA_LOGO } from '../../utils/logo';
 import {
   formatPhoneDisplay,
   normalizePhoneNumber,
@@ -318,7 +319,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-200 flex items-center justify-between bg-white shrink-0">
           <div className="flex items-center gap-3">
             <img
-              src="/festoria-logo.jpg"
+              src={FESTORIA_LOGO}
               alt="Festoria Logo"
               className="w-10 h-10 rounded-xl object-contain border border-slate-200/80 bg-white shadow-xs"
             />

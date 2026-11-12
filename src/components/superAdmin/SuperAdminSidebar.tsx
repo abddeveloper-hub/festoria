@@ -1,6 +1,7 @@
 import React from 'react';
 import { useFest } from '../../context/FestContext';
 import { SuperAdminNavigationTab } from '../../types';
+import { FESTORIA_LOGO } from '../../utils/logo';
 import {
   LayoutDashboard,
   Inbox,
@@ -168,7 +169,7 @@ export const SuperAdminSidebar: React.FC<SuperAdminSidebarProps> = ({ mobileOpen
         <div className="h-16 px-5 border-b border-slate-200 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img
-              src="/festoria-logo.jpg"
+              src={FESTORIA_LOGO}
               alt="Festoria Logo"
               className="w-8 h-8 rounded-lg object-contain border border-slate-200/80 bg-white shadow-2xs"
             />

@@ -4,6 +4,7 @@ import { PhoneAuthModal as AuthModal } from '../../components/common/PhoneAuthMo
 import { CreateFestModal } from '../../components/public/CreateFestModal';
 import { Role } from '../../types';
 import { getAppUrl, navigateTo } from '../../utils/navigation';
+import { FESTORIA_LOGO } from '../../utils/logo';
 import {
   Sparkles,
   Layers,
@@ -85,7 +86,7 @@ export const FestoriaHomePage: React.FC = () => {
         <div className="flex items-center gap-3">
           {/* Official Festoria Monogram Logo */}
           <img
-            src="/festoria-logo.jpg"
+            src={FESTORIA_LOGO}
             alt="Festoria Logo"
             className="w-10 h-10 rounded-xl object-contain shadow-sm border border-slate-200/80 bg-white"
           />
@@ -167,7 +168,7 @@ export const FestoriaHomePage: React.FC = () => {
               <div className="flex items-center justify-between pb-4 border-b border-slate-200">
                 <div className="flex items-center gap-2.5">
                   <img
-                    src="/festoria-logo.jpg"
+                    src={FESTORIA_LOGO}
                     alt="Festoria Logo"
                     className="w-8 h-8 rounded-lg object-contain shadow-2xs border border-slate-200/80 bg-white"
                   />
@@ -892,7 +893,7 @@ export const FestoriaHomePage: React.FC = () => {
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <img
-              src="/festoria-logo.jpg"
+              src={FESTORIA_LOGO}
               alt="Festoria Logo"
               className="w-6 h-6 rounded-md object-contain shadow-2xs border border-slate-200/80 bg-white"
             />

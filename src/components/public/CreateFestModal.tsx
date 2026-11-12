@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { FESTORIA_LOGO } from '../../utils/logo';
 import {
   Sparkles,
   Building,
@@ -482,7 +483,7 @@ export const CreateFestModal: React.FC<CreateFestModalProps> = ({
         <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between border-b border-slate-800">
           <div className="flex items-center gap-3">
             <img
-              src="/festoria-logo.jpg"
+              src={FESTORIA_LOGO}
               alt="Festoria Logo"
               className="w-9 h-9 rounded-lg object-contain border border-slate-700 bg-white shadow-xs"
             />

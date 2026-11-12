@@ -1,5 +1,6 @@
 import React from 'react';
 import { useFest, NavigationTab } from '../../context/FestContext';
+import { FESTORIA_LOGO } from '../../utils/logo';
 import {
   LayoutDashboard,
   Users,
@@ -149,7 +150,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
         <div className="h-16 px-5 border-b border-slate-200 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <img
-              src="/festoria-logo.jpg"
+              src={FESTORIA_LOGO}
               alt="Festoria Logo"
               className="w-8 h-8 rounded-lg object-contain border border-slate-200/80 bg-white shadow-2xs"
             />

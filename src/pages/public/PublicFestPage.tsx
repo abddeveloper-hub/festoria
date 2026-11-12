@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useFest } from '../../context/FestContext';
 import { getAppUrl } from '../../utils/navigation';
+import { FESTORIA_LOGO } from '../../utils/logo';
 import {
   FestPublicPageData,
   FestPhotoItem,
@@ -226,7 +227,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
             />
           ) : (
             <img
-              src="/festoria-logo.jpg"
+              src={FESTORIA_LOGO}
               alt={festName}
               className="w-9 h-9 rounded-xl object-contain shadow-xs border border-slate-200/80 bg-white"
             />
