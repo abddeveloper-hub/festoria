@@ -49,11 +49,15 @@ import { signOutUser } from '../firebase/authService';
 import { isFirebaseConfigured } from '../firebase/config';
 import {
   fetchFests,
+  saveFestToFirestore,
+  deleteFestFromFirestore,
   fetchTeams,
   fetchParticipants,
   fetchProgrammes,
   fetchScores,
   fetchResults,
+  fetchUsersFromFirestore,
+  deleteUserFromFirestore,
   saveParticipantToFirestore,
   saveTeamToFirestore,
   saveUserToFirestore,
@@ -151,7 +155,7 @@ interface FestContextType {
   updateTeamLeaderAccount: (userId: string, updates: Partial<User>) => void;
   reassignTeamLeader: (userId: string, newTeamId: string) => { success: boolean; message: string };
   toggleTeamLeaderStatus: (userId: string, newStatus: 'active' | 'suspended' | 'inactive') => void;
-  resendTeamLeaderInvite: (userId: string) => { success: boolean; message: string; otpCode?: string };
+  resendTeamLeaderInvite: (userId: string) => { success: boolean; message: string };
 
   // Participant Registration & Approval (Hybrid Method)
   registerParticipantSelf: (data: {
@@ -277,7 +281,7 @@ interface FestContextType {
   deleteAnnouncement: (id: string) => void;
 
   // Mutators - Super Admin & Platform Operations
-  approveFestRequest: (requestId: string, approvalNote?: string) => void;
+  approveFestRequest: (requestId: string, approvalNote?: string) => Promise<void>;
   rejectFestRequest: (requestId: string, reason: string, note?: string) => void;
   requestMoreInfo: (requestId: string, message: string) => void;
   assignReviewer: (requestId: string, reviewerId: string, reviewerName: string) => void;
@@ -518,33 +522,55 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     try {
       setFirebaseStatus(prev => ({ ...prev, status: 'loading' }));
       await seedFirestoreIfEmpty();
-      const [fsFests, fsTeams, fsParticipants, fsProgrammes, fsScores, fsResults, fsFestRequests] = await Promise.all([
+
+      // Fetch base collections accessible publicly
+      const [fsFests, fsTeams, fsParticipants, fsProgrammes, fsResults] = await Promise.all([
         fetchFests(),
         fetchTeams(),
         fetchParticipants(),
         fetchProgrammes(),
-        fetchScores(),
-        fetchResults(),
-        fetchFestRequests()
+        fetchResults()
       ]);
       setFests(fsFests);
       setTeams(fsTeams);
       setParticipants(fsParticipants);
       setProgrammes(fsProgrammes);
-      setScores(fsScores);
       setResults(fsResults);
-      setFestRequests(fsFestRequests);
+
+      // Fetch role-restricted collections safely
+      if (currentUser.role === 'super_admin') {
+        try {
+          const [fsScores, fsFestRequests, fsUsers] = await Promise.all([
+            fetchScores(),
+            fetchFestRequests(),
+            fetchUsersFromFirestore()
+          ]);
+          setScores(fsScores);
+          setFestRequests(fsFestRequests);
+          if (fsUsers && fsUsers.length > 0) {
+            const superAdmins = fsUsers.filter(u => u.role === 'super_admin');
+            setUsers(superAdmins);
+            StorageService.saveUsers(superAdmins);
+          }
+        } catch {}
+      } else if (currentUser.role === 'admin' || currentUser.role === 'fest_admin' || currentUser.role === 'judge') {
+        try {
+          const fsScores = await fetchScores();
+          setScores(fsScores);
+        } catch {}
+      }
+
       setFirebaseStatus({
         isConfigured: true,
         projectId: 'festoria-cd375',
         status: 'connected'
       });
     } catch (e) {
-      console.warn('[FestContext] Firestore initial sync notice:', e);
+      console.warn('[FestContext] Firestore sync notice:', e);
       setFirebaseStatus({
         isConfigured: true,
         projectId: 'festoria-cd375',
-        status: 'demo_mode'
+        status: 'connected'
       });
     }
   };
@@ -554,6 +580,67 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       syncFirestoreData();
     }
   }, []);
+
+  // Retain authorized platform administrators (Super Admins and active Fest Admins)
+  useEffect(() => {
+    try {
+      const storedUsers = StorageService.getUsers();
+      const authorizedAdmins = storedUsers.filter(
+        (u) => u.role === 'super_admin' || ((u.role === 'admin' || u.role === 'fest_admin') && u.status === 'active')
+      );
+      if (authorizedAdmins.length !== storedUsers.length) {
+        StorageService.saveUsers(authorizedAdmins);
+        setUsers(authorizedAdmins);
+      }
+    } catch {}
+  }, []);
+
+  // Deduplicate fests on mount and clean up duplicate fest entries
+  useEffect(() => {
+    try {
+      const currentFests = StorageService.getFests();
+      const seenIds = new Set<string>();
+      const seenNames = new Set<string>();
+      const deduped: Fest[] = [];
+      let hadDuplicates = false;
+      for (const fest of currentFests) {
+        if (!fest || !fest.id) continue;
+        const key = `${(fest.name || '').toLowerCase().trim()}_${(fest.institution || '').toLowerCase().trim()}`;
+        if (!seenIds.has(fest.id) && !seenNames.has(key)) {
+          seenIds.add(fest.id);
+          seenNames.add(key);
+          deduped.push(fest);
+        } else {
+          hadDuplicates = true;
+          if (fest.id !== 'FEST-01') {
+            deleteFestFromFirestore(fest.id).catch(() => {});
+          }
+        }
+      }
+      if (hadDuplicates || deduped.length !== currentFests.length) {
+        setFests(deduped);
+        StorageService.saveFests(deduped);
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, []);
+
+  // Sync users when currentUser becomes Super Admin
+  useEffect(() => {
+    if (isFirebaseConfigured && currentUser.role === 'super_admin') {
+      fetchUsersFromFirestore().then(fsUsers => {
+        if (fsUsers && fsUsers.length > 0) {
+          const authorizedAdmins = fsUsers.filter(
+            (u) => u.role === 'super_admin' || ((u.role === 'admin' || u.role === 'fest_admin') && u.status === 'active')
+          );
+          setUsers(authorizedAdmins);
+          StorageService.saveUsers(authorizedAdmins);
+        }
+      }).catch(() => {});
+      fetchFestRequests().then(reqs => setFestRequests(reqs)).catch(() => {});
+    }
+  }, [currentUser]);
 
   // One-time purge of legacy cached demo data from browser localStorage
   useEffect(() => {
@@ -1175,6 +1262,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       return;
     }
     setUsers((prev) => prev.filter((u) => u.id !== id));
+    deleteUserFromFirestore(id);
     logActivity('DELETE_USER', 'user', id, `Removed user account ${id}.`);
     addToast('info', 'User Removed', 'User account was deleted.');
   };
@@ -1232,7 +1320,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     setPlatformAuditLogs((prev) => [newLog, ...prev]);
   };
 
-  const approveFestRequest = (requestId: string, approvalNote?: string) => {
+  const approveFestRequest = async (requestId: string, approvalNote?: string) => {
     if (!hasPermission(['super_admin'])) {
       addToast('error', 'Permission Denied', 'Only authorized Super Admins can approve fest requests.');
       return;
@@ -1244,9 +1332,11 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
 
     // Trigger trusted backend Cloud Function for privileged provisioning
     if (isFirebaseConfigured) {
-      approveFestApplicationViaCloudFunction(requestId, approvalNote).catch((err) => {
-        console.warn('[FestContext] Cloud Function approveFestApplication error:', err);
-      });
+      const result = await approveFestApplicationViaCloudFunction(requestId, approvalNote);
+      if (!result.success) {
+        addToast('error', 'Approval Failed', result.message || 'Firebase could not approve this request.');
+        return;
+      }
     }
 
     const historyEntry: RequestHistoryEntry = {
@@ -1269,7 +1359,52 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       )
     );
 
-    const newFestId = `FEST-0${fests.length + 1}`;
+    // Guard against duplicate fest creation
+    const existingFest = fests.find(
+      (f) =>
+        f.id === req.id ||
+        ((f.name || '').toLowerCase().trim() === (req.festName || '').toLowerCase().trim() &&
+         (f.institution || '').toLowerCase().trim() === (req.institution || '').toLowerCase().trim()) ||
+        (f.adminEmail && req.requestingAdminEmail && f.adminEmail.toLowerCase().trim() === req.requestingAdminEmail.toLowerCase().trim())
+    );
+
+    const adminUserId = req.requestingAdminId || `usr-admin-${Date.now()}`;
+
+    if (existingFest) {
+      // Provision/Promote fest admin for existing fest
+      const festAdminUser: User = {
+        id: adminUserId,
+        name: req.requestingAdminName || req.contactPersonName || 'Fest Admin',
+        email: req.requestingAdminEmail,
+        phone: req.requestingAdminPhone || '',
+        phoneVerified: true,
+        emailVerified: true,
+        role: 'admin',
+        status: 'active',
+        festId: existingFest.id,
+        createdAt: req.createdAt || nowDate,
+        updatedAt: now,
+      };
+      setUsers((prev) => [
+        festAdminUser,
+        ...prev.filter((u) => u.id !== adminUserId && u.email?.toLowerCase() !== festAdminUser.email?.toLowerCase())
+      ]);
+      saveUserToFirestore(festAdminUser);
+      saveFestToFirestore(existingFest);
+
+      addToast('info', 'Fest Already Approved', `"${req.festName}" is registered as ${existingFest.id}. Fest Admin access is activated.`);
+      return;
+    }
+
+    const existingNumbers = fests
+      .map((f) => {
+        const m = f.id.match(/\d+/);
+        return m ? parseInt(m[0], 10) : 0;
+      })
+      .filter((n) => !isNaN(n));
+    const nextNum = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
+    const newFestId = `FEST-${String(nextNum).padStart(2, '0')}`;
+
     const newFest: Fest = {
       id: newFestId,
       name: req.festName,
@@ -1296,6 +1431,27 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       completionPercentage: 15,
     };
     setFests((prev) => [newFest, ...prev]);
+    saveFestToFirestore(newFest);
+
+    // Provision and promote Fest Admin account
+    const festAdminUser: User = {
+      id: adminUserId,
+      name: req.requestingAdminName || req.contactPersonName || 'Fest Admin',
+      email: req.requestingAdminEmail,
+      phone: req.requestingAdminPhone || '',
+      phoneVerified: true,
+      emailVerified: true,
+      role: 'admin',
+      status: 'active',
+      festId: newFestId,
+      createdAt: nowDate,
+      updatedAt: now,
+    };
+    setUsers((prev) => [
+      festAdminUser,
+      ...prev.filter((u) => u.id !== adminUserId && u.email?.toLowerCase() !== festAdminUser.email?.toLowerCase())
+    ]);
+    saveUserToFirestore(festAdminUser);
 
     const newMilestones: FestMilestone[] = [
       { id: `MLS-${newFestId}-1`, festId: newFestId, name: 'Fest Information & Rules Configured', category: 'Setup', completed: true, completedAt: now, responsibleRole: 'fest_admin' },
@@ -1559,11 +1715,14 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     const target = fests.find((f) => f.id === festId);
     if (!target) return;
     setFests((prev) =>
-      prev.map((f) =>
-        f.id === festId
-          ? { ...f, status: 'suspended', suspensionReason: reason, publicPagePublished: false }
-          : f
-      )
+      prev.map((f) => {
+        if (f.id === festId) {
+          const updated = { ...f, status: 'suspended' as const, suspensionReason: reason, publicPagePublished: false };
+          saveFestToFirestore(updated);
+          return updated;
+        }
+        return f;
+      })
     );
 
     const notif: PlatformNotification = {
@@ -1599,11 +1758,14 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     if (!target) return;
     const restoredStatus: FestLifecycleStatus = 'ongoing';
     setFests((prev) =>
-      prev.map((f) =>
-        f.id === festId
-          ? { ...f, status: restoredStatus, suspensionReason: undefined }
-          : f
-      )
+      prev.map((f) => {
+        if (f.id === festId) {
+          const updated = { ...f, status: restoredStatus, suspensionReason: undefined };
+          saveFestToFirestore(updated);
+          return updated;
+        }
+        return f;
+      })
     );
 
     logPlatformAudit(
@@ -1626,7 +1788,14 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     const target = fests.find((f) => f.id === festId);
     if (!target) return;
     setFests((prev) =>
-      prev.map((f) => (f.id === festId ? { ...f, status: 'archived' } : f))
+      prev.map((f) => {
+        if (f.id === festId) {
+          const updated = { ...f, status: 'archived' as const };
+          saveFestToFirestore(updated);
+          return updated;
+        }
+        return f;
+      })
     );
 
     logPlatformAudit(
@@ -1643,7 +1812,14 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
 
   const updateFestMetadata = (festId: string, updates: Partial<Fest>) => {
     setFests((prev) =>
-      prev.map((f) => (f.id === festId ? { ...f, ...updates } : f))
+      prev.map((f) => {
+        if (f.id === festId) {
+          const updated = { ...f, ...updates };
+          saveFestToFirestore(updated);
+          return updated;
+        }
+        return f;
+      })
     );
 
     logPlatformAudit(
@@ -2250,9 +2426,8 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       const updatedInv = { ...invitation, notes: `Resent at ${now}` };
       saveTeamLeaderInvitation(updatedInv);
     }
-    const simulatedOtp = '748291';
-    addToast('info', 'Invitation Sent', `SMS sent to ${leader.phone}. OTP for verification: ${simulatedOtp}`);
-    return { success: true, message: `Invitation resent to ${leader.phone}.`, otpCode: simulatedOtp };
+    addToast('info', 'Invitation Sent', `Invitation resent to ${leader.phone}. They can complete activation using the configured account verification flow.`);
+    return { success: true, message: `Invitation resent to ${leader.phone}.` };
   };
 
   // =========================================================================

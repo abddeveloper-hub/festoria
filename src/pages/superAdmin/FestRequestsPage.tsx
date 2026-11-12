@@ -107,14 +107,17 @@ export const FestRequestsPage: React.FC = () => {
   // Reviewers list (Super Admins and Reviewers)
   const availableReviewers = users.filter((u) => u.role === 'super_admin' || u.role === 'programme_manager');
 
-  const handleApproveConfirm = () => {
+  const handleApproveConfirm = async () => {
     if (!selectedRequest) return;
-    approveFestRequest(selectedRequest.id, internalNote);
+    const reqId = selectedRequest.id;
+    await approveFestRequest(reqId, internalNote);
     setActionType(null);
     setInternalNote('');
-    // refresh selectedRequest
-    const updated = festRequests.find((r) => r.id === selectedRequest.id);
-    if (updated) setSelectedRequest(updated);
+    setSelectedRequest((prev) =>
+      prev && prev.id === reqId
+        ? { ...prev, status: 'approved', reviewNotes: internalNote || prev.reviewNotes }
+        : prev
+    );
   };
 
   const handleRejectConfirm = () => {

@@ -230,10 +230,35 @@ export const StorageService = {
 
   // SUPER ADMIN & PLATFORM METHODS
   getFests(): Fest[] {
-    return getStorageItem(STORAGE_KEYS.FESTS, []);
+    const raw = getStorageItem<Fest[]>(STORAGE_KEYS.FESTS, []);
+    const seenIds = new Set<string>();
+    const seenNames = new Set<string>();
+    const deduped: Fest[] = [];
+    for (const fest of raw) {
+      if (!fest || !fest.id) continue;
+      const key = `${(fest.name || '').toLowerCase().trim()}_${(fest.institution || '').toLowerCase().trim()}`;
+      if (!seenIds.has(fest.id) && !seenNames.has(key)) {
+        seenIds.add(fest.id);
+        seenNames.add(key);
+        deduped.push(fest);
+      }
+    }
+    return deduped;
   },
   saveFests(fests: Fest[]): void {
-    setStorageItem(STORAGE_KEYS.FESTS, fests);
+    const seenIds = new Set<string>();
+    const seenNames = new Set<string>();
+    const deduped: Fest[] = [];
+    for (const fest of fests) {
+      if (!fest || !fest.id) continue;
+      const key = `${(fest.name || '').toLowerCase().trim()}_${(fest.institution || '').toLowerCase().trim()}`;
+      if (!seenIds.has(fest.id) && !seenNames.has(key)) {
+        seenIds.add(fest.id);
+        seenNames.add(key);
+        deduped.push(fest);
+      }
+    }
+    setStorageItem(STORAGE_KEYS.FESTS, deduped);
   },
 
   getFestRequests(): FestRequest[] {

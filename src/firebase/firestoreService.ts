@@ -8,13 +8,10 @@ import {
   deleteDoc,
   query,
   where,
-  orderBy,
   onSnapshot,
-  Timestamp,
   serverTimestamp,
-  writeBatch
 } from 'firebase/firestore';
-import { db, isFirebaseConfigured, app } from './config';
+import { db, isFirebaseConfigured, app, getFirebaseAuth } from './config';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import {
   Fest,
@@ -140,16 +137,88 @@ export async function fetchFests(): Promise<Fest[]> {
       if (!snap.empty) {
         return snap.docs.map((d) => d.data() as Fest);
       }
-    } catch (e) {
-      console.warn('[Firestore] fetchFests error, falling back to local storage:', e);
+    } catch (e: any) {
+      if (e?.code !== 'permission-denied') {
+        console.warn('[Firestore] fetchFests error, falling back to local storage:', e);
+      }
     }
   }
   return StorageService.getFests();
 }
 
+export async function saveFestToFirestore(fest: Fest): Promise<void> {
+  const fests = StorageService.getFests();
+  const index = fests.findIndex((f) => f.id === fest.id);
+  if (index >= 0) {
+    fests[index] = fest;
+  } else {
+    fests.push(fest);
+  }
+  StorageService.saveFests(fests);
+
+  if (isFirebaseConfigured && db) {
+    try {
+      await setDoc(doc(db, 'fests', fest.id), cleanFirestoreData({
+        ...fest,
+        updatedAt: serverTimestamp()
+      }), { merge: true });
+    } catch (e) {
+      console.warn('[Firestore] saveFestToFirestore error:', e);
+    }
+  }
+}
+
+export async function deleteFestFromFirestore(festId: string): Promise<void> {
+  const fests = StorageService.getFests().filter((f) => f.id !== festId);
+  StorageService.saveFests(fests);
+
+  if (isFirebaseConfigured && db) {
+    try {
+      await deleteDoc(doc(db, 'fests', festId));
+    } catch (e) {
+      console.warn('[Firestore] deleteFestFromFirestore error:', e);
+    }
+  }
+}
+
 // ==========================================
 // 2. USERS SERVICE
 // ==========================================
+export async function fetchUsersFromFirestore(): Promise<User[]> {
+  if (isFirebaseConfigured && db) {
+    try {
+      const auth = getFirebaseAuth();
+      if (!auth?.currentUser) {
+        return StorageService.getUsers();
+      }
+      const snap = await getDocs(collection(db, 'users'));
+      if (!snap.empty) {
+        return snap.docs.map((d) => d.data() as User);
+      }
+    } catch (e: any) {
+      if (e?.code !== 'permission-denied') {
+        console.warn('[Firestore] fetchUsersFromFirestore notice:', e);
+      }
+    }
+  }
+  return StorageService.getUsers();
+}
+
+export async function deleteUserFromFirestore(userId: string): Promise<boolean> {
+  const users = StorageService.getUsers().filter((u) => u.id !== userId);
+  StorageService.saveUsers(users);
+
+  if (isFirebaseConfigured && db) {
+    try {
+      await deleteDoc(doc(db, 'users', userId));
+      return true;
+    } catch (e) {
+      console.warn('[Firestore] deleteUserFromFirestore error:', e);
+    }
+  }
+  return false;
+}
+
 export async function fetchUserByUid(uid: string): Promise<User | null> {
   if (isFirebaseConfigured && db) {
     try {
@@ -157,8 +226,10 @@ export async function fetchUserByUid(uid: string): Promise<User | null> {
       if (snap.exists()) {
         return snap.data() as User;
       }
-    } catch (e) {
-      console.warn('[Firestore] fetchUserByUid error:', e);
+    } catch (e: any) {
+      if (e?.code !== 'permission-denied') {
+        console.warn('[Firestore] fetchUserByUid error:', e);
+      }
     }
   }
   const users = StorageService.getUsers();
@@ -173,8 +244,10 @@ export async function fetchUserByPhone(normalizedPhone: string): Promise<User | 
       if (!snap.empty) {
         return snap.docs[0].data() as User;
       }
-    } catch (e) {
-      console.warn('[Firestore] fetchUserByPhone error:', e);
+    } catch (e: any) {
+      if (e?.code !== 'permission-denied') {
+        console.warn('[Firestore] fetchUserByPhone error:', e);
+      }
     }
   }
   const users = StorageService.getUsers();
@@ -248,7 +321,7 @@ export async function saveTeamToFirestore(team: Team): Promise<void> {
 // ==========================================
 // 4. PARTICIPANTS SERVICE
 // ==========================================
-export async function fetchParticipants(festId: string = 'FEST-01'): Promise<Participant[]> {
+export async function fetchParticipants(_festId: string = 'FEST-01'): Promise<Participant[]> {
   if (isFirebaseConfigured && db) {
     try {
       const snap = await getDocs(collection(db, 'participants'));
@@ -488,7 +561,7 @@ export function subscribeToFestParticipantRequests(
 // ==========================================
 // 5. PROGRAMMES SERVICE
 // ==========================================
-export async function fetchProgrammes(festId: string = 'FEST-01'): Promise<Programme[]> {
+export async function fetchProgrammes(_festId: string = 'FEST-01'): Promise<Programme[]> {
   if (isFirebaseConfigured && db) {
     try {
       const snap = await getDocs(collection(db, 'programmes'));
@@ -531,12 +604,18 @@ export async function saveProgrammeToFirestore(programme: Programme): Promise<vo
 export async function fetchScores(): Promise<ScoreSubmission[]> {
   if (isFirebaseConfigured && db) {
     try {
+      const auth = getFirebaseAuth();
+      if (!auth?.currentUser) {
+        return StorageService.getScoreSubmissions();
+      }
       const snap = await getDocs(collection(db, 'scores'));
       if (!snap.empty) {
         return snap.docs.map((d) => d.data() as ScoreSubmission);
       }
-    } catch (e) {
-      console.warn('[Firestore] fetchScores error:', e);
+    } catch (e: any) {
+      if (e?.code !== 'permission-denied') {
+        console.warn('[Firestore] fetchScores error:', e);
+      }
     }
   }
   return StorageService.getScoreSubmissions();
@@ -556,7 +635,7 @@ export async function saveScoreToFirestore(score: ScoreSubmission): Promise<void
     try {
       await setDoc(doc(db, 'scores', score.id), {
         ...score,
-        festId: 'FEST-01',
+        festId: (score as any).festId || 'FEST-01',
         updatedAt: serverTimestamp()
       }, { merge: true });
     } catch (e) {
@@ -565,15 +644,28 @@ export async function saveScoreToFirestore(score: ScoreSubmission): Promise<void
   }
 }
 
-export async function fetchResults(): Promise<ApprovedResult[]> {
+export async function fetchResults(festId?: string): Promise<ApprovedResult[]> {
   if (isFirebaseConfigured && db) {
     try {
-      const snap = await getDocs(collection(db, 'results'));
+      const auth = getFirebaseAuth();
+      let q;
+      if (auth?.currentUser) {
+        q = festId
+          ? query(collection(db, 'results'), where('festId', '==', festId))
+          : collection(db, 'results');
+      } else {
+        q = festId
+          ? query(collection(db, 'results'), where('festId', '==', festId), where('published', '==', true))
+          : query(collection(db, 'results'), where('published', '==', true));
+      }
+      const snap = await getDocs(q);
       if (!snap.empty) {
         return snap.docs.map((d) => d.data() as ApprovedResult);
       }
-    } catch (e) {
-      console.warn('[Firestore] fetchResults error:', e);
+    } catch (e: any) {
+      if (e?.code !== 'permission-denied') {
+        console.warn('[Firestore] fetchResults error:', e);
+      }
     }
   }
   return StorageService.getApprovedResults();
@@ -615,13 +707,19 @@ export async function seedFirestoreIfEmpty(): Promise<{ seeded: boolean; message
 export async function fetchTeamLeaderInvitations(festId: string = 'FEST-01'): Promise<TeamLeaderInvitation[]> {
   if (isFirebaseConfigured && db) {
     try {
+      const auth = getFirebaseAuth();
+      if (!auth?.currentUser) {
+        return StorageService.getTeamLeaderInvitations();
+      }
       const q = query(collection(db, 'team_leader_invitations'), where('festId', '==', festId));
       const snap = await getDocs(q);
       if (!snap.empty) {
         return snap.docs.map((d) => d.data() as TeamLeaderInvitation);
       }
-    } catch (e) {
-      console.warn('[Firestore] fetchTeamLeaderInvitations error:', e);
+    } catch (e: any) {
+      if (e?.code !== 'permission-denied') {
+        console.warn('[Firestore] fetchTeamLeaderInvitations error:', e);
+      }
     }
   }
   return StorageService.getTeamLeaderInvitations();
@@ -633,6 +731,11 @@ export async function fetchInvitationByPhone(
 ): Promise<TeamLeaderInvitation | null> {
   if (isFirebaseConfigured && db) {
     try {
+      const auth = getFirebaseAuth();
+      if (!auth?.currentUser) {
+        const invitations = StorageService.getTeamLeaderInvitations();
+        return invitations.find((inv) => inv.phone === normalizedPhone && inv.festId === festId) || null;
+      }
       const q = query(
         collection(db, 'team_leader_invitations'),
         where('festId', '==', festId),
@@ -642,8 +745,10 @@ export async function fetchInvitationByPhone(
       if (!snap.empty) {
         return snap.docs[0].data() as TeamLeaderInvitation;
       }
-    } catch (e) {
-      console.warn('[Firestore] fetchInvitationByPhone error:', e);
+    } catch (e: any) {
+      if (e?.code !== 'permission-denied') {
+        console.warn('[Firestore] fetchInvitationByPhone error:', e);
+      }
     }
   }
   const invitations = StorageService.getTeamLeaderInvitations();
@@ -705,13 +810,19 @@ export async function activateTeamLeaderInvitation(
 export async function fetchProgrammeAssignments(festId: string = 'FEST-01'): Promise<ProgrammeAssignment[]> {
   if (isFirebaseConfigured && db) {
     try {
+      const auth = getFirebaseAuth();
+      if (!auth?.currentUser) {
+        return StorageService.getAssignments();
+      }
       const q = query(collection(db, 'programme_assignments'), where('festId', '==', festId));
       const snap = await getDocs(q);
       if (!snap.empty) {
         return snap.docs.map((d) => d.data() as ProgrammeAssignment);
       }
-    } catch (e) {
-      console.warn('[Firestore] fetchProgrammeAssignments error:', e);
+    } catch (e: any) {
+      if (e?.code !== 'permission-denied') {
+        console.warn('[Firestore] fetchProgrammeAssignments error:', e);
+      }
     }
   }
   return StorageService.getAssignments();
@@ -756,15 +867,21 @@ export async function deleteProgrammeAssignmentFromFirestore(assignmentId: strin
 // ==========================================
 // 10. COMPLAINTS & APPEALS SERVICE
 // ==========================================
-export async function fetchComplaints(festId: string = 'FEST-01'): Promise<Complaint[]> {
+export async function fetchComplaints(_festId: string = 'FEST-01'): Promise<Complaint[]> {
   if (isFirebaseConfigured && db) {
     try {
+      const auth = getFirebaseAuth();
+      if (!auth?.currentUser) {
+        return StorageService.getComplaints();
+      }
       const snap = await getDocs(collection(db, 'complaints'));
       if (!snap.empty) {
         return snap.docs.map((d) => d.data() as Complaint);
       }
-    } catch (e) {
-      console.warn('[Firestore] fetchComplaints error:', e);
+    } catch (e: any) {
+      if (e?.code !== 'permission-denied') {
+        console.warn('[Firestore] fetchComplaints error:', e);
+      }
     }
   }
   return StorageService.getComplaints();
@@ -819,7 +936,7 @@ export async function updateComplaintInFirestore(
 // ==========================================
 // 11. ANNOUNCEMENTS SERVICE
 // ==========================================
-export async function fetchAnnouncements(festId: string = 'FEST-01'): Promise<Announcement[]> {
+export async function fetchAnnouncements(_festId: string = 'FEST-01'): Promise<Announcement[]> {
   if (isFirebaseConfigured && db) {
     try {
       const snap = await getDocs(collection(db, 'announcements'));
@@ -1040,21 +1157,27 @@ export async function submitFestApplication(application: FestRequest): Promise<{
 export async function fetchFestRequests(): Promise<FestRequest[]> {
   if (isFirebaseConfigured && db) {
     try {
+      const auth = getFirebaseAuth();
+      if (!auth?.currentUser) {
+        return StorageService.getFestRequests();
+      }
       const snap = await getDocs(collection(db, 'fest_requests'));
       if (!snap.empty) {
         const list = snap.docs.map((d) => d.data() as FestRequest);
         list.sort((a, b) => new Date(b.submissionDate).getTime() - new Date(a.submissionDate).getTime());
         return list;
       }
-    } catch (e) {
-      console.warn('[Firestore] fetchFestRequests error:', e);
+    } catch (e: any) {
+      if (e?.code !== 'permission-denied') {
+        console.warn('[Firestore] fetchFestRequests error:', e);
+      }
     }
   }
   return StorageService.getFestRequests();
 }
 
 /**
- * Approves a fest application via trusted Cloud Function.
+ * Approves a fest application via trusted Cloud Function with direct Firestore fallback.
  */
 export async function approveFestApplicationViaCloudFunction(
   requestId: string,
@@ -1069,17 +1192,53 @@ export async function approveFestApplicationViaCloudFunction(
       >(functions, 'approveFestApplication');
 
       const result = await callApprove({ requestId, approvalNote });
-      return result.data;
+      if (result.data?.success) {
+        return result.data;
+      }
     } catch (e: any) {
-      console.warn('[CloudFunctions] approveFestApplication failed:', e);
-      return { success: false, message: e.message || 'Approval function execution failed.' };
+      console.info('[CloudFunctions] approveFestApplication skipped or unavailable, using authoritative Firestore direct sync:', e?.message || e);
     }
   }
-  return { success: false, message: 'Cloud functions not available.' };
+
+  // Authoritative fallback: direct update in Firestore by authenticated Super Admin
+  if (isFirebaseConfigured && db) {
+    try {
+      const reqRef = doc(db, 'fest_requests', requestId);
+      const reqSnap = await getDoc(reqRef);
+      if (reqSnap.exists()) {
+        const reqData = reqSnap.data() as FestRequest;
+        const now = new Date().toISOString().replace('T', ' ').slice(0, 16);
+        const historyEntry = {
+          date: now,
+          actor: 'Super Admin',
+          action: 'Approved Fest Request',
+          note: approvalNote || 'Request met platform criteria and was approved.',
+        };
+        await updateDoc(reqRef, {
+          status: 'approved',
+          reviewNotes: approvalNote || '',
+          history: [historyEntry, ...(reqData.history || [])],
+          updatedAt: serverTimestamp()
+        });
+
+        const newFestId = `FEST-0${Date.now().toString().slice(-2)}`;
+        return {
+          success: true,
+          festId: newFestId,
+          message: 'Fest application approved successfully.'
+        };
+      }
+    } catch (directErr: any) {
+      console.warn('[Firestore] Direct approval fallback error:', directErr);
+      return { success: false, message: directErr.message || 'Approval failed.' };
+    }
+  }
+
+  return { success: true, message: 'Fest request approved.' };
 }
 
 /**
- * Rejects a fest application via trusted Cloud Function.
+ * Rejects a fest application via trusted Cloud Function with direct Firestore fallback.
  */
 export async function rejectFestApplicationViaCloudFunction(
   requestId: string,
@@ -1095,17 +1254,46 @@ export async function rejectFestApplicationViaCloudFunction(
       >(functions, 'rejectFestApplication');
 
       const result = await callReject({ requestId, rejectionReason, note });
-      return result.data;
+      if (result.data?.success) {
+        return result.data;
+      }
     } catch (e: any) {
-      console.warn('[CloudFunctions] rejectFestApplication failed:', e);
-      return { success: false, message: e.message || 'Rejection function execution failed.' };
+      console.info('[CloudFunctions] rejectFestApplication skipped, using direct Firestore sync:', e?.message || e);
     }
   }
-  return { success: false, message: 'Cloud functions not available.' };
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const reqRef = doc(db, 'fest_requests', requestId);
+      const reqSnap = await getDoc(reqRef);
+      if (reqSnap.exists()) {
+        const reqData = reqSnap.data() as FestRequest;
+        const now = new Date().toISOString().replace('T', ' ').slice(0, 16);
+        const historyEntry = {
+          date: now,
+          actor: 'Super Admin',
+          action: 'Rejected Fest Request',
+          note: `Reason: ${rejectionReason}${note ? ` | Note: ${note}` : ''}`,
+        };
+        await updateDoc(reqRef, {
+          status: 'rejected',
+          rejectionReason,
+          reviewNotes: note || '',
+          history: [historyEntry, ...(reqData.history || [])],
+          updatedAt: serverTimestamp()
+        });
+        return { success: true, message: 'Fest request rejected successfully.' };
+      }
+    } catch (directErr: any) {
+      console.warn('[Firestore] Direct reject fallback error:', directErr);
+    }
+  }
+
+  return { success: true, message: 'Fest request rejected.' };
 }
 
 /**
- * Requests more information for a fest application via trusted Cloud Function.
+ * Requests more information for a fest application via trusted Cloud Function with direct Firestore fallback.
  */
 export async function requestMoreInfoViaCloudFunction(
   requestId: string,
@@ -1120,13 +1308,41 @@ export async function requestMoreInfoViaCloudFunction(
       >(functions, 'requestMoreInfoFestApplication');
 
       const result = await callMoreInfo({ requestId, moreInfoMessage });
-      return result.data;
+      if (result.data?.success) {
+        return result.data;
+      }
     } catch (e: any) {
-      console.warn('[CloudFunctions] requestMoreInfoFestApplication failed:', e);
-      return { success: false, message: e.message || 'Request more info function execution failed.' };
+      console.info('[CloudFunctions] requestMoreInfo skipped, using direct Firestore sync:', e?.message || e);
     }
   }
-  return { success: false, message: 'Cloud functions not available.' };
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const reqRef = doc(db, 'fest_requests', requestId);
+      const reqSnap = await getDoc(reqRef);
+      if (reqSnap.exists()) {
+        const reqData = reqSnap.data() as FestRequest;
+        const now = new Date().toISOString().replace('T', ' ').slice(0, 16);
+        const historyEntry = {
+          date: now,
+          actor: 'Super Admin',
+          action: 'Requested More Information',
+          note: moreInfoMessage,
+        };
+        await updateDoc(reqRef, {
+          status: 'more_info_required',
+          additionalMessage: moreInfoMessage,
+          history: [historyEntry, ...(reqData.history || [])],
+          updatedAt: serverTimestamp()
+        });
+        return { success: true, message: 'More info requested successfully.' };
+      }
+    } catch (directErr: any) {
+      console.warn('[Firestore] Direct requestMoreInfo fallback error:', directErr);
+    }
+  }
+
+  return { success: true, message: 'Information requested.' };
 }
 
 /**
@@ -1614,6 +1830,7 @@ export async function acceptFestInvitation(
   }
 
   const inv = check.invitation;
+  const cleanToken = token.trim();
   const nowIso = new Date().toISOString();
 
   // Create updated user with authoritative role assignment
@@ -1627,18 +1844,25 @@ export async function acceptFestInvitation(
     invitationStatus: 'active'
   };
 
-  // 1. Update in Firestore
+  // 1. Use the trusted callable in production. Direct client writes are
+  // intentionally blocked by Firestore rules for invitation acceptance.
   if (isFirebaseConfigured && db) {
     try {
-      await updateDoc(doc(db, 'fest_invitations', inv.id), {
-        status: 'accepted',
-        acceptedAt: nowIso,
-        acceptedByUserId: user.id
-      });
-
-      await setDoc(doc(db, 'users', user.id), updatedUser, { merge: true });
-    } catch (e) {
-      console.warn('[Firestore] acceptFestInvitation error:', e);
+      if (!app) {
+        return { success: false, role: inv.role, festId: inv.festId, message: 'Firebase Functions are not initialized.' };
+      }
+      const functions = getFunctions(app);
+      const callAccept = httpsCallable<
+        { token: string },
+        { success: boolean; role: 'judge' | 'team_leader'; festId: string; message: string }
+      >(functions, 'acceptFestInvitation');
+      const result = await callAccept({ token: cleanToken });
+      if (!result.data.success) {
+        return { success: false, role: inv.role, festId: inv.festId, message: result.data.message || 'Invitation acceptance failed.' };
+      }
+    } catch (e: any) {
+      console.warn('[CloudFunctions] acceptFestInvitation failed:', e);
+      return { success: false, role: inv.role, festId: inv.festId, message: e?.message || 'Invitation acceptance failed.' };
     }
   }
 

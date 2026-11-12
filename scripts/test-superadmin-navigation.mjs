@@ -24,8 +24,8 @@ function assert(condition, message) {
 
 // 1. Check href target
 assert(
-  layoutContent.includes('href="/"') && !layoutContent.includes('href="/index.html"'),
-  'Navigation link targets root URL ("/") instead of "/index.html"'
+  layoutContent.includes('getAppUrl') && layoutContent.includes("'?portal=public'"),
+  'Navigation link targets the configured public app URL'
 );
 
 // 2. Check handleBackToPublic implementation
@@ -49,8 +49,8 @@ assert(
 
 // 5. Check window.location.href navigation
 assert(
-  layoutContent.includes("window.location.href = '/'"),
-  "Click handler triggers browser navigation via window.location.href = '/'"
+  layoutContent.includes("navigateTo('?portal=public')"),
+  'Click handler triggers base-aware navigation to the public portal'
 );
 
 // 6. Check UI design preservation

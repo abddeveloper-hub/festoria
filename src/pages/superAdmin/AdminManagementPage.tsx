@@ -51,7 +51,7 @@ export const AdminManagementPage: React.FC = () => {
 
   // Filter Fest Admins
   const adminUsers = useMemo(() => {
-    return users.filter((u) => u.role === 'fest_admin' || u.role === 'super_admin');
+    return users.filter((u) => u.role === 'fest_admin' || u.role === 'admin' || u.role === 'super_admin');
   }, [users]);
 
   const filteredAdmins = useMemo(() => {
