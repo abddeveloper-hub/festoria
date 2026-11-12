@@ -29,7 +29,9 @@ import {
   TeamLeaderInvitation,
   FestRequest,
   FestPublicPageData,
-  FestInvitation
+  FestInvitation,
+  FestCategory,
+  TeamProgrammeEntry
 } from '../types';
 import { StorageService } from '../services/storage';
 
@@ -1889,4 +1891,144 @@ export async function acceptFestInvitation(
     updatedUser
   };
 }
+
+// ==========================================
+// 15. FEST CATEGORIES SERVICE
+// ==========================================
+
+export async function fetchCategories(festId?: string): Promise<FestCategory[]> {
+  if (isFirebaseConfigured && db) {
+    try {
+      const q = festId
+        ? query(collection(db, 'categories'), where('festId', '==', festId))
+        : collection(db, 'categories');
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        return snap.docs.map((d) => d.data() as FestCategory);
+      }
+    } catch (e: any) {
+      if (e?.code !== 'permission-denied') {
+        console.warn('[Firestore] fetchCategories error, falling back to local storage:', e);
+      }
+    }
+  }
+  return StorageService.getCategories(festId);
+}
+
+export async function saveCategoryToFirestore(category: FestCategory): Promise<void> {
+  const localList = StorageService.getCategories();
+  const exists = localList.some((c) => c.id === category.id);
+  const updated = exists
+    ? localList.map((c) => (c.id === category.id ? category : c))
+    : [...localList, category];
+  StorageService.saveCategories(updated);
+
+  if (isFirebaseConfigured && db) {
+    try {
+      await setDoc(doc(db, 'categories', category.id), cleanFirestoreData({
+        ...category,
+        updatedAt: serverTimestamp(),
+      }));
+      // Also save to nested subcollection if festId is available
+      if (category.festId) {
+        try {
+          await setDoc(doc(db, 'fests', category.festId, 'categories', category.id), cleanFirestoreData({
+            ...category,
+            updatedAt: serverTimestamp(),
+          }));
+        } catch {}
+      }
+    } catch (e) {
+      console.warn('[Firestore] Failed to save category:', e);
+    }
+  }
+}
+
+export async function deleteCategoryFromFirestore(categoryId: string, festId?: string): Promise<void> {
+  const localList = StorageService.getCategories();
+  StorageService.saveCategories(localList.filter((c) => c.id !== categoryId));
+
+  if (isFirebaseConfigured && db) {
+    try {
+      await deleteDoc(doc(db, 'categories', categoryId));
+      if (festId) {
+        try {
+          await deleteDoc(doc(db, 'fests', festId, 'categories', categoryId));
+        } catch {}
+      }
+    } catch (e) {
+      console.warn('[Firestore] Failed to delete category:', e);
+    }
+  }
+}
+
+// ==========================================
+// 16. TEAM PROGRAMME ENTRIES SERVICE
+// ==========================================
+
+export async function fetchTeamProgrammeEntries(festId?: string): Promise<TeamProgrammeEntry[]> {
+  if (isFirebaseConfigured && db) {
+    try {
+      const q = festId
+        ? query(collection(db, 'team_programme_entries'), where('festId', '==', festId))
+        : collection(db, 'team_programme_entries');
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        return snap.docs.map((d) => d.data() as TeamProgrammeEntry);
+      }
+    } catch (e: any) {
+      if (e?.code !== 'permission-denied') {
+        console.warn('[Firestore] fetchTeamProgrammeEntries error, falling back to local storage:', e);
+      }
+    }
+  }
+  return StorageService.getTeamProgrammeEntries(festId);
+}
+
+export async function saveTeamProgrammeEntryToFirestore(entry: TeamProgrammeEntry): Promise<void> {
+  const localList = StorageService.getTeamProgrammeEntries();
+  const exists = localList.some((e) => e.id === entry.id);
+  const updated = exists
+    ? localList.map((e) => (e.id === entry.id ? entry : e))
+    : [...localList, entry];
+  StorageService.saveTeamProgrammeEntries(updated);
+
+  if (isFirebaseConfigured && db) {
+    try {
+      await setDoc(doc(db, 'team_programme_entries', entry.id), cleanFirestoreData({
+        ...entry,
+        updatedAt: serverTimestamp(),
+      }));
+      if (entry.festId) {
+        try {
+          await setDoc(doc(db, 'fests', entry.festId, 'programme_entries', entry.id), cleanFirestoreData({
+            ...entry,
+            updatedAt: serverTimestamp(),
+          }));
+        } catch {}
+      }
+    } catch (e) {
+      console.warn('[Firestore] Failed to save team programme entry:', e);
+    }
+  }
+}
+
+export async function deleteTeamProgrammeEntryFromFirestore(entryId: string, festId?: string): Promise<void> {
+  const localList = StorageService.getTeamProgrammeEntries();
+  StorageService.saveTeamProgrammeEntries(localList.filter((e) => e.id !== entryId));
+
+  if (isFirebaseConfigured && db) {
+    try {
+      await deleteDoc(doc(db, 'team_programme_entries', entryId));
+      if (festId) {
+        try {
+          await deleteDoc(doc(db, 'fests', festId, 'programme_entries', entryId));
+        } catch {}
+      }
+    } catch (e) {
+      console.warn('[Firestore] Failed to delete team programme entry:', e);
+    }
+  }
+}
+
 

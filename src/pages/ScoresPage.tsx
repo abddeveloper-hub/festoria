@@ -37,6 +37,7 @@ export const ScoresPage: React.FC = () => {
     submitOrUpdateScore,
     updateScoreStatus,
     publishProgrammeResults,
+    teamProgrammeEntries,
     hasPermission,
     addToast,
   } = useFest();
@@ -57,6 +58,7 @@ export const ScoresPage: React.FC = () => {
   // Score Entry Form State
   const [formJudgeId, setFormJudgeId] = useState('');
   const [formParticipantId, setFormParticipantId] = useState('');
+  const [formTeamEntryId, setFormTeamEntryId] = useState('');
   const [formTeamId, setFormTeamId] = useState('');
   const [formStatus, setFormStatus] = useState<ScoreStatus>('submitted');
   const [formNotes, setFormNotes] = useState('');
@@ -89,16 +91,34 @@ export const ScoresPage: React.FC = () => {
     });
   }, [scores, search, filterProgramme, filterStatus, filterJudge, programmes, teams, participants]);
 
+  const isJudgeOnly = currentUser.role === 'judge';
+  const judgeId = currentUser.linkedJudgeId || (isJudgeOnly ? currentUser.id : undefined);
+
+  // Programmes available for scoring (restricted for judges to assigned events)
+  const scorableProgrammes = useMemo(() => {
+    if (isJudgeOnly && judgeId) {
+      return programmes.filter((p) => p.assignedJudgeIds.includes(judgeId));
+    }
+    return programmes;
+  }, [programmes, isJudgeOnly, judgeId]);
+
   // Handle open add score
   const handleOpenAddScore = () => {
     setEditingScore(null);
-    const defaultProg = programmes[0];
-    if (!defaultProg) return;
+    const defaultProg = scorableProgrammes[0] || programmes[0];
+    if (!defaultProg) {
+      addToast('warning', 'No Programmes', 'No programmes assigned to you for scoring.');
+      return;
+    }
+
+    const isTeam = defaultProg.type === 'team' || defaultProg.type === 'group' || defaultProg.programmeType === 'team';
+    const entries = teamProgrammeEntries.filter((e) => e.programmeId === defaultProg.id);
 
     setSelectedProgrammeId(defaultProg.id);
-    setFormJudgeId(defaultProg.assignedJudgeIds[0] || judges[0]?.id || '');
-    setFormParticipantId(defaultProg.registeredParticipantIds[0] || '');
-    setFormTeamId(defaultProg.registeredTeamIds[0] || teams[0]?.id || '');
+    setFormJudgeId(judgeId || defaultProg.assignedJudgeIds[0] || judges[0]?.id || '');
+    setFormParticipantId(defaultProg.registeredParticipantIds[0] || participants[0]?.id || '');
+    setFormTeamEntryId(entries[0]?.id || '');
+    setFormTeamId(entries[0]?.teamId || defaultProg.registeredTeamIds[0] || teams[0]?.id || '');
     setFormStatus('submitted');
     setFormNotes('');
     setCriteriaScores(
@@ -118,6 +138,7 @@ export const ScoresPage: React.FC = () => {
     setSelectedProgrammeId(s.programmeId);
     setFormJudgeId(s.judgeId);
     setFormParticipantId(s.participantId || '');
+    setFormTeamEntryId(s.teamEntryId || '');
     setFormTeamId(s.teamId || '');
     setFormStatus(s.status);
     setFormNotes(s.notes || '');
@@ -131,9 +152,13 @@ export const ScoresPage: React.FC = () => {
     const prog = programmes.find((p) => p.id === progId);
     if (!prog) return;
 
-    setFormJudgeId(prog.assignedJudgeIds[0] || judges[0]?.id || '');
-    setFormParticipantId(prog.registeredParticipantIds[0] || '');
-    setFormTeamId(prog.registeredTeamIds[0] || teams[0]?.id || '');
+    const isTeam = prog.type === 'team' || prog.type === 'group' || prog.programmeType === 'team';
+    const entries = teamProgrammeEntries.filter((e) => e.programmeId === progId);
+
+    setFormJudgeId(judgeId || prog.assignedJudgeIds[0] || judges[0]?.id || '');
+    setFormParticipantId(prog.registeredParticipantIds[0] || participants[0]?.id || '');
+    setFormTeamEntryId(entries[0]?.id || '');
+    setFormTeamId(entries[0]?.teamId || prog.registeredTeamIds[0] || teams[0]?.id || '');
     setCriteriaScores(
       prog.criteria.map((c) => ({
         criterionId: c.id,
@@ -148,8 +173,14 @@ export const ScoresPage: React.FC = () => {
   const handleSubmitScoreForm = (e: React.FormEvent) => {
     e.preventDefault();
     const prog = programmes.find((p) => p.id === selectedProgrammeId);
-    const judge = judges.find((j) => j.id === formJudgeId);
-    if (!prog || !judge) return;
+    const judge = judges.find((j) => j.id === formJudgeId) || { name: currentUser.name };
+    if (!prog) return;
+
+    // Requirement 6: Ensure judges can only score programmes assigned to them
+    if (isJudgeOnly && judgeId && !prog.assignedJudgeIds.includes(judgeId)) {
+      addToast('error', 'Unauthorized Score Submission', 'Judges can only record scores for events assigned to them.');
+      return;
+    }
 
     // Validate marks within ranges
     for (const item of criteriaScores) {
@@ -163,13 +194,18 @@ export const ScoresPage: React.FC = () => {
       }
     }
 
+    const isTeam = prog.type === 'team' || prog.type === 'group' || prog.programmeType === 'team';
+    const entryObj = formTeamEntryId ? teamProgrammeEntries.find((e) => e.id === formTeamEntryId) : undefined;
+
     submitOrUpdateScore({
       id: editingScore?.id,
       programmeId: selectedProgrammeId,
       judgeId: formJudgeId,
       judgeName: judge.name,
-      participantId: prog.type === 'individual' ? formParticipantId : undefined,
-      teamId: formTeamId,
+      participantId: isTeam ? undefined : formParticipantId,
+      teamEntryId: isTeam ? formTeamEntryId : undefined,
+      teamEntryName: isTeam ? (entryObj?.entryName || teams.find((t) => t.id === formTeamId)?.name) : undefined,
+      teamId: isTeam ? (entryObj?.teamId || formTeamId) : formTeamId,
       scores: criteriaScores,
       totalScore: criteriaScores.reduce((sum, item) => sum + item.marksObtained, 0),
       notes: formNotes,
@@ -363,10 +399,14 @@ export const ScoresPage: React.FC = () => {
                       </td>
                       <td className="py-3 px-3">
                         <div className="font-medium text-slate-800">
-                          {participant ? participant.name : team?.name}
+                          {score.teamEntryName || (participant ? participant.name : team?.name)}
                         </div>
                         <div className="text-[10px] text-slate-400">
-                          {team?.name}
+                          {score.teamEntryId || (prog && (prog.type === 'team' || prog.type === 'group' || prog.programmeType === 'team'))
+                            ? `${team?.name} (Team Entry)`
+                            : participant
+                            ? `${participant.category} • ${team?.name}`
+                            : team?.name}
                         </div>
                       </td>
                       <td className="py-3 px-3 text-slate-700">
@@ -477,10 +517,10 @@ export const ScoresPage: React.FC = () => {
               </select>
             </div>
 
-            {activeFormProgramme?.type === 'individual' ? (
+            {activeFormProgramme?.type === 'individual' || activeFormProgramme?.programmeType === 'individual' ? (
               <div>
                 <label className="block font-medium text-slate-700 mb-1">
-                  Participant *
+                  Participant * (Shows Category & Team)
                 </label>
                 <select
                   value={formParticipantId}
@@ -491,29 +531,74 @@ export const ScoresPage: React.FC = () => {
                   }}
                   className="w-full border border-slate-300 rounded px-2.5 py-1.5 bg-white"
                 >
-                  {participants.map((pt) => (
-                    <option key={pt.id} value={pt.id}>
-                      {pt.id} - {pt.name} ({teams.find((t) => t.id === pt.teamId)?.code})
-                    </option>
-                  ))}
+                  {participants.map((pt) => {
+                    const tm = teams.find((t) => t.id === pt.teamId);
+                    return (
+                      <option key={pt.id} value={pt.id}>
+                        {pt.name} ({pt.category}) — {tm?.name || pt.teamId}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
             ) : (
               <div>
                 <label className="block font-medium text-slate-700 mb-1">
-                  Competing Team *
+                  Competing Team Entry *
                 </label>
-                <select
-                  value={formTeamId}
-                  onChange={(e) => setFormTeamId(e.target.value)}
-                  className="w-full border border-slate-300 rounded px-2.5 py-1.5 bg-white"
-                >
-                  {teams.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name} ({t.code})
-                    </option>
-                  ))}
-                </select>
+                {teamProgrammeEntries.filter((e) => e.programmeId === selectedProgrammeId).length > 0 ? (
+                  <div className="space-y-2">
+                    <select
+                      value={formTeamEntryId}
+                      onChange={(e) => {
+                        setFormTeamEntryId(e.target.value);
+                        const ent = teamProgrammeEntries.find((item) => item.id === e.target.value);
+                        if (ent) setFormTeamId(ent.teamId);
+                      }}
+                      className="w-full border border-slate-300 rounded px-2.5 py-1.5 bg-white font-medium"
+                    >
+                      {teamProgrammeEntries
+                        .filter((e) => e.programmeId === selectedProgrammeId)
+                        .map((ent) => (
+                          <option key={ent.id} value={ent.id}>
+                            {ent.entryName} ({ent.teamName}) — {ent.memberParticipantIds.length} members
+                          </option>
+                        ))}
+                    </select>
+
+                    {(() => {
+                      const ent = teamProgrammeEntries.find((item) => item.id === formTeamEntryId);
+                      if (!ent) return null;
+                      return (
+                        <div className="p-2.5 bg-purple-50 rounded border border-purple-200 text-xs text-purple-900">
+                          <span className="font-semibold block mb-0.5">
+                            Team Entry Members ({ent.memberParticipantIds.length}):
+                          </span>
+                          <span className="text-slate-700">
+                            {ent.memberNames?.join(', ') || ent.memberParticipantIds.join(', ')}
+                          </span>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    <select
+                      value={formTeamId}
+                      onChange={(e) => setFormTeamId(e.target.value)}
+                      className="w-full border border-slate-300 rounded px-2.5 py-1.5 bg-white"
+                    >
+                      {teams.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name} ({t.code})
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-[11px] text-amber-700 italic">
+                      No explicit team entries registered yet for this event; score will be awarded directly to the team.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -637,6 +722,40 @@ export const ScoresPage: React.FC = () => {
                 <p className="font-mono text-slate-700">{viewingScore.submittedAt}</p>
               </div>
             </div>
+
+            {viewingScore.teamEntryId ? (
+              <div className="p-3 bg-purple-50 rounded border border-purple-200">
+                <span className="text-[10px] text-purple-900 uppercase font-semibold block mb-0.5">
+                  Competing Team Entry
+                </span>
+                <p className="font-bold text-xs text-purple-950">
+                  {viewingScore.teamEntryName || teamProgrammeEntries.find((e) => e.id === viewingScore.teamEntryId)?.entryName || 'Team Entry'}{' '}
+                  <span className="text-slate-500 font-normal">
+                    ({teams.find((t) => t.id === viewingScore.teamId)?.name})
+                  </span>
+                </p>
+                {(() => {
+                  const ent = teamProgrammeEntries.find((e) => e.id === viewingScore.teamEntryId);
+                  if (!ent) return null;
+                  return (
+                    <p className="mt-1 text-[11px] text-slate-700">
+                      <strong className="text-slate-800">Members ({ent.memberParticipantIds.length}):</strong>{' '}
+                      {ent.memberNames?.join(', ') || ent.memberParticipantIds.join(', ')}
+                    </p>
+                  );
+                })()}
+              </div>
+            ) : viewingScore.participantId ? (
+              <div className="p-2.5 bg-blue-50 rounded border border-blue-200 text-xs text-blue-950">
+                <span className="text-[10px] text-blue-800 uppercase font-semibold block mb-0.5">Solo Competitor</span>
+                <p className="font-bold">
+                  {participants.find((p) => p.id === viewingScore.participantId)?.name}
+                  <span className="text-slate-500 font-normal ml-1">
+                    (Category: {participants.find((p) => p.id === viewingScore.participantId)?.category}) • {teams.find((t) => t.id === viewingScore.teamId)?.name}
+                  </span>
+                </p>
+              </div>
+            ) : null}
 
             <div>
               <h4 className="font-semibold text-slate-900 mb-2">Criteria Breakdown</h4>

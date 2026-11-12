@@ -15,7 +15,9 @@ import {
   Plus,
   Trash2,
   Lock,
-  Sparkles
+  Sparkles,
+  Layers,
+  ChevronRight
 } from 'lucide-react';
 
 export const SettingsPage: React.FC = () => {
@@ -28,6 +30,8 @@ export const SettingsPage: React.FC = () => {
     resetToDefaultData,
     hasPermission,
     addToast,
+    categories,
+    navigateToTabWithFilter,
   } = useFest();
 
   const [formData, setFormData] = useState<FestSettings>({ ...settings });
@@ -331,6 +335,48 @@ export const SettingsPage: React.FC = () => {
             <span className="text-[11px] text-slate-500">
               Applies to all approved competitions.
             </span>
+          </div>
+        </div>
+
+        {/* Section: Competition Categories & Age Groups */}
+        <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <Layers className="w-4 h-4 text-slate-700" />
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                  Competition Categories & Age Divisions ({categories.length})
+                </h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Configure competition divisions, rename categories, set age boundaries, and enable General Category.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigateToTabWithFilter('programmes')}
+              className="px-3 py-1.5 text-xs font-semibold text-white bg-slate-900 rounded hover:bg-slate-800 transition-colors shadow-2xs flex items-center gap-1.5 shrink-0 self-start sm:self-auto"
+            >
+              <span>Manage & Rename Categories</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            {categories.map((c) => (
+              <span
+                key={c.id}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium border ${
+                  c.isGeneral
+                    ? 'bg-amber-50 text-amber-800 border-amber-200'
+                    : c.enabled
+                    ? 'bg-slate-50 text-slate-800 border-slate-200'
+                    : 'bg-slate-100 text-slate-400 border-slate-200 line-through'
+                }`}
+              >
+                {c.name} {c.isGeneral ? '(General / Any Age)' : c.minAge || c.maxAge ? `(Ages ${c.minAge || 0}-${c.maxAge || 'Open'})` : ''}
+              </span>
+            ))}
           </div>
         </div>
 

@@ -13,18 +13,23 @@ import {
 } from 'lucide-react';
 
 export const TeamLeaderboardPage: React.FC = () => {
-  const { leaderboard, activeTeamId, settings, results, programmes } = useFest();
+  const { leaderboard, activeTeamId, settings, results, programmes, categories: festCategories, getCategoryScoreboard } = useFest();
+  const [viewTab, setViewTab] = useState<'team' | 'individual'>('team');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedIndivCategory, setSelectedIndivCategory] = useState<string>('Senior');
   const [showRulesModal, setShowRulesModal] = useState<boolean>(false);
 
-  // Categories list from programmes
+  // Categories list from custom/built-in categories or programmes
   const categories = useMemo(() => {
+    if (festCategories && festCategories.length > 0) {
+      return festCategories.map((c) => c.name);
+    }
     const set = new Set<string>();
     programmes.forEach((p) => {
       if (p.category) set.add(p.category);
     });
     return Array.from(set);
-  }, [programmes]);
+  }, [festCategories, programmes]);
 
   // If a category filter is selected, recalculate filtered points
   const displayedLeaderboard = useMemo(() => {
@@ -98,7 +103,7 @@ export const TeamLeaderboardPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-            Championship Team Leaderboard
+            Championship Leaderboards & Scoreboards
           </h1>
           <p className="text-sm text-slate-500">
             Real-time standings for {settings.festName} with official medal tallies & scoring rules.
@@ -106,12 +111,36 @@ export const TeamLeaderboardPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Main Tab Toggle: Team vs Individual */}
+          <div className="flex items-center p-1 bg-slate-100 rounded-lg text-xs font-semibold mr-2">
+            <button
+              onClick={() => setViewTab('team')}
+              className={`px-3 py-1.5 rounded-md transition-colors ${
+                viewTab === 'team'
+                  ? 'bg-white text-slate-900 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Team Standings
+            </button>
+            <button
+              onClick={() => setViewTab('individual')}
+              className={`px-3 py-1.5 rounded-md transition-colors ${
+                viewTab === 'individual'
+                  ? 'bg-white text-slate-900 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Individual Scoreboards
+            </button>
+          </div>
+
           <button
             onClick={() => setShowRulesModal(true)}
             className="px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-2xs flex items-center gap-1.5"
           >
             <Info size={14} className="text-slate-500" />
-            <span>Point Rules & Policies</span>
+            <span>Rules</span>
           </button>
           <button
             onClick={handleExportCSV}
@@ -122,6 +151,9 @@ export const TeamLeaderboardPage: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {viewTab === 'team' ? (
+        <>
 
       {/* Category Filter Pills */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
@@ -247,6 +279,131 @@ export const TeamLeaderboardPage: React.FC = () => {
           </table>
         </div>
       </div>
+    </>
+  ) : (
+    /* INDIVIDUAL CATEGORY SCOREBOARDS VIEW */
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+        <span className="font-semibold text-slate-500 mr-1 flex items-center gap-1">
+          <Filter size={13} />
+          Category:
+        </span>
+        {(festCategories && festCategories.length > 0 ? festCategories : [{ id: 'senior', name: 'Senior', isGeneral: false }]).map((c) => (
+          <button
+            key={c.id}
+            onClick={() => setSelectedIndivCategory(c.name)}
+            className={`px-3 py-1.5 rounded-lg font-medium transition-colors whitespace-nowrap ${
+              selectedIndivCategory.toLowerCase() === c.name.toLowerCase()
+                ? c.isGeneral
+                  ? 'bg-amber-600 text-white'
+                  : 'bg-slate-900 text-white'
+                : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            {c.name} {c.isGeneral ? '(General / Any Age)' : ''}
+          </button>
+        ))}
+      </div>
+
+      <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-600 flex items-center justify-between">
+        <span>
+          Individual standings for <strong>{selectedIndivCategory} Category</strong>. Team programme points are not distributed to individuals.
+        </span>
+        <span className="font-mono text-slate-500 text-[11px]">Tie-break: Points &gt; 1st &gt; 2nd &gt; Marks</span>
+      </div>
+
+      {(() => {
+        const scoreboard = getCategoryScoreboard(selectedIndivCategory);
+        if (scoreboard.length === 0) {
+          return (
+            <div className="p-12 text-center border border-slate-200 rounded-xl bg-white text-slate-400 text-xs">
+              No participants registered or scored in {selectedIndivCategory} category yet.
+            </div>
+          );
+        }
+
+        return (
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[11px]">
+                    <th className="py-3 px-4 w-16 text-center">Rank</th>
+                    <th className="py-3 px-4">Contestant</th>
+                    <th className="py-3 px-4">Team</th>
+                    <th className="py-3 px-3 text-center">Category</th>
+                    <th className="py-3 px-2 text-center">🥇 1st</th>
+                    <th className="py-3 px-2 text-center">🥈 2nd</th>
+                    <th className="py-3 px-2 text-center">🥉 3rd</th>
+                    <th className="py-3 px-2 text-center">Total Marks</th>
+                    <th className="py-3 px-4 text-right pr-6">Individual Points</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {scoreboard.map((entry) => {
+                    const isMyTeam = entry.team?.id === activeTeamId;
+                    return (
+                      <tr
+                        key={entry.participant.id}
+                        className={`transition-colors ${
+                          isMyTeam
+                            ? 'bg-blue-50/50 font-semibold border-l-4 border-l-blue-600'
+                            : 'hover:bg-slate-50/70'
+                        }`}
+                      >
+                        <td className="py-3 px-4 text-center font-mono font-bold">
+                          {entry.totalPoints > 0 ? (
+                            <span className="inline-flex items-center gap-1">
+                              {entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : ''}
+                              #{entry.rank}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 font-normal">-</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="font-bold text-slate-900">{entry.participant.name}</div>
+                          <div className="font-mono text-[10px] text-slate-400">{entry.participant.id}</div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="text-slate-800">{entry.team?.name || 'Independent'}</div>
+                          {isMyTeam && (
+                            <span className="inline-block px-1.5 py-0.2 rounded bg-blue-100 text-blue-800 text-[10px] font-bold">
+                              Your Team
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700 font-medium">
+                            {entry.category}
+                          </span>
+                        </td>
+                        <td className="py-3 px-2 text-center font-mono font-bold text-amber-700">
+                          {entry.firstPlaceCount}
+                        </td>
+                        <td className="py-3 px-2 text-center font-mono font-bold text-slate-500">
+                          {entry.secondPlaceCount}
+                        </td>
+                        <td className="py-3 px-2 text-center font-mono font-bold text-amber-800">
+                          {entry.thirdPlaceCount}
+                        </td>
+                        <td className="py-3 px-2 text-center font-mono text-slate-700">
+                          {entry.totalMarks}
+                        </td>
+                        <td className="py-3 px-4 text-right pr-6 font-mono font-bold text-slate-900 text-sm">
+                          {entry.totalPoints} pts
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })()}
+    </div>
+  )}
 
       {/* Point Rules Modal */}
       {showRulesModal && (

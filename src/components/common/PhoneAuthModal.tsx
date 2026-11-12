@@ -49,6 +49,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 }) => {
   const {
     teams,
+    categories,
     switchPortal,
     switchCurrentUser,
     setActiveTeamId,
@@ -708,8 +709,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     onChange={(e) => setRegCategory(e.target.value as ParticipantCategory)}
                     className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900"
                   >
-                    <option value="Senior">Senior (Undergraduate/PG)</option>
-                    <option value="Junior">Junior (Higher Secondary)</option>
+                    {categories.filter((c) => c.enabled).map((c) => (
+                      <option key={c.id} value={c.name}>
+                        {c.name} {c.isGeneral ? '(General / Any Age)' : c.minAge || c.maxAge ? `(Ages ${c.minAge || 0}-${c.maxAge || 'Open'})` : ''}
+                      </option>
+                    ))}
                   </select>
                 </div>
 

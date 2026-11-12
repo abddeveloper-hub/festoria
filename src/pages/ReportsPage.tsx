@@ -18,13 +18,15 @@ import {
 } from 'lucide-react';
 
 type ReportType =
+  | 'category_scoreboards'
+  | 'standings'
+  | 'results'
+  | 'team_entries'
   | 'participants'
   | 'teams'
   | 'programmes'
   | 'judges'
   | 'scores'
-  | 'results'
-  | 'standings'
   | 'schedule'
   | 'complaints';
 
@@ -36,20 +38,37 @@ export const ReportsPage: React.FC = () => {
     judges,
     scores,
     results,
+    categories,
+    teamProgrammeEntries,
     leaderboard,
+    getCategoryScoreboard,
     scheduleSlots,
     complaints,
     settings,
   } = useFest();
 
-  const [activeReport, setActiveReport] = useState<ReportType>('standings');
+  const [activeReport, setActiveReport] = useState<ReportType>('category_scoreboards');
+  const [selectedScoreboardCategory, setSelectedScoreboardCategory] = useState<string>('Senior');
+  const [participantCategoryFilter, setParticipantCategoryFilter] = useState<string>('all');
 
   const reportDefinitions = [
     {
-      id: 'standings' as ReportType,
-      title: 'Overall Team Standings & Trophies',
-      desc: 'Rankings, total points, 1st/2nd/3rd places for all competing houses.',
+      id: 'category_scoreboards' as ReportType,
+      title: 'Category-Wise Individual Scoreboards',
+      desc: 'Rankings and individual medal tallies for Senior, Junior, Sub Junior, General, and Custom categories.',
       icon: Trophy,
+    },
+    {
+      id: 'standings' as ReportType,
+      title: 'Overall Team Scoreboard & Trophies',
+      desc: 'Overall team rankings, ratified points, and gold/silver/bronze medal counts.',
+      icon: Shield,
+    },
+    {
+      id: 'team_entries' as ReportType,
+      title: 'Team Programme Entries & Rosters',
+      desc: 'Registered group entries, squad names, categories, and participant lineups.',
+      icon: Users,
     },
     {
       id: 'results' as ReportType,
@@ -105,6 +124,43 @@ export const ReportsPage: React.FC = () => {
   const handleExportCSV = () => {
     const nowStr = new Date().toISOString().slice(0, 10);
     switch (activeReport) {
+      case 'category_scoreboards': {
+        const catScoreboard = getCategoryScoreboard(selectedScoreboardCategory);
+        const rows = catScoreboard.map((e) => ({
+          Rank: e.rank,
+          ParticipantID: e.participant.id,
+          ParticipantName: e.participant.name,
+          Category: e.category,
+          Team: e.team?.name || e.participant.teamId,
+          Institution: e.team?.institution || '',
+          TotalPoints: e.totalPoints,
+          TotalMarks: e.totalMarks,
+          EventsCount: e.programmesParticipated,
+          GoldMedals: e.firstPlaceCount,
+          SilverMedals: e.secondPlaceCount,
+          BronzeMedals: e.thirdPlaceCount,
+        }));
+        exportToCSV(`festoria_scoreboard_${selectedScoreboardCategory}_${nowStr}`, rows);
+        break;
+      }
+      case 'team_entries': {
+        const rows = teamProgrammeEntries.map((e) => {
+          const prg = programmes.find((p) => p.id === e.programmeId);
+          return {
+            EntryID: e.id,
+            EntryName: e.entryName,
+            Programme: prg?.name || e.programmeId,
+            TeamName: e.teamName,
+            Category: e.categoryId,
+            MembersCount: e.memberParticipantIds.length,
+            MembersList: e.memberNames?.join('; ') || e.memberParticipantIds.join('; '),
+            Status: e.status,
+            CreatedAt: e.createdAt,
+          };
+        });
+        exportToCSV(`festoria_team_programme_entries_${nowStr}`, rows);
+        break;
+      }
       case 'standings': {
         const rows = leaderboard.map((e) => ({
           Rank: e.rank,
@@ -137,7 +193,11 @@ export const ReportsPage: React.FC = () => {
         break;
       }
       case 'participants': {
-        const rows = participants.map((p) => {
+        const filtered = participants.filter((p) => {
+          if (participantCategoryFilter === 'all') return true;
+          return p.category?.toLowerCase() === participantCategoryFilter.toLowerCase();
+        });
+        const rows = filtered.map((p) => {
           const team = teams.find((t) => t.id === p.teamId);
           return {
             ID: p.id,
@@ -150,7 +210,8 @@ export const ReportsPage: React.FC = () => {
             AssignedProgrammes: p.registeredProgrammes.length,
           };
         });
-        exportToCSV(`festflow_participants_${nowStr}`, rows);
+        const suffix = participantCategoryFilter === 'all' ? 'all' : participantCategoryFilter.toLowerCase().replace(/\s+/g, '_');
+        exportToCSV(`festoria_participants_${suffix}_${nowStr}`, rows);
         break;
       }
       case 'teams': {
@@ -342,6 +403,170 @@ export const ReportsPage: React.FC = () => {
 
         {/* Report Content Table based on activeReport */}
         <div className="overflow-x-auto">
+          {activeReport === 'category_scoreboards' && (
+            <div className="space-y-4">
+              {/* Category Picker Tabs */}
+              <div className="flex flex-wrap items-center gap-2 pb-2 border-b border-slate-100 no-print">
+                <span className="text-xs font-semibold text-slate-500 mr-1">Select Category:</span>
+                {categories.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => setSelectedScoreboardCategory(c.name)}
+                    className={`px-3 py-1.5 rounded text-xs font-semibold transition-colors ${
+                      selectedScoreboardCategory.toLowerCase() === c.name.toLowerCase()
+                        ? c.isGeneral
+                          ? 'bg-amber-600 text-white shadow-xs'
+                          : 'bg-slate-900 text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    {c.name} {c.isGeneral ? '(General / Any Age)' : ''}
+                  </button>
+                ))}
+              </div>
+
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded text-xs text-slate-600 flex items-center justify-between">
+                <span>
+                  Showing individual scores for <strong>{selectedScoreboardCategory} Category</strong>. Individual scores are attributed solely to individual competitors. Team programme scores are kept separate.
+                </span>
+                <span className="font-mono text-slate-500 text-[11px]">
+                  Tie-breaker: Points &gt; 1st Places &gt; 2nd Places &gt; Total Marks
+                </span>
+              </div>
+
+              {(() => {
+                const scoreboard = getCategoryScoreboard(selectedScoreboardCategory);
+                if (scoreboard.length === 0) {
+                  return (
+                    <div className="py-12 text-center text-slate-400">
+                      No participants registered in {selectedScoreboardCategory} category.
+                    </div>
+                  );
+                }
+
+                return (
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-slate-500 text-[11px] uppercase">
+                        <th className="py-2.5 px-3">Rank</th>
+                        <th className="py-2.5 px-3">Participant Name</th>
+                        <th className="py-2.5 px-3">Team / Institution</th>
+                        <th className="py-2.5 px-3">Category</th>
+                        <th className="py-2.5 px-2 text-center">Gold (1st)</th>
+                        <th className="py-2.5 px-2 text-center">Silver (2nd)</th>
+                        <th className="py-2.5 px-2 text-center">Bronze (3rd)</th>
+                        <th className="py-2.5 px-2 text-center">Total Marks</th>
+                        <th className="py-2.5 px-3 text-right">Approved Points</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {scoreboard.map((entry) => (
+                        <tr key={entry.participant.id} className="hover:bg-slate-50/60">
+                          <td className="py-2.5 px-3 font-mono font-bold">
+                            {entry.totalPoints > 0 ? (
+                              <span className="inline-flex items-center gap-1">
+                                {entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : ''}
+                                #{entry.rank}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 font-normal">-</span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <div className="font-semibold text-slate-900">{entry.participant.name}</div>
+                            <div className="font-mono text-[10px] text-slate-400">{entry.participant.id}</div>
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <div className="text-slate-800 font-medium">{entry.team?.name || 'Independent'}</div>
+                            <div className="text-[10px] text-slate-400">{entry.team?.institution}</div>
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <span className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700 font-medium">
+                              {entry.category}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-2 text-center font-mono font-bold text-amber-700">
+                            {entry.firstPlaceCount}
+                          </td>
+                          <td className="py-2.5 px-2 text-center font-mono font-bold text-slate-500">
+                            {entry.secondPlaceCount}
+                          </td>
+                          <td className="py-2.5 px-2 text-center font-mono font-bold text-amber-800">
+                            {entry.thirdPlaceCount}
+                          </td>
+                          <td className="py-2.5 px-2 text-center font-mono text-slate-700">
+                            {entry.totalMarks}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">
+                            {entry.totalPoints} pts
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                );
+              })()}
+            </div>
+          )}
+
+          {activeReport === 'team_entries' && (
+            <div className="space-y-4">
+              <div className="p-3 bg-purple-50 border border-purple-200 rounded text-xs text-purple-900">
+                Official Roster of all Team Programme Entries registered across teams.
+              </div>
+
+              {teamProgrammeEntries.length === 0 ? (
+                <div className="py-12 text-center text-slate-400">
+                  No team programme entries registered yet.
+                </div>
+              ) : (
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-slate-500 text-[11px] uppercase">
+                      <th className="py-2.5 px-3">Entry ID</th>
+                      <th className="py-2.5 px-3">Team Entry Name</th>
+                      <th className="py-2.5 px-3">Programme</th>
+                      <th className="py-2.5 px-3">Team</th>
+                      <th className="py-2.5 px-2 text-center">Category</th>
+                      <th className="py-2.5 px-3">Members ({teamProgrammeEntries.reduce((s, e) => s + e.memberParticipantIds.length, 0)} total)</th>
+                      <th className="py-2.5 px-2 text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {teamProgrammeEntries.map((e) => {
+                      const prg = programmes.find((p) => p.id === e.programmeId);
+                      return (
+                        <tr key={e.id} className="hover:bg-slate-50/60">
+                          <td className="py-2.5 px-3 font-mono font-medium text-slate-600">{e.id}</td>
+                          <td className="py-2.5 px-3 font-bold text-slate-900">{e.entryName}</td>
+                          <td className="py-2.5 px-3">
+                            <div className="font-semibold text-slate-800">{prg?.name || e.programmeId}</div>
+                            <div className="font-mono text-[10px] text-slate-400">{prg?.code}</div>
+                          </td>
+                          <td className="py-2.5 px-3 font-medium text-slate-800">{e.teamName}</td>
+                          <td className="py-2.5 px-2 text-center">
+                            <span className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700">
+                              {e.categoryId}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 text-slate-700">
+                            <div className="font-semibold text-[11px]">{e.memberParticipantIds.length} members:</div>
+                            <div className="text-[10px] text-slate-500">{e.memberNames?.join(', ') || e.memberParticipantIds.join(', ')}</div>
+                          </td>
+                          <td className="py-2.5 px-2 text-center">
+                            <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px] uppercase">
+                              {e.status}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
+
           {activeReport === 'standings' && (
             <table className="w-full text-left text-xs">
               <thead>
@@ -380,21 +605,44 @@ export const ReportsPage: React.FC = () => {
               <thead>
                 <tr className="border-b border-slate-200 text-slate-500 text-[11px] uppercase">
                   <th className="py-2.5 px-3">Programme</th>
+                  <th className="py-2.5 px-2 text-center">Type</th>
                   <th className="py-2.5 px-2 text-center">Rank</th>
-                  <th className="py-2.5 px-3">Participant / Team</th>
+                  <th className="py-2.5 px-3">Contestant / Entry</th>
                   <th className="py-2.5 px-3">Team</th>
                   <th className="py-2.5 px-2 text-center">Final Score</th>
-                  <th className="py-2.5 px-3 text-right">Points</th>
+                  <th className="py-2.5 px-3 text-right">Points Awarded</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {results.map((r) => {
                   const prog = programmes.find((p) => p.id === r.programmeId);
+                  const isTeam = r.isTeamProgramme || prog?.programmeType === 'team';
                   return (
                     <tr key={r.id}>
-                      <td className="py-2 px-3 font-semibold text-slate-900">{prog?.name}</td>
+                      <td className="py-2 px-3 font-semibold text-slate-900">{prog?.name || r.programmeName}</td>
+                      <td className="py-2 px-2 text-center">
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                          isTeam
+                            ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                            : 'bg-blue-100 text-blue-800 border border-blue-200'
+                        }`}>
+                          {isTeam ? 'Team' : 'Individual'}
+                        </span>
+                      </td>
                       <td className="py-2 px-2 text-center font-mono font-bold">#{r.rank}</td>
-                      <td className="py-2 px-3 text-slate-800">{r.participantName || 'Group Entry'}</td>
+                      <td className="py-2 px-3 text-slate-800">
+                        {isTeam ? (
+                          <div>
+                            <span className="font-semibold text-purple-900">{r.entryName || 'Team Entry'}</span>
+                            <span className="text-[10px] text-slate-400 block">Squad Entry</span>
+                          </div>
+                        ) : (
+                          <div>
+                            <span className="font-semibold text-slate-900">{r.participantName || 'Contestant'}</span>
+                            <span className="text-[10px] text-slate-400 block">{r.category || 'Individual'}</span>
+                          </div>
+                        )}
+                      </td>
                       <td className="py-2 px-3 text-slate-600">{r.teamName}</td>
                       <td className="py-2 px-2 text-center font-mono">{r.finalScore}</td>
                       <td className="py-2 px-3 text-right font-mono font-bold text-slate-900">
@@ -408,34 +656,94 @@ export const ReportsPage: React.FC = () => {
           )}
 
           {activeReport === 'participants' && (
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-slate-200 text-slate-500 text-[11px] uppercase">
-                  <th className="py-2.5 px-3">ID</th>
-                  <th className="py-2.5 px-3">Name</th>
-                  <th className="py-2.5 px-3">Email</th>
-                  <th className="py-2.5 px-3">Team</th>
-                  <th className="py-2.5 px-2 text-center">Category</th>
-                  <th className="py-2.5 px-2 text-center">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {participants.map((p) => (
-                  <tr key={p.id}>
-                    <td className="py-2 px-3 font-mono">{p.id}</td>
-                    <td className="py-2 px-3 font-semibold text-slate-900">{p.name}</td>
-                    <td className="py-2 px-3 text-slate-600">{p.email}</td>
-                    <td className="py-2 px-3 text-slate-600">
-                      {teams.find((t) => t.id === p.teamId)?.name}
-                    </td>
-                    <td className="py-2 px-2 text-center">{p.category}</td>
-                    <td className="py-2 px-2 text-center">
-                      <Badge variant={p.status} size="sm">{p.status}</Badge>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="space-y-4">
+              {/* Category Filter for Participants */}
+              <div className="flex flex-wrap items-center gap-2 pb-2 border-b border-slate-100 no-print">
+                <span className="text-xs font-semibold text-slate-500 mr-1">Filter by Category:</span>
+                <button
+                  type="button"
+                  onClick={() => setParticipantCategoryFilter('all')}
+                  className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                    participantCategoryFilter === 'all'
+                      ? 'bg-slate-900 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  All Categories ({participants.length})
+                </button>
+                {categories.map((cat) => {
+                  const count = participants.filter(
+                    (p) => p.category?.toLowerCase() === cat.name.toLowerCase()
+                  ).length;
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setParticipantCategoryFilter(cat.name)}
+                      className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                        participantCategoryFilter.toLowerCase() === cat.name.toLowerCase()
+                          ? cat.isGeneral
+                            ? 'bg-amber-600 text-white shadow-xs'
+                            : 'bg-slate-900 text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      {cat.name} ({count}) {cat.isGeneral ? '• General' : ''}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {(() => {
+                const filteredParticipants = participants.filter((p) => {
+                  if (participantCategoryFilter === 'all') return true;
+                  return p.category?.toLowerCase() === participantCategoryFilter.toLowerCase();
+                });
+
+                if (filteredParticipants.length === 0) {
+                  return (
+                    <div className="py-12 text-center text-slate-400">
+                      No participants found in category "{participantCategoryFilter}".
+                    </div>
+                  );
+                }
+
+                return (
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-slate-500 text-[11px] uppercase">
+                        <th className="py-2.5 px-3">ID</th>
+                        <th className="py-2.5 px-3">Name</th>
+                        <th className="py-2.5 px-3">Email</th>
+                        <th className="py-2.5 px-3">Team</th>
+                        <th className="py-2.5 px-2 text-center">Category</th>
+                        <th className="py-2.5 px-2 text-center">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {filteredParticipants.map((p) => (
+                        <tr key={p.id}>
+                          <td className="py-2 px-3 font-mono">{p.id}</td>
+                          <td className="py-2 px-3 font-semibold text-slate-900">{p.name}</td>
+                          <td className="py-2 px-3 text-slate-600">{p.email}</td>
+                          <td className="py-2 px-3 text-slate-600">
+                            {teams.find((t) => t.id === p.teamId)?.name || p.teamId}
+                          </td>
+                          <td className="py-2 px-2 text-center">
+                            <span className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700 font-medium">
+                              {p.category}
+                            </span>
+                          </td>
+                          <td className="py-2 px-2 text-center">
+                            <Badge variant={p.status} size="sm">{p.status}</Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                );
+              })()}
+            </div>
           )}
 
           {activeReport === 'teams' && (

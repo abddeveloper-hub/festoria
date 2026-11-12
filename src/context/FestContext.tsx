@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from 'react';
 import {
   Team,
   Participant,
@@ -34,12 +34,17 @@ import {
   ParticipantNavigationTab,
   ParticipantApprovalStatus,
   ParticipantRegistrationSource,
-  TeamLeaderInvitation
+  TeamLeaderInvitation,
+  FestCategory,
+  TeamProgrammeEntry,
+  CategoryScoreboardEntry
 } from '../types';
 import {
   StorageService,
   GUEST_USER,
   calculateLeaderboard,
+  calculateCategoryScoreboards,
+  CategoryIndividualLeaderboardEntry,
   detectScheduleConflicts,
   TeamLeaderboardEntry,
   ScheduleConflict
@@ -79,7 +84,13 @@ import {
   submitFestApplication,
   approveFestApplicationViaCloudFunction,
   rejectFestApplicationViaCloudFunction,
-  requestMoreInfoViaCloudFunction
+  requestMoreInfoViaCloudFunction,
+  fetchCategories,
+  saveCategoryToFirestore,
+  deleteCategoryFromFirestore,
+  fetchTeamProgrammeEntries,
+  saveTeamProgrammeEntryToFirestore,
+  deleteTeamProgrammeEntryFromFirestore
 } from '../firebase/firestoreService';
 
 export type NavigationTab =
@@ -201,6 +212,8 @@ interface FestContextType {
   participants: Participant[];
   judges: Judge[];
   programmes: Programme[];
+  categories: FestCategory[];
+  teamProgrammeEntries: TeamProgrammeEntry[];
   scores: ScoreSubmission[];
   results: ApprovedResult[];
   scheduleSlots: ScheduleSlot[];
@@ -233,6 +246,7 @@ interface FestContextType {
 
   // Derived dynamic analytics
   leaderboard: TeamLeaderboardEntry[];
+  getCategoryScoreboard: (categoryName: string) => CategoryIndividualLeaderboardEntry[];
   scheduleConflicts: ScheduleConflict[];
   summaryStats: {
     totalParticipants: number;
@@ -263,6 +277,23 @@ interface FestContextType {
   submitOrUpdateScore: (score: Omit<ScoreSubmission, 'id' | 'submittedAt' | 'revisionHistory'> & { id?: string }) => void;
   updateScoreStatus: (id: string, newStatus: ScoreStatus, notes?: string) => void;
   publishProgrammeResults: (programmeId: string) => void;
+
+  // Categories (General & Custom)
+  addCategory: (cat: Omit<FestCategory, 'id' | 'createdAt'>) => Promise<boolean>;
+  updateCategory: (id: string, updates: Partial<FestCategory>) => Promise<void>;
+  deleteCategory: (id: string) => Promise<void>;
+  toggleGeneralCategory: (enabled: boolean) => Promise<void>;
+
+  // Team Programme Entries
+  createTeamProgrammeEntry: (entry: {
+    programmeId: string;
+    teamId: string;
+    entryName: string;
+    categoryId: string;
+    memberParticipantIds: string[];
+  }) => { success: boolean; error?: string; entryId?: string };
+  updateTeamProgrammeEntry: (id: string, updates: Partial<TeamProgrammeEntry>) => { success: boolean; error?: string };
+  deleteTeamProgrammeEntry: (id: string) => { success: boolean; error?: string };
 
   addTeam: (team: Omit<Team, 'id' | 'createdAt'>) => boolean;
   updateTeam: (id: string, updates: Partial<Team>) => void;
@@ -425,6 +456,8 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
   const [participants, setParticipants] = useState<Participant[]>(() => StorageService.getParticipants());
   const [judges, setJudges] = useState<Judge[]>(() => StorageService.getJudges());
   const [programmes, setProgrammes] = useState<Programme[]>(() => StorageService.getProgrammes());
+  const [categories, setCategories] = useState<FestCategory[]>(() => StorageService.getCategories());
+  const [teamProgrammeEntries, setTeamProgrammeEntries] = useState<TeamProgrammeEntry[]>(() => StorageService.getTeamProgrammeEntries());
   const [scores, setScores] = useState<ScoreSubmission[]>(() => StorageService.getScoreSubmissions());
   const [results, setResults] = useState<ApprovedResult[]>(() => StorageService.getApprovedResults());
   const [scheduleSlots, setScheduleSlots] = useState<ScheduleSlot[]>(() => StorageService.getScheduleSlots());
@@ -521,6 +554,8 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
   useEffect(() => { StorageService.saveComplaints(complaints); }, [complaints]);
   useEffect(() => { StorageService.saveAssignments(assignments); }, [assignments]);
   useEffect(() => { StorageService.saveTeamLeaderInvitations(teamLeaderInvitations); }, [teamLeaderInvitations]);
+  useEffect(() => { StorageService.saveCategories(categories); }, [categories]);
+  useEffect(() => { StorageService.saveTeamProgrammeEntries(teamProgrammeEntries); }, [teamProgrammeEntries]);
   useEffect(() => {
     try {
       localStorage.setItem('festflow_active_team_id', activeTeamId);
@@ -594,18 +629,22 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       await seedFirestoreIfEmpty();
 
       // Fetch base collections accessible publicly
-      const [fsFests, fsTeams, fsParticipants, fsProgrammes, fsResults] = await Promise.all([
+      const [fsFests, fsTeams, fsParticipants, fsProgrammes, fsResults, fsCategories, fsTeamEntries] = await Promise.all([
         fetchFests(),
         fetchTeams(),
         fetchParticipants(),
         fetchProgrammes(),
-        fetchResults()
+        fetchResults(),
+        fetchCategories(),
+        fetchTeamProgrammeEntries()
       ]);
       setFests(fsFests);
       setTeams(fsTeams);
       setParticipants(fsParticipants);
       setProgrammes(fsProgrammes);
       setResults(fsResults);
+      if (fsCategories && fsCategories.length > 0) setCategories(fsCategories);
+      if (fsTeamEntries && fsTeamEntries.length > 0) setTeamProgrammeEntries(fsTeamEntries);
 
       // Fetch role-restricted collections safely
       if (currentUser.role === 'super_admin') {
@@ -833,6 +872,14 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
   const leaderboard = useMemo(() => {
     return calculateLeaderboard(teams, results, programmes);
   }, [teams, results, programmes]);
+
+  // Dynamic Category Scoreboards (Individual competitions only)
+  const getCategoryScoreboard = useCallback(
+    (categoryName: string): CategoryIndividualLeaderboardEntry[] => {
+      return calculateCategoryScoreboards(categoryName, participants, teams, results, programmes);
+    },
+    [participants, teams, results, programmes]
+  );
 
   // Dynamic Schedule Conflicts
   const scheduleConflicts = useMemo(() => {
@@ -1148,17 +1195,38 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       return;
     }
 
-    // Consolidate scores per participant / team
-    const scoreMap = new Map<string, { totalScore: number; judgeCount: number; teamId: string; participantId?: string }>();
+    const isTeamProgramme = programme.type === 'group' || programme.type === 'team' || programme.programmeType === 'team';
+
+    // Consolidate scores per competitor:
+    // For individual: key is participantId
+    // For team: key is teamEntryId || teamId
+    const scoreMap = new Map<
+      string,
+      {
+        totalScore: number;
+        judgeCount: number;
+        teamId: string;
+        participantId?: string;
+        teamEntryId?: string;
+        entryName?: string;
+      }
+    >();
 
     progScores.forEach((s) => {
-      const key = (programme.type === 'individual' ? (s.participantId || s.teamId) : s.teamId) || s.id;
+      let key = '';
+      if (isTeamProgramme) {
+        key = s.teamEntryId || s.teamId || s.id;
+      } else {
+        key = s.participantId || s.teamId || s.id;
+      }
       const teamId = s.teamId || 'TM-01';
       const existing = scoreMap.get(key) || {
         totalScore: 0,
         judgeCount: 0,
         teamId,
-        participantId: s.participantId,
+        participantId: isTeamProgramme ? undefined : s.participantId,
+        teamEntryId: isTeamProgramme ? (s.teamEntryId || key) : undefined,
+        entryName: isTeamProgramme ? (s.teamEntryName || teamProgrammeEntries.find(e => e.id === s.teamEntryId)?.entryName) : undefined,
       };
       existing.totalScore += s.totalScore;
       existing.judgeCount += 1;
@@ -1172,6 +1240,8 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
         key,
         teamId: data.teamId,
         participantId: data.participantId,
+        teamEntryId: data.teamEntryId,
+        entryName: data.entryName,
         finalScore,
       };
     });
@@ -1179,7 +1249,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     sortedEntries.sort((a, b) => b.finalScore - a.finalScore);
 
     const pointRules = settings.pointRules;
-    const multiplier = programme.type === 'group' ? pointRules.groupMultiplier : 1;
+    const multiplier = isTeamProgramme ? (pointRules.groupMultiplier || 2) : 1;
     const now = new Date().toISOString().replace('T', ' ').slice(0, 16);
 
     const newResults: ApprovedResult[] = sortedEntries.map((item, idx) => {
@@ -1192,21 +1262,29 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       else if (rank === 5) basePoints = pointRules.fifthPlace;
 
       const teamObj = teams.find((t) => t.id === item.teamId);
-      const participantObj = participants.find((p) => p.id === item.participantId);
+      const participantObj = item.participantId ? participants.find((p) => p.id === item.participantId) : undefined;
+      const entryObj = item.teamEntryId ? teamProgrammeEntries.find((e) => e.id === item.teamEntryId) : undefined;
 
-      return {
+      const resObj: ApprovedResult = {
         id: `RES-${programmeId}-${rank}`,
         programmeId,
         rank,
-        participantId: item.participantId,
-        participantName: participantObj?.name,
+        isTeamProgramme,
+        participantId: isTeamProgramme ? undefined : item.participantId,
+        participantName: isTeamProgramme ? undefined : participantObj?.name,
+        teamEntryId: isTeamProgramme ? (item.teamEntryId || entryObj?.id) : undefined,
+        entryName: isTeamProgramme ? (item.entryName || entryObj?.entryName || teamObj?.name) : undefined,
         teamId: item.teamId,
         teamName: teamObj?.name || 'Independent',
+        category: programme.category,
         finalScore: item.finalScore,
         pointsAwarded: basePoints * multiplier,
         published: true,
         publishedAt: now,
       };
+
+      saveResultToFirestore(resObj);
+      return resObj;
     });
 
     // Remove old results for this programme and append newly calculated ones
@@ -2119,6 +2197,70 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
   };
 
   const assignParticipantToProgramme = (data: Omit<ProgrammeAssignment, 'id' | 'assignedAt'>) => {
+    const programme = programmes.find((p) => p.id === data.programmeId);
+    if (!programme) {
+      addToast('error', 'Assignment Error', 'Target competition programme not found.');
+      return;
+    }
+
+    // 1. Authorised team verification: participants must belong to the requesting team
+    const memberObjs = participants.filter((p) => data.participantIds.includes(p.id));
+    for (const mem of memberObjs) {
+      if (mem.teamId !== data.teamId) {
+        addToast('error', 'Unauthorized Assignment', `Participant ${mem.name} does not belong to team #${data.teamId}.`);
+        return;
+      }
+    }
+
+    // 2. Duplicate registration check: do not allow duplicate registration of the same participant
+    const existingTeamAssignments = assignments.filter((a) => a.programmeId === data.programmeId && a.teamId === data.teamId);
+    const existingAssignedPids = new Set<string>();
+    existingTeamAssignments.forEach((a) => a.participantIds.forEach((pid) => existingAssignedPids.add(pid)));
+
+    for (const pid of data.participantIds) {
+      if (existingAssignedPids.has(pid)) {
+        const mem = memberObjs.find((m) => m.id === pid);
+        addToast('error', 'Duplicate Registration', `${mem?.name || pid} is already registered for "${programme.name}".`);
+        return;
+      }
+    }
+
+    // 3. Category eligibility check
+    if (programme.eligibleCategories && programme.eligibleCategories.length > 0) {
+      const allowed = programme.eligibleCategories.map((c) => c.toLowerCase());
+      const allowsGeneral = allowed.includes('general');
+
+      for (const mem of memberObjs) {
+        const cat = (mem.category || '').toLowerCase();
+        const matchesCategory = allowed.includes(cat) || (allowsGeneral && cat === 'general');
+        if (!matchesCategory) {
+          addToast(
+            'error',
+            'Category Ineligible',
+            `${mem.name} (${mem.category}) is not eligible for "${programme.name}". Eligible: [${programme.eligibleCategories.join(', ')}].`
+          );
+          return;
+        }
+      }
+    }
+
+    // 4. Individual Programme Limits Per Team enforcement
+    const isIndividual = programme.type === 'individual' || programme.programmeType === 'individual';
+    if (isIndividual) {
+      const maxAllowed = programme.maxParticipantsPerTeam || 1;
+      const currentCount = existingAssignedPids.size;
+      const remainingSlots = Math.max(0, maxAllowed - currentCount);
+
+      if (currentCount + data.participantIds.length > maxAllowed) {
+        addToast(
+          'error',
+          'Programme Limit Exceeded',
+          `Maximum allowed participants for your team in "${programme.name}" is ${maxAllowed}. Already registered: ${currentCount}. Remaining slots: ${remainingSlots}.`
+        );
+        return;
+      }
+    }
+
     const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
     const id = `ASG-${Date.now().toString().slice(-4)}`;
     const newAsg: ProgrammeAssignment = {
@@ -2138,7 +2280,340 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
         return p;
       })
     );
+
+    // Update programme registeredParticipantIds if not already present
+    setProgrammes((prev) =>
+      prev.map((prg) => {
+        if (prg.id === data.programmeId) {
+          const currentPids = new Set(prg.registeredParticipantIds || []);
+          data.participantIds.forEach((pid) => currentPids.add(pid));
+          const currentTids = new Set(prg.registeredTeamIds || []);
+          currentTids.add(data.teamId);
+          return {
+            ...prg,
+            registeredParticipantIds: Array.from(currentPids),
+            registeredTeamIds: Array.from(currentTids),
+          };
+        }
+        return prg;
+      })
+    );
+
     addToast('success', 'Programme Assigned', `Assigned ${data.participantNames.join(', ')} to ${data.programmeName}.`);
+  };
+
+  // ==========================================
+  // CATEGORIES MANAGEMENT (General & Custom)
+  // ==========================================
+  const addCategory = async (catData: Omit<FestCategory, 'id' | 'createdAt'>): Promise<boolean> => {
+    const trimmed = catData.name.trim();
+    if (!trimmed) {
+      addToast('error', 'Invalid Name', 'Category name is required.');
+      return false;
+    }
+    if (categories.some((c) => c.name.toLowerCase() === trimmed.toLowerCase())) {
+      addToast('error', 'Category Exists', `Category "${trimmed}" already exists.`);
+      return false;
+    }
+    const id = `CAT-${Date.now().toString().slice(-6)}`;
+    const newCat: FestCategory = {
+      ...catData,
+      id,
+      name: trimmed,
+      festId: catData.festId || activeFestId || 'FEST-01',
+      enabled: catData.enabled ?? true,
+      createdAt: new Date().toISOString(),
+    };
+    setCategories((prev) => [...prev, newCat]);
+    await saveCategoryToFirestore(newCat);
+    logActivity('CREATE_CATEGORY', 'settings', id, `Created category "${trimmed}".`);
+    addToast('success', 'Category Created', `Category "${trimmed}" successfully added.`);
+    return true;
+  };
+
+  const updateCategory = async (id: string, updates: Partial<FestCategory>): Promise<void> => {
+    const existing = categories.find((c) => c.id === id);
+    const oldName = existing?.name;
+    const newName = updates.name?.trim();
+
+    setCategories((prev) =>
+      prev.map((c) => {
+        if (c.id === id) {
+          const updated = {
+            ...c,
+            ...updates,
+            name: newName || c.name,
+            updatedAt: new Date().toISOString(),
+          };
+          saveCategoryToFirestore(updated);
+          return updated;
+        }
+        return c;
+      })
+    );
+
+    // If category name was renamed, cascade updates across programmes, participants, and entries
+    if (oldName && newName && oldName.toLowerCase() !== newName.toLowerCase()) {
+      setProgrammes((prev) =>
+        prev.map((prg) => {
+          let modified = false;
+          let cat = prg.category;
+          let eligible = prg.eligibleCategories;
+
+          if (prg.category?.toLowerCase() === oldName.toLowerCase()) {
+            cat = newName;
+            modified = true;
+          }
+          if (prg.eligibleCategories?.some((ec) => ec.toLowerCase() === oldName.toLowerCase())) {
+            eligible = prg.eligibleCategories.map((ec) =>
+              ec.toLowerCase() === oldName.toLowerCase() ? newName : ec
+            );
+            modified = true;
+          }
+
+          if (modified) {
+            const updatedPrg = { ...prg, category: cat, eligibleCategories: eligible };
+            saveProgrammeToFirestore(updatedPrg);
+            return updatedPrg;
+          }
+          return prg;
+        })
+      );
+
+      setParticipants((prev) =>
+        prev.map((p) => {
+          if (p.category?.toLowerCase() === oldName.toLowerCase()) {
+            const updatedP = { ...p, category: newName };
+            saveParticipantToFirestore(updatedP);
+            return updatedP;
+          }
+          return p;
+        })
+      );
+
+      setTeamProgrammeEntries((prev) =>
+        prev.map((entry) => {
+          if (entry.categoryId?.toLowerCase() === oldName.toLowerCase()) {
+            const updatedEntry = { ...entry, categoryId: newName };
+            saveTeamProgrammeEntryToFirestore(updatedEntry);
+            return updatedEntry;
+          }
+          return entry;
+        })
+      );
+
+      logActivity('UPDATE_CATEGORY', 'settings', id, `Renamed category from "${oldName}" to "${newName}".`);
+      addToast('success', 'Category Renamed', `Category "${oldName}" renamed to "${newName}". Associated records updated.`);
+    } else {
+      addToast('info', 'Category Updated', 'Category settings saved.');
+    }
+  };
+
+  const deleteCategory = async (id: string): Promise<void> => {
+    const cat = categories.find((c) => c.id === id);
+    if (!cat) return;
+    if (cat.isSystem) {
+      addToast('warning', 'System Protected', 'System default categories cannot be removed.');
+      return;
+    }
+    setCategories((prev) => prev.filter((c) => c.id !== id));
+    await deleteCategoryFromFirestore(id, activeFestId);
+    addToast('info', 'Category Removed', `Category "${cat.name}" removed.`);
+  };
+
+  const toggleGeneralCategory = async (enabled: boolean): Promise<void> => {
+    setCategories((prev) =>
+      prev.map((c) => {
+        if (c.isGeneral || c.id === 'CAT-GEN') {
+          const updated = { ...c, enabled, updatedAt: new Date().toISOString() };
+          saveCategoryToFirestore(updated);
+          return updated;
+        }
+        return c;
+      })
+    );
+    updateSettings({ ...settings, generalCategoryEnabled: enabled });
+    addToast('info', 'General Category', `General Category ${enabled ? 'Enabled' : 'Disabled'}.`);
+  };
+
+  // ==========================================
+  // TEAM PROGRAMME ENTRIES MANAGEMENT
+  // ==========================================
+  const createTeamProgrammeEntry = (data: {
+    programmeId: string;
+    teamId: string;
+    entryName: string;
+    categoryId: string;
+    memberParticipantIds: string[];
+  }): { success: boolean; error?: string; entryId?: string } => {
+    const programme = programmes.find((p) => p.id === data.programmeId);
+    if (!programme) return { success: false, error: 'Programme not found.' };
+
+    const team = teams.find((t) => t.id === data.teamId);
+    if (!team) return { success: false, error: 'Team not found.' };
+
+    // 1. Max entries per team limit
+    const maxEntries = programme.maxEntriesPerTeam || 1;
+    const existingEntriesForTeam = teamProgrammeEntries.filter(
+      (e) => e.programmeId === data.programmeId && e.teamId === data.teamId && e.status !== 'withdrawn'
+    );
+    if (existingEntriesForTeam.length >= maxEntries) {
+      const err = `Maximum ${maxEntries} team ${maxEntries === 1 ? 'entry' : 'entries'} allowed for your team in this programme.`;
+      addToast('error', 'Limit Exceeded', err);
+      return { success: false, error: err };
+    }
+
+    // 2. Team member size limits
+    const minMembers = programme.minTeamMembers || 2;
+    const maxMembers = programme.maxTeamMembers || 20;
+    if (data.memberParticipantIds.length < minMembers) {
+      const err = `Requires at least ${minMembers} members (you selected ${data.memberParticipantIds.length}).`;
+      addToast('error', 'Team Size Error', err);
+      return { success: false, error: err };
+    }
+    if (data.memberParticipantIds.length > maxMembers) {
+      const err = `Maximum ${maxMembers} members allowed (you selected ${data.memberParticipantIds.length}).`;
+      addToast('error', 'Team Size Error', err);
+      return { success: false, error: err };
+    }
+
+    // 3. Verify all participants belong to requesting team
+    const memberObjs = participants.filter((p) => data.memberParticipantIds.includes(p.id));
+    for (const mem of memberObjs) {
+      if (mem.teamId !== data.teamId) {
+        const err = `Participant ${mem.name} does not belong to team ${team.name}.`;
+        addToast('error', 'Unauthorized Member', err);
+        return { success: false, error: err };
+      }
+    }
+
+    // 4. Category eligibility check
+    if (programme.eligibleCategories && programme.eligibleCategories.length > 0) {
+      const allowed = programme.eligibleCategories.map((c) => c.toLowerCase());
+      const allowsGeneral = allowed.includes('general');
+
+      for (const mem of memberObjs) {
+        const memCat = (mem.category || '').toLowerCase();
+        const matchesCategory = allowed.includes(memCat) || (allowsGeneral && memCat === 'general');
+        if (!matchesCategory) {
+          const err = `${mem.name} (${mem.category}) is not eligible for "${programme.name}". Eligible: [${programme.eligibleCategories.join(', ')}].`;
+          addToast('error', 'Ineligible Category', err);
+          return { success: false, error: err };
+        }
+      }
+    }
+
+    // 5. Check duplicate participant in another entry for THIS programme
+    if (!programme.allowMultiEntriesPerParticipant) {
+      for (const entry of existingEntriesForTeam) {
+        const duplicate = entry.memberParticipantIds.find((id) => data.memberParticipantIds.includes(id));
+        if (duplicate) {
+          const dupObj = memberObjs.find((m) => m.id === duplicate);
+          const err = `${dupObj?.name || duplicate} is already part of another entry ("${entry.entryName}") for this programme.`;
+          addToast('error', 'Duplicate Entry Member', err);
+          return { success: false, error: err };
+        }
+      }
+    }
+
+    // 6. Check multi-team programme participation restriction
+    if (programme.allowMultiTeamProgrammeParticipation === false) {
+      const otherTeamEntries = teamProgrammeEntries.filter(
+        (e) => e.programmeId !== data.programmeId && e.status !== 'withdrawn'
+      );
+      for (const entry of otherTeamEntries) {
+        const conflictId = entry.memberParticipantIds.find((id) => data.memberParticipantIds.includes(id));
+        if (conflictId) {
+          const conflictName = memberObjs.find((m) => m.id === conflictId)?.name || conflictId;
+          const otherPrg = programmes.find((p) => p.id === entry.programmeId);
+          const err = `${conflictName} is already participating in team event "${otherPrg?.name || entry.programmeId}". Multiple team event participation is restricted.`;
+          addToast('error', 'Participation Conflict', err);
+          return { success: false, error: err };
+        }
+      }
+    }
+
+    const id = `TPE-${Date.now().toString().slice(-5)}`;
+    const now = new Date().toISOString();
+    const newEntry: TeamProgrammeEntry = {
+      id,
+      festId: programme.festId || activeFestId || 'FEST-01',
+      programmeId: data.programmeId,
+      programmeName: programme.name,
+      teamId: data.teamId,
+      teamName: team.name,
+      entryName: data.entryName.trim(),
+      categoryId: data.categoryId,
+      memberParticipantIds: data.memberParticipantIds,
+      memberNames: memberObjs.map((m) => m.name),
+      status: 'registered',
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    setTeamProgrammeEntries((prev) => [...prev, newEntry]);
+    saveTeamProgrammeEntryToFirestore(newEntry);
+
+    // Update participants registeredProgrammes
+    setParticipants((prev) =>
+      prev.map((p) => {
+        if (data.memberParticipantIds.includes(p.id)) {
+          if (!p.registeredProgrammes.includes(data.programmeId)) {
+            return { ...p, registeredProgrammes: [...p.registeredProgrammes, data.programmeId] };
+          }
+        }
+        return p;
+      })
+    );
+
+    // Update programme registeredTeamIds
+    if (!programme.registeredTeamIds.includes(data.teamId)) {
+      updateProgramme(programme.id, {
+        registeredTeamIds: [...programme.registeredTeamIds, data.teamId],
+      });
+    }
+
+    logActivity('CREATE_TEAM_ENTRY', 'programme', id, `Registered team entry "${newEntry.entryName}" for ${programme.name}.`);
+    addToast('success', 'Entry Registered', `Team entry "${newEntry.entryName}" successfully registered.`);
+    return { success: true, entryId: id };
+  };
+
+  const updateTeamProgrammeEntry = (id: string, updates: Partial<TeamProgrammeEntry>): { success: boolean; error?: string } => {
+    const entry = teamProgrammeEntries.find((e) => e.id === id);
+    if (!entry) return { success: false, error: 'Team entry not found.' };
+
+    const programme = programmes.find((p) => p.id === entry.programmeId);
+    if (programme) {
+      const minMembers = programme.minTeamMembers || 2;
+      const maxMembers = programme.maxTeamMembers || 20;
+      const memberIds = updates.memberParticipantIds || entry.memberParticipantIds;
+      if (memberIds.length < minMembers || memberIds.length > maxMembers) {
+        const err = `Entry must have between ${minMembers} and ${maxMembers} members (currently ${memberIds.length}).`;
+        addToast('error', 'Validation Error', err);
+        return { success: false, error: err };
+      }
+    }
+
+    const updatedEntry: TeamProgrammeEntry = {
+      ...entry,
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+
+    setTeamProgrammeEntries((prev) => prev.map((e) => (e.id === id ? updatedEntry : e)));
+    saveTeamProgrammeEntryToFirestore(updatedEntry);
+    addToast('success', 'Entry Updated', `Team entry "${updatedEntry.entryName}" updated.`);
+    return { success: true };
+  };
+
+  const deleteTeamProgrammeEntry = (id: string): { success: boolean; error?: string } => {
+    const entry = teamProgrammeEntries.find((e) => e.id === id);
+    if (!entry) return { success: false, error: 'Team entry not found.' };
+
+    setTeamProgrammeEntries((prev) => prev.filter((e) => e.id !== id));
+    deleteTeamProgrammeEntryFromFirestore(id, entry.festId);
+    addToast('info', 'Entry Withdrawn', `Team entry "${entry.entryName}" withdrawn.`);
+    return { success: true };
   };
 
   const withdrawAssignment = (assignmentId: string) => {
@@ -3048,6 +3523,8 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
         participants,
         judges,
         programmes,
+        categories,
+        teamProgrammeEntries,
         scores,
         results,
         scheduleSlots,
@@ -3064,6 +3541,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
         dashboardFilters,
         setDashboardFilters,
         leaderboard,
+        getCategoryScoreboard,
         scheduleConflicts,
         summaryStats,
         addParticipant,
@@ -3080,6 +3558,13 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
         submitOrUpdateScore,
         updateScoreStatus,
         publishProgrammeResults,
+        addCategory,
+        updateCategory,
+        deleteCategory,
+        toggleGeneralCategory,
+        createTeamProgrammeEntry,
+        updateTeamProgrammeEntry,
+        deleteTeamProgrammeEntry,
         addTeam,
         updateTeam,
         deleteTeam,

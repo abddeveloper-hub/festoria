@@ -81,7 +81,22 @@ export interface FestInvitation {
   notes?: string;
 }
 
-export type ParticipantCategory = 'Junior' | 'Senior' | 'Sub-Junior' | 'Open';
+export type BuiltInParticipantCategory = 'Junior' | 'Senior' | 'Sub-Junior' | 'Open' | 'General';
+export type ParticipantCategory = BuiltInParticipantCategory | string;
+
+export interface FestCategory {
+  id: string; // e.g. "CAT-GEN", "CAT-SR", "CAT-JR", "CAT-SUBJR" or "CAT-CUSTOM-xxx"
+  festId: string;
+  name: string; // "General", "Senior", "Junior", "Sub-Junior", etc.
+  description?: string;
+  isGeneral?: boolean; // Built-in General category (no age restrictions)
+  minAge?: number; // Optional minimum age limit
+  maxAge?: number; // Optional maximum age limit
+  enabled: boolean;
+  isSystem?: boolean; // System default categories
+  createdAt: string;
+  updatedAt?: string;
+}
 
 export type RegistrationStatus = 'registered' | 'verified' | 'disqualified' | 'inactive';
 
@@ -142,16 +157,9 @@ export interface Judge {
   createdAt: string;
 }
 
-export type ProgrammeCategory = 
-  | 'Literary' 
-  | 'Performing Arts' 
-  | 'Fine Arts' 
-  | 'Music' 
-  | 'Dance' 
-  | 'Theatre' 
-  | 'Digital Media';
+export type ProgrammeCategory = string;
 
-export type ProgrammeType = 'individual' | 'group';
+export type ProgrammeType = 'individual' | 'team' | 'group';
 
 export type ProgrammeStatus = 'draft' | 'scheduled' | 'ongoing' | 'completed' | 'cancelled';
 
@@ -164,16 +172,29 @@ export interface ScoringCriterion {
 
 export interface Programme {
   id: string; // e.g. "PRG-201"
+  festId?: string;
   code: string;
   name: string;
   description: string;
   rules?: string;
   category: ProgrammeCategory;
   type: ProgrammeType;
+  programmeType?: 'individual' | 'team';
   eligibleCategories: ParticipantCategory[];
+  eligibleCategoryIds?: string[];
   assignedJudgeIds: string[];
   judgeIds?: string[];
-  maxParticipantsPerTeam?: number;
+
+  // Individual Programme Limits
+  maxParticipantsPerTeam?: number; // Maximum participants each team/institution can register
+
+  // Team Programme Limits
+  minTeamMembers?: number; // Minimum team members required per entry (e.g. 5)
+  maxTeamMembers?: number; // Maximum team members allowed per entry (e.g. 8)
+  maxEntriesPerTeam?: number; // Maximum team entries per team/institution (e.g. 1 or 2)
+  allowMultiTeamProgrammeParticipation?: boolean; // Can a participant join >1 team programme
+  allowMultiEntriesPerParticipant?: boolean; // Can a participant join multiple entries of the same programme
+
   venue: string;
   stage: string;
   date: string; // YYYY-MM-DD
@@ -188,6 +209,23 @@ export interface Programme {
   registeredTeamIds: string[];
 }
 
+export interface TeamProgrammeEntry {
+  id: string; // e.g. "TPE-001"
+  festId: string;
+  programmeId: string;
+  programmeName?: string;
+  teamId: string;
+  teamName: string;
+  entryName: string; // e.g. "St. Mary's Team A"
+  categoryId: string; // Category ID or name
+  categoryName?: string;
+  memberParticipantIds: string[];
+  memberNames?: string[];
+  status: 'registered' | 'verified' | 'withdrawn' | 'disqualified';
+  createdAt: string;
+  updatedAt?: string;
+}
+
 export type ScoreStatus = 'pending' | 'submitted' | 'reviewed' | 'approved' | 'published';
 
 export interface ScoreDetail {
@@ -199,11 +237,14 @@ export interface ScoreDetail {
 
 export interface ScoreSubmission {
   id: string;
+  festId?: string;
   programmeId: string;
   judgeId: string;
   judgeName: string;
-  participantId?: string;
-  teamId?: string;
+  participantId?: string; // For individual programmes
+  teamId?: string; // For team or individual programmes
+  teamEntryId?: string; // For team programmes (links to TeamProgrammeEntry)
+  teamEntryName?: string;
   scores: ScoreDetail[];
   totalScore: number;
   notes?: string;
@@ -221,19 +262,41 @@ export interface ScoreSubmission {
 
 export interface ApprovedResult {
   id: string;
+  festId?: string;
   programmeId: string;
   programmeName?: string;
   rank: number; // 1, 2, 3, etc.
   participantId?: string;
-  teamId: string;
   participantName?: string;
+  teamId: string;
   teamName: string;
+  teamEntryId?: string;
+  entryName?: string;
+  category?: string; // Participant or event category
+  isTeamProgramme?: boolean;
   finalScore: number;
   pointsAwarded: number;
   isTieBroken?: boolean;
   tieBreakNotes?: string;
   published: boolean;
   publishedAt?: string;
+}
+
+export interface CategoryScoreboardEntry {
+  rank: number;
+  participantId: string;
+  participantName: string;
+  teamId: string;
+  teamName: string;
+  institution?: string;
+  category: string;
+  programmeId: string;
+  programmeName: string;
+  marksObtained: number;
+  pointsAwarded: number;
+  medal?: 'Gold' | 'Silver' | 'Bronze' | 'None';
+  position: string;
+  totalCategoryPoints: number;
 }
 
 export interface Team {
@@ -321,6 +384,7 @@ export interface FestSettings {
   publicScheduleVisible: boolean;
   registrationOpen: boolean;
   timezone: string;
+  generalCategoryEnabled?: boolean;
 }
 
 // ==========================================
@@ -383,6 +447,7 @@ export interface Fest {
   approvedBy?: string;
   suspensionReason?: string;
   completionPercentage: number;
+  generalCategoryEnabled?: boolean;
 }
 
 export interface RequestHistoryEntry {

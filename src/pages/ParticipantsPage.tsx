@@ -25,6 +25,7 @@ export const ParticipantsPage: React.FC = () => {
     teams,
     programmes,
     results,
+    categories,
     addParticipant,
     updateParticipant,
     deleteParticipant,
@@ -102,12 +103,13 @@ export const ParticipantsPage: React.FC = () => {
   // Handle open add modal
   const handleOpenAdd = () => {
     setEditingParticipant(null);
+    const defaultCat = categories.filter((c) => c.enabled)[0]?.name || 'Senior';
     setFormData({
       name: '',
       email: '',
       phone: '',
       teamId: teams[0]?.id || '',
-      category: 'Senior',
+      category: defaultCat,
       status: 'verified',
       registeredProgrammes: [],
     });
@@ -289,10 +291,11 @@ export const ParticipantsPage: React.FC = () => {
               className="w-full text-xs bg-white border border-slate-200 rounded px-2.5 py-1.5 focus:outline-none focus:border-slate-400 text-slate-800"
             >
               <option value="all">All Categories</option>
-              <option value="Junior">Junior</option>
-              <option value="Senior">Senior</option>
-              <option value="Sub-Junior">Sub-Junior</option>
-              <option value="Open">Open</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.name}>
+                  {c.name} {c.isGeneral ? '(General)' : ''}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -569,10 +572,11 @@ export const ParticipantsPage: React.FC = () => {
                 }
                 className="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:outline-none focus:border-slate-500 bg-white"
               >
-                <option value="Junior">Junior</option>
-                <option value="Senior">Senior</option>
-                <option value="Sub-Junior">Sub-Junior</option>
-                <option value="Open">Open</option>
+                {categories.filter((c) => c.enabled).map((c) => (
+                  <option key={c.id} value={c.name}>
+                    {c.name} {c.isGeneral ? '(General / Any Age)' : c.minAge || c.maxAge ? `(Ages ${c.minAge || 0}-${c.maxAge || 'Open'})` : ''}
+                  </option>
+                ))}
               </select>
             </div>
 

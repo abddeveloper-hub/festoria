@@ -526,5 +526,49 @@ service cloud.firestore {
 
       allow delete: if isSuperAdmin();
     }
+
+    // ========================================================
+    // 19. FEST CATEGORIES (General & Custom Categories)
+    // ========================================================
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isFestAdmin(request.resource.data.festId);
+      allow update: if isAuthenticated() && isFestAdmin(resource.data.festId) &&
+        request.resource.data.festId == resource.data.festId;
+      allow delete: if isAuthenticated() && isFestAdmin(resource.data.festId);
+    }
+
+    match /fests/{festId}/categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAuthenticated() && isFestAdmin(festId);
+    }
+
+    // ========================================================
+    // 20. TEAM PROGRAMME ENTRIES (Group Competitions)
+    // ========================================================
+    match /team_programme_entries/{entryId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && (
+        isFestAdmin(request.resource.data.festId) ||
+        isTeamLeader(request.resource.data.festId, request.resource.data.teamId)
+      );
+      allow update: if isAuthenticated() && (
+        (isFestAdmin(resource.data.festId) && request.resource.data.festId == resource.data.festId) ||
+        (
+          isTeamLeader(resource.data.festId, resource.data.teamId) &&
+          request.resource.data.festId == resource.data.festId &&
+          request.resource.data.teamId == resource.data.teamId
+        )
+      );
+      allow delete: if isAuthenticated() && (
+        isFestAdmin(resource.data.festId) ||
+        isTeamLeader(resource.data.festId, resource.data.teamId)
+      );
+    }
+
+    match /fests/{festId}/programme_entries/{entryId} {
+      allow read: if true;
+      allow write: if isAuthenticated() && isFestAdmin(festId);
+    }
   }
 }

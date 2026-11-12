@@ -19,8 +19,56 @@ import {
   PlatformAuditLog,
   Complaint,
   ProgrammeAssignment,
-  TeamLeaderInvitation
+  TeamLeaderInvitation,
+  FestCategory,
+  TeamProgrammeEntry
 } from '../types';
+
+export const DEFAULT_FEST_CATEGORIES: FestCategory[] = [
+  {
+    id: 'CAT-GEN',
+    festId: 'FEST-01',
+    name: 'General',
+    description: 'Open to participants of any age or classification without minimum or maximum age limit.',
+    isGeneral: true,
+    enabled: true,
+    isSystem: true,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'CAT-SR',
+    festId: 'FEST-01',
+    name: 'Senior',
+    description: 'Senior category (Ages 16 - 25)',
+    minAge: 16,
+    maxAge: 25,
+    enabled: true,
+    isSystem: true,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'CAT-JR',
+    festId: 'FEST-01',
+    name: 'Junior',
+    description: 'Junior category (Ages 12 - 16)',
+    minAge: 12,
+    maxAge: 16,
+    enabled: true,
+    isSystem: true,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'CAT-SUBJR',
+    festId: 'FEST-01',
+    name: 'Sub-Junior',
+    description: 'Sub-Junior category (Ages 6 - 12)',
+    minAge: 6,
+    maxAge: 12,
+    enabled: true,
+    isSystem: true,
+    createdAt: new Date().toISOString(),
+  },
+];
 
 export const DEFAULT_PRODUCTION_SETTINGS: FestSettings = {
   festName: 'Festoria 2026',
@@ -91,6 +139,8 @@ const STORAGE_KEYS = {
   ASSIGNMENTS: 'festflow_assignments',
   ACTIVE_PARTICIPANT_ID: 'festflow_active_participant_id',
   TEAM_LEADER_INVITATIONS: 'festflow_team_leader_invitations',
+  CATEGORIES: 'festflow_categories',
+  TEAM_PROGRAMME_ENTRIES: 'festflow_team_programme_entries',
 };
 
 function getStorageItem<T>(key: string, defaultValue: T): T {
@@ -333,6 +383,24 @@ export const StorageService = {
     setStorageItem(STORAGE_KEYS.TEAM_LEADER_INVITATIONS, invitations);
   },
 
+  getCategories(festId?: string): FestCategory[] {
+    const list = getStorageItem<FestCategory[]>(STORAGE_KEYS.CATEGORIES, DEFAULT_FEST_CATEGORIES);
+    if (!festId) return list;
+    return list.filter((c) => !c.festId || c.festId === festId);
+  },
+  saveCategories(categories: FestCategory[]): void {
+    setStorageItem(STORAGE_KEYS.CATEGORIES, categories);
+  },
+
+  getTeamProgrammeEntries(festId?: string): TeamProgrammeEntry[] {
+    const list = getStorageItem<TeamProgrammeEntry[]>(STORAGE_KEYS.TEAM_PROGRAMME_ENTRIES, []);
+    if (!festId) return list;
+    return list.filter((e) => !e.festId || e.festId === festId);
+  },
+  saveTeamProgrammeEntries(entries: TeamProgrammeEntry[]): void {
+    setStorageItem(STORAGE_KEYS.TEAM_PROGRAMME_ENTRIES, entries);
+  },
+
   // Reset to initial demo database
   resetToDefaultData(): void {
     localStorage.removeItem(STORAGE_KEYS.SETTINGS);
@@ -354,6 +422,8 @@ export const StorageService = {
     localStorage.removeItem(STORAGE_KEYS.MILESTONES);
     localStorage.removeItem(STORAGE_KEYS.NOTIFICATIONS);
     localStorage.removeItem(STORAGE_KEYS.PLATFORM_AUDIT_LOGS);
+    localStorage.removeItem(STORAGE_KEYS.CATEGORIES);
+    localStorage.removeItem(STORAGE_KEYS.TEAM_PROGRAMME_ENTRIES);
   },
 };
 
@@ -453,6 +523,152 @@ export function calculateLeaderboard(
       i > 0 &&
       entries[i].totalPoints === entries[i - 1].totalPoints &&
       entries[i].firstPlaceCount === entries[i - 1].firstPlaceCount
+    ) {
+      entries[i].rank = entries[i - 1].rank;
+    } else {
+      entries[i].rank = currentRank;
+    }
+    currentRank++;
+  }
+
+  return entries;
+}
+
+export interface CategoryIndividualLeaderboardEntry {
+  rank: number;
+  participant: Participant;
+  team: Team | undefined;
+  category: string;
+  totalPoints: number;
+  totalMarks: number;
+  programmesParticipated: number;
+  firstPlaceCount: number;
+  secondPlaceCount: number;
+  thirdPlaceCount: number;
+  results: {
+    programmeId: string;
+    programmeName: string;
+    rank: number;
+    pointsAwarded: number;
+    finalScore: number;
+  }[];
+}
+
+export function calculateCategoryScoreboards(
+  categoryName: string,
+  participants: Participant[],
+  teams: Team[],
+  results: ApprovedResult[],
+  programmes: Programme[]
+): CategoryIndividualLeaderboardEntry[] {
+  // Only individual programme results (where participantId is set and programme is individual)
+  const publishedResults = results.filter((r) => r.published && r.participantId);
+  const teamMap = new Map(teams.map((t) => [t.id, t]));
+  const progMap = new Map(programmes.map((p) => [p.id, p]));
+
+  // Filter participants belonging to this category (case-insensitive)
+  const targetCategory = (categoryName || '').trim().toLowerCase();
+  const catParticipants = participants.filter((p) => {
+    const pCat = (p.category || '').trim().toLowerCase();
+    return targetCategory === 'all' || pCat === targetCategory;
+  });
+
+  const partStats = new Map<
+    string,
+    {
+      totalPoints: number;
+      totalMarks: number;
+      first: number;
+      second: number;
+      third: number;
+      resultsList: {
+        programmeId: string;
+        programmeName: string;
+        rank: number;
+        pointsAwarded: number;
+        finalScore: number;
+      }[];
+    }
+  >();
+
+  catParticipants.forEach((p) => {
+    partStats.set(p.id, {
+      totalPoints: 0,
+      totalMarks: 0,
+      first: 0,
+      second: 0,
+      third: 0,
+      resultsList: [],
+    });
+  });
+
+  publishedResults.forEach((res) => {
+    if (!res.participantId) return;
+    const stats = partStats.get(res.participantId);
+    if (!stats) return;
+
+    const prg = progMap.get(res.programmeId);
+    // Ensure this is an individual programme (team programme points are NOT counted towards individual participant scores)
+    if (prg && (prg.type === 'group' || prg.type === 'team' || prg.programmeType === 'team' || res.isTeamProgramme)) {
+      return;
+    }
+
+    stats.totalPoints += res.pointsAwarded || 0;
+    stats.totalMarks += res.finalScore || 0;
+    if (res.rank === 1) stats.first += 1;
+    else if (res.rank === 2) stats.second += 1;
+    else if (res.rank === 3) stats.third += 1;
+
+    stats.resultsList.push({
+      programmeId: res.programmeId,
+      programmeName: res.programmeName || prg?.name || res.programmeId,
+      rank: res.rank,
+      pointsAwarded: res.pointsAwarded,
+      finalScore: res.finalScore,
+    });
+  });
+
+  const entries: CategoryIndividualLeaderboardEntry[] = catParticipants.map((p) => {
+    const stats = partStats.get(p.id) || {
+      totalPoints: 0,
+      totalMarks: 0,
+      first: 0,
+      second: 0,
+      third: 0,
+      resultsList: [],
+    };
+    return {
+      rank: 0,
+      participant: p,
+      team: teamMap.get(p.teamId),
+      category: p.category,
+      totalPoints: stats.totalPoints,
+      totalMarks: Math.round(stats.totalMarks * 10) / 10,
+      programmesParticipated: stats.resultsList.length,
+      firstPlaceCount: stats.first,
+      secondPlaceCount: stats.second,
+      thirdPlaceCount: stats.third,
+      results: stats.resultsList,
+    };
+  });
+
+  // Sort descending by totalPoints, then 1st places, then 2nd places, then totalMarks
+  entries.sort((a, b) => {
+    if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
+    if (b.firstPlaceCount !== a.firstPlaceCount) return b.firstPlaceCount - a.firstPlaceCount;
+    if (b.secondPlaceCount !== a.secondPlaceCount) return b.secondPlaceCount - a.secondPlaceCount;
+    return b.totalMarks - a.totalMarks;
+  });
+
+  // Assign ranks
+  let currentRank = 1;
+  for (let i = 0; i < entries.length; i++) {
+    if (
+      i > 0 &&
+      entries[i].totalPoints === entries[i - 1].totalPoints &&
+      entries[i].firstPlaceCount === entries[i - 1].firstPlaceCount &&
+      entries[i].secondPlaceCount === entries[i - 1].secondPlaceCount &&
+      entries[i].totalMarks === entries[i - 1].totalMarks
     ) {
       entries[i].rank = entries[i - 1].rank;
     } else {
