@@ -274,10 +274,76 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
         </div>
       </nav>
 
+      {/* Mobile Horizontal Section Navigation Bar */}
+      <div className="flex lg:hidden overflow-x-auto py-2.5 px-3 gap-1.5 border-b border-slate-200 bg-white/95 backdrop-blur-md sticky top-[57px] z-30 no-scrollbar shadow-2xs">
+        <button
+          onClick={() => setActiveTabSection('overview')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
+            activeTabSection === 'overview'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          Overview
+        </button>
+        <button
+          onClick={() => setActiveTabSection('results')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
+            activeTabSection === 'results'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          Live Results ({publishedResults.length})
+        </button>
+        <button
+          onClick={() => setActiveTabSection('schedule')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
+            activeTabSection === 'schedule'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          Timetable
+        </button>
+        <button
+          onClick={() => setActiveTabSection('teams')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
+            activeTabSection === 'teams'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          Houses & Teams ({teams.length})
+        </button>
+        {allPhotos.length > 0 && (
+          <button
+            onClick={() => setActiveTabSection('gallery')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
+              activeTabSection === 'gallery'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Photos ({allPhotos.length})
+          </button>
+        )}
+        <button
+          onClick={() => setActiveTabSection('bulletin')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
+            activeTabSection === 'bulletin'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          Bulletins
+        </button>
+      </div>
+
       {/* ==================================================================== */}
       {/* 2. HERO SECTION WITH ADMIN-MANAGED VIDEO & FALLBACKS                 */}
       {/* ==================================================================== */}
-      <section className="relative min-h-[520px] lg:min-h-[620px] flex items-center justify-center overflow-hidden bg-slate-950 text-white">
+      <section className="relative min-h-[420px] sm:min-h-[480px] lg:min-h-[600px] flex items-center justify-center overflow-hidden bg-slate-950 text-white">
         {/* Background Video */}
         {pageData.hero.videoUrl && !videoFailed ? (
           <>
@@ -330,7 +396,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
         <div className="absolute inset-0 bg-linear-to-t from-slate-950 via-slate-950/40 to-slate-950/70 z-10" />
 
         {/* Hero Foreground Content */}
-        <div className="relative z-20 max-w-4xl mx-auto px-4 sm:px-6 py-20 text-center space-y-6">
+        <div className="relative z-20 max-w-4xl mx-auto px-4 sm:px-6 py-12 sm:py-16 lg:py-20 text-center space-y-4 sm:space-y-6">
           {/* Logo in Hero if centered */}
           {pageData.logo.logoUrl && pageData.logo.alignment === 'center' && (
             <div className="flex justify-center mb-2">
@@ -350,33 +416,33 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
           </div>
 
           {/* Heading */}
-          <h2 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-tight drop-shadow-md">
+          <h2 className="text-2xl sm:text-4xl lg:text-6xl font-black tracking-tight text-white leading-tight drop-shadow-md">
             {pageData.hero.heading && !pageData.hero.heading.includes('Celebrate Passion') ? pageData.hero.heading : `Welcome to ${festName}`}
           </h2>
 
           {/* Description */}
-          <p className="text-sm sm:text-lg text-slate-300 max-w-2xl mx-auto font-normal leading-relaxed">
+          <p className="text-xs sm:text-base lg:text-lg text-slate-300 max-w-2xl mx-auto font-normal leading-relaxed">
             {fest?.description || pageData.hero.description}
           </p>
 
           {/* Meta Info Bar (Dates, Venue, Host) */}
-          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 pt-2 text-xs font-medium text-slate-300">
-            <div className="flex items-center gap-2 bg-white/5 backdrop-blur-xs px-3 py-1.5 rounded-lg border border-white/10">
+          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 pt-1 text-xs font-medium text-slate-300">
+            <div className="flex items-center gap-2 bg-white/5 backdrop-blur-xs px-3 py-1.5 rounded-xl border border-white/10">
               <Calendar className="w-4 h-4 text-indigo-400" />
               <span>{fest?.startDate || settings.startDate} to {fest?.endDate || settings.endDate}</span>
             </div>
-            <div className="flex items-center gap-2 bg-white/5 backdrop-blur-xs px-3 py-1.5 rounded-lg border border-white/10">
+            <div className="flex items-center gap-2 bg-white/5 backdrop-blur-xs px-3 py-1.5 rounded-xl border border-white/10">
               <MapPin className="w-4 h-4 text-indigo-400" />
               <span>{fest ? `${fest.venue || ''}${fest.institution ? `, ${fest.institution}` : ''}` : (settings.venue || 'Grand University Campus')}</span>
             </div>
           </div>
 
           {/* CTA Buttons */}
-          <div className="flex flex-wrap items-center justify-center gap-3 pt-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-3 w-full sm:w-auto">
             <button
               type="button"
               onClick={() => openAuth('participant', 'register')}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-white text-slate-950 rounded-xl text-xs sm:text-sm font-bold hover:bg-slate-100 transition-all shadow-lg hover:scale-102"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-white text-slate-950 rounded-xl text-xs sm:text-sm font-bold hover:bg-slate-100 transition-all shadow-lg hover:scale-102"
             >
               <span>{pageData.hero.primaryCtaText || 'Register Now'}</span>
               <ArrowRight className="w-4 h-4" />
@@ -385,7 +451,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
             <button
               type="button"
               onClick={() => setActiveTabSection('schedule')}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-white/10 backdrop-blur-md border border-white/20 text-white rounded-xl text-xs sm:text-sm font-semibold hover:bg-white/20 transition-all"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-white/10 backdrop-blur-md border border-white/20 text-white rounded-xl text-xs sm:text-sm font-semibold hover:bg-white/20 transition-all"
             >
               <span>{pageData.hero.secondaryCtaText || 'View Schedule'}</span>
               <ChevronRight className="w-4 h-4 text-slate-400" />

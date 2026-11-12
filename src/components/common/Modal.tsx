@@ -58,14 +58,14 @@ export const Modal: React.FC<ModalProps> = ({
         onClick={onClose}
       />
 
-      <div className="flex min-h-full items-center justify-center p-4 text-center">
+      <div className="flex min-h-full items-center justify-center p-3 sm:p-4 text-center">
         <div
-          className={`w-full ${getMaxWidthClass()} transform overflow-hidden rounded-lg bg-white border border-slate-200 p-6 text-left shadow-lg transition-all z-10`}
+          className={`w-full ${getMaxWidthClass()} max-h-[92vh] flex flex-col transform overflow-hidden rounded-2xl bg-white border border-slate-200 p-4 sm:p-6 text-left shadow-2xl transition-all z-10`}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex items-start justify-between pb-3 border-b border-slate-100">
-            <div>
-              <h3 className="text-base font-semibold leading-6 text-slate-900">
+          <div className="flex items-start justify-between pb-3 border-b border-slate-100 shrink-0">
+            <div className="pr-4">
+              <h3 className="text-base sm:text-lg font-bold leading-6 text-slate-900">
                 {title}
               </h3>
               {description && (
@@ -75,13 +75,13 @@ export const Modal: React.FC<ModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="rounded p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 focus:outline-none"
+              className="rounded-xl p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 focus:outline-none shrink-0 transition-colors"
             >
               <X className="h-5 w-5" />
             </button>
           </div>
 
-          <div className="mt-4">{children}</div>
+          <div className="mt-3.5 overflow-y-auto flex-1">{children}</div>
         </div>
       </div>
     </div>

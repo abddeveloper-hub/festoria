@@ -13,14 +13,28 @@ import {
   Lock,
   LogOut,
   ArrowRight,
-  ShieldCheck
+  ShieldCheck,
+  LayoutDashboard,
+  CalendarCheck,
+  Users,
+  Trophy,
+  Menu
 } from 'lucide-react';
 import { navigateTo, getAppUrl } from '../../utils/navigation';
 
 export const TeamLeaderLayout: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const { currentUser, activeTeamId, setActiveTeamId, switchPortal, toasts, removeToast } = useFest();
+  const {
+    currentUser,
+    activeTeamId,
+    setActiveTeamId,
+    switchPortal,
+    toasts,
+    removeToast,
+    teamLeaderTab,
+    setTeamLeaderTab
+  } = useFest();
 
   // Lock body scroll when mobile sidebar is open
   useEffect(() => {
@@ -177,11 +191,67 @@ export const TeamLeaderLayout: React.FC<{ children: ReactNode }> = ({ children }
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
           <TeamLeaderHeader onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-          <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-7xl w-full mx-auto bg-white">
+          <main className="flex-1 p-3.5 sm:p-5 md:p-6 lg:p-8 max-w-7xl w-full mx-auto bg-white pb-24 md:pb-8">
             {children}
           </main>
         </div>
       </div>
+
+      {/* Floating Native-Style Bottom Navigation for Mobile (md:hidden) */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-lg border-t border-slate-200/90 px-3 py-1.5 flex items-center justify-around md:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
+        <button
+          type="button"
+          onClick={() => setTeamLeaderTab('team_dashboard')}
+          className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all ${
+            teamLeaderTab === 'team_dashboard' ? 'text-indigo-600 font-bold scale-105' : 'text-slate-400 hover:text-slate-700'
+          }`}
+        >
+          <LayoutDashboard size={20} className={teamLeaderTab === 'team_dashboard' ? 'text-indigo-600 stroke-[2.5]' : 'text-slate-400'} />
+          <span className="text-[10px] mt-0.5 tracking-tight font-medium">Scores</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setTeamLeaderTab('team_assignments')}
+          className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all ${
+            teamLeaderTab === 'team_assignments' ? 'text-indigo-600 font-bold scale-105' : 'text-slate-400 hover:text-slate-700'
+          }`}
+        >
+          <CalendarCheck size={20} className={teamLeaderTab === 'team_assignments' ? 'text-indigo-600 stroke-[2.5]' : 'text-slate-400'} />
+          <span className="text-[10px] mt-0.5 tracking-tight font-medium">Entries</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setTeamLeaderTab('team_members')}
+          className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all ${
+            teamLeaderTab === 'team_members' ? 'text-indigo-600 font-bold scale-105' : 'text-slate-400 hover:text-slate-700'
+          }`}
+        >
+          <Users size={20} className={teamLeaderTab === 'team_members' ? 'text-indigo-600 stroke-[2.5]' : 'text-slate-400'} />
+          <span className="text-[10px] mt-0.5 tracking-tight font-medium">Roster</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setTeamLeaderTab('team_leaderboard')}
+          className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all ${
+            teamLeaderTab === 'team_leaderboard' ? 'text-indigo-600 font-bold scale-105' : 'text-slate-400 hover:text-slate-700'
+          }`}
+        >
+          <Trophy size={20} className={teamLeaderTab === 'team_leaderboard' ? 'text-indigo-600 stroke-[2.5]' : 'text-slate-400'} />
+          <span className="text-[10px] mt-0.5 tracking-tight font-medium">Standings</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setSidebarOpen(true)}
+          className="flex flex-col items-center justify-center py-1 px-3 rounded-xl text-slate-400 hover:text-slate-700 transition-all"
+        >
+          <Menu size={20} className="text-slate-400" />
+          <span className="text-[10px] mt-0.5 tracking-tight font-medium">Menu</span>
+        </button>
+      </nav>
 
       {/* Toast Notifications Overlay */}
       <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none">

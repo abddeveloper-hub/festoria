@@ -44,12 +44,12 @@ export const TeamLeaderHeader: React.FC<{ onMenuToggle: () => void }> = ({ onMen
   const teamLeaderUsers = users.filter((u) => u.role === 'team_leader');
 
   return (
-    <header className="sticky top-0 z-20 h-16 bg-white border-b border-slate-200 px-4 md:px-6 flex items-center justify-between">
+    <header className="sticky top-0 z-20 h-14 sm:h-16 bg-white/95 backdrop-blur-md border-b border-slate-200 px-3 sm:px-6 flex items-center justify-between">
       {/* Left: Mobile Toggle & Team Identifier */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
         <button
           onClick={onMenuToggle}
-          className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg md:hidden"
+          className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg md:hidden min-w-[36px] min-h-[36px] flex items-center justify-center"
           title="Toggle Navigation Menu"
         >
           <Menu size={20} />
@@ -63,26 +63,26 @@ export const TeamLeaderHeader: React.FC<{ onMenuToggle: () => void }> = ({ onMen
               setShowNotifDropdown(false);
               setShowProfileDropdown(false);
             }}
-            className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors bg-white text-left"
+            className="flex items-center gap-2 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors bg-white text-left"
           >
             <span
-              className="w-3.5 h-3.5 rounded-full shrink-0"
+              className="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full shrink-0"
               style={{ backgroundColor: activeTeam?.colorHex || '#3b82f6' }}
             />
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5">
-                <span className="text-sm font-bold text-slate-900 leading-tight">
+                <span className="text-xs sm:text-sm font-bold text-slate-900 leading-tight truncate max-w-[110px] sm:max-w-none">
                   {activeTeam?.name || 'Solar Flare'}
                 </span>
-                <span className="text-[11px] font-mono text-slate-500 bg-slate-100 px-1 py-0.2 rounded">
+                <span className="text-[10px] sm:text-[11px] font-mono text-slate-500 bg-slate-100 px-1 py-0.2 rounded hidden xs:inline">
                   {activeTeam?.id || 'TM-01'}
                 </span>
               </div>
-              <span className="text-[11px] text-slate-500 hidden sm:inline truncate max-w-[170px]">
+              <span className="text-[10px] sm:text-[11px] text-slate-500 hidden md:inline truncate max-w-[170px]">
                 {activeTeam?.institution || 'National Institute of Arts'}
               </span>
             </div>
-            <ChevronDown size={14} className="text-slate-400 ml-1" />
+            <ChevronDown size={13} className="text-slate-400 ml-0.5 sm:ml-1" />
           </button>
 
           {/* Team Switcher Dropdown (for evaluation / demo) */}
@@ -137,7 +137,18 @@ export const TeamLeaderHeader: React.FC<{ onMenuToggle: () => void }> = ({ onMen
           )}
         </div>
 
-        {/* Live Score & Rank Metric Pill */}
+        {/* Mobile Compact Score Pill */}
+        <div className="flex lg:hidden items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-50/80 border border-emerald-200 text-xs">
+          <span className="font-bold text-slate-800 font-mono text-[11px]">
+            {teamRankEntry ? `#${teamRankEntry.rank}` : '#-'}
+          </span>
+          <span className="text-emerald-300">·</span>
+          <span className="font-bold text-emerald-800 text-[11px]">
+            {teamRankEntry?.totalPoints || 0} pts
+          </span>
+        </div>
+
+        {/* Live Score & Rank Metric Pill (Desktop) */}
         <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs">
           <Trophy size={15} className="text-amber-500 shrink-0" />
           <span className="text-slate-600 font-medium">Standings:</span>

@@ -186,9 +186,85 @@ export const TeamLeaderboardPage: React.FC = () => {
         ))}
       </div>
 
-      {/* Standings Table */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xs">
-        <div className="overflow-x-auto">
+      {/* Standings Table for Desktop / Tablets */}
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs">
+        {/* Mobile View: High-Polish Cards */}
+        <div className="block md:hidden divide-y divide-slate-100">
+          {displayedLeaderboard.map((entry) => {
+            const isCurrentTeam = entry.team.id === activeTeamId;
+            return (
+              <div
+                key={entry.team.id}
+                className={`p-3.5 transition-colors ${
+                  isCurrentTeam ? 'bg-indigo-50/70 border-l-4 border-l-indigo-600' : 'hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span
+                      className={`inline-flex items-center justify-center w-8 h-8 rounded-xl text-xs font-black shrink-0 ${
+                        entry.rank === 1
+                          ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                          : entry.rank === 2
+                          ? 'bg-slate-200 text-slate-900'
+                          : entry.rank === 3
+                          ? 'bg-amber-50 text-amber-900 border border-amber-200'
+                          : 'bg-slate-100 text-slate-600'
+                      }`}
+                    >
+                      #{entry.rank}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className="w-2.5 h-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: entry.team.colorHex || '#3b82f6' }}
+                        />
+                        <span className="font-black text-sm text-slate-900 truncate">
+                          {entry.team.name}
+                        </span>
+                        {isCurrentTeam && (
+                          <span className="text-[10px] bg-slate-900 text-white px-1.5 py-0.2 rounded-md font-bold">
+                            YOU
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs text-slate-400 block truncate mt-0.5">
+                        {entry.team.institution}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    <span className="text-sm font-black text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 inline-block">
+                      {entry.totalPoints} pts
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                  <div className="flex items-center gap-2">
+                    <span className="bg-amber-50 text-amber-900 px-1.5 py-0.5 rounded border border-amber-200 font-bold">
+                      🥇 {entry.firstPlaceCount}
+                    </span>
+                    <span className="bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded border border-slate-200 font-bold">
+                      🥈 {entry.secondPlaceCount}
+                    </span>
+                    <span className="bg-amber-50/60 text-amber-950 px-1.5 py-0.5 rounded border border-amber-200/60 font-bold">
+                      🥉 {entry.thirdPlaceCount}
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-medium text-slate-400">
+                    {entry.totalResults} events scored
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Desktop View: Wide Table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse text-sm">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-600 uppercase tracking-wider">
@@ -323,8 +399,80 @@ export const TeamLeaderboardPage: React.FC = () => {
         }
 
         return (
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xs">
-            <div className="overflow-x-auto">
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs">
+            {/* Mobile View: High-Polish Contestant Cards */}
+            <div className="block md:hidden divide-y divide-slate-100">
+              {scoreboard.map((entry) => {
+                const isMyTeam = entry.team?.id === activeTeamId;
+                return (
+                  <div
+                    key={entry.participant.id}
+                    className={`p-3.5 transition-colors ${
+                      isMyTeam ? 'bg-indigo-50/70 border-l-4 border-l-indigo-600' : 'hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span
+                          className={`inline-flex items-center justify-center w-8 h-8 rounded-xl text-xs font-black shrink-0 ${
+                            entry.rank === 1
+                              ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                              : entry.rank === 2
+                              ? 'bg-slate-200 text-slate-900'
+                              : entry.rank === 3
+                              ? 'bg-amber-50 text-amber-900 border border-amber-200'
+                              : 'bg-slate-100 text-slate-600'
+                          }`}
+                        >
+                          {entry.totalPoints > 0 ? `#${entry.rank}` : '-'}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-black text-sm text-slate-900 truncate">
+                              {entry.participant.name}
+                            </span>
+                            {isMyTeam && (
+                              <span className="text-[10px] bg-slate-900 text-white px-1.5 py-0.2 rounded-md font-bold">
+                                YOUR TEAM
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs text-slate-500 block truncate mt-0.5">
+                            {entry.team?.name || 'Independent'} • ID: {entry.participant.id}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <span className="text-sm font-black text-slate-900 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200 inline-block">
+                          {entry.totalPoints} pts
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                      <div className="flex items-center gap-2">
+                        <span className="bg-amber-50 text-amber-900 px-1.5 py-0.5 rounded border border-amber-200 font-bold">
+                          🥇 {entry.firstPlaceCount}
+                        </span>
+                        <span className="bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded border border-slate-200 font-bold">
+                          🥈 {entry.secondPlaceCount}
+                        </span>
+                        <span className="bg-amber-50/60 text-amber-950 px-1.5 py-0.5 rounded border border-amber-200/60 font-bold">
+                          🥉 {entry.thirdPlaceCount}
+                        </span>
+                      </div>
+                      <span className="text-[11px] font-medium text-slate-500">
+                        Marks: {entry.totalMarks}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop View: Wide Table */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[11px]">
