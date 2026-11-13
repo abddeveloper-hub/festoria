@@ -39,7 +39,9 @@ import {
   Users,
   CheckCircle2,
   Menu,
-  Crown
+  Crown,
+  FileText,
+  Send
 } from 'lucide-react';
 
 interface PublicFestPageProps {
@@ -63,8 +65,29 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
     fests,
     categories: festCategories,
     leaderboard,
-    getCategoryScoreboard
+    getCategoryScoreboard,
+    addToast
   } = useFest();
+
+  // Contact Message form state
+  const [contactName, setContactName] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  const [contactMessage, setContactMessage] = useState('');
+  const [contactSent, setContactSent] = useState(false);
+
+  const handleContactSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!contactName.trim() || !contactEmail.trim() || !contactMessage.trim()) return;
+    setContactSent(true);
+    addToast('success', 'Message Sent', 'Thank you! Your message has been sent to the festival convenors.');
+    setContactName('');
+    setContactEmail('');
+    setContactMessage('');
+    setTimeout(() => setContactSent(false), 4000);
+  };
+
+  // Media carousel slide index
+  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
 
   const targetFestId = propFestId || activeFestId || 'FEST-01';
   const fest = fests.find((f) => f.id === targetFestId);
@@ -324,439 +347,506 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       )}
 
       {/* ==================================================================== */}
-      {/* 2. HERO SECTION WITH ADMIN-MANAGED VIDEO & FALLBACKS (OVERVIEW ONLY) */}
-      {/* ==================================================================== */}
-      {activeTabSection === 'overview' && (
-      <section className="relative min-h-[420px] sm:min-h-[480px] lg:min-h-[580px] flex items-center justify-center overflow-hidden bg-[#06332e] text-white">
-        {/* Background Video */}
-        {pageData.hero.videoUrl && !videoFailed ? (
-          <>
-            <video
-              ref={videoRef}
-              src={pageData.hero.videoUrl}
-              autoPlay
-              loop
-              muted
-              playsInline
-              poster={pageData.hero.videoPosterUrl}
-              onError={() => setVideoFailed(true)}
-              className="absolute inset-0 w-full h-full object-cover object-center z-0 opacity-45 scale-105 transition-all duration-700"
-            />
-            {/* Accessible Video Control Toggle */}
-            <button
-              type="button"
-              onClick={toggleVideoPlayback}
-              title={isPlaying ? 'Pause Background Video' : 'Play Background Video'}
-              className="absolute bottom-4 right-4 z-20 px-3 py-1.5 rounded-full bg-black/40 hover:bg-black/60 border border-white/20 text-white backdrop-blur-md transition-colors text-xs flex items-center gap-1.5"
-            >
-              {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-              <span className="text-[10px] font-medium pr-1">{isPlaying ? 'Pause' : 'Play'}</span>
-            </button>
-          </>
-        ) : pageData.hero.videoPosterUrl ? (
-          <img
-            src={pageData.hero.videoPosterUrl}
-            alt="Hero Poster"
-            className="absolute inset-0 w-full h-full object-cover object-center z-0 opacity-40"
-          />
-        ) : (
-          /* Clean Luminous Coastal Oceanic Mint & Sky Gradient */
-          <div className="absolute inset-0 z-0 bg-gradient-to-br from-[#06332e] via-[#0d6e64] to-[#044c69]" />
-        )}
-
-        {/* Ambient Luminous Floating Glow Orbs */}
-        <div aria-hidden="true" className="absolute inset-0 overflow-hidden pointer-events-none z-10">
-          <div className="absolute -top-20 -left-20 w-80 h-80 bg-[#89f5e7]/15 rounded-full blur-3xl"></div>
-          <div className="absolute top-1/2 -right-20 w-88 h-88 bg-[#5bb8fe]/15 rounded-full blur-3xl"></div>
-        </div>
-
-        {/* Vignette Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#06332e] via-[#06332e]/40 to-[#06332e]/70 z-10" />
-
-        {/* Hero Foreground Content */}
-        <div className="relative z-20 max-w-4xl mx-auto px-4 sm:px-6 py-12 sm:py-16 lg:py-20 text-center space-y-4 sm:space-y-6">
-          {/* Logo in Hero if centered */}
-          {pageData.logo.logoUrl && pageData.logo.alignment === 'center' && (
-            <div className="flex justify-center mb-2">
-              <img
-                src={pageData.logo.logoUrl}
-                alt="Fest Logo"
-                style={{ width: `${pageData.logo.widthPx}px` }}
-                className="h-auto object-contain drop-shadow-lg"
-              />
-            </div>
-          )}
-
-          {/* Festival Pill */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/15 backdrop-blur-md border border-white/25 text-[#89f5e7] text-xs font-semibold tracking-wide uppercase shadow-sm">
-            <Sparkles className="w-3.5 h-3.5 text-[#6ffbbe]" />
-            <span>{fest ? `${fest.name} · ${fest.institution || ''}` : (settings.festEdition || 'Annual Inter-Collegiate Fest')}</span>
-          </div>
-
-          {/* Heading */}
-          <h2 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight drop-shadow-md font-display">
-            {pageData.hero.heading && !pageData.hero.heading.includes('Celebrate Passion') ? pageData.hero.heading : `Welcome to ${festName}`}
-          </h2>
-
-          {/* Description */}
-          <p className="text-xs sm:text-base lg:text-lg text-white/90 max-w-2xl mx-auto font-normal leading-relaxed">
-            {fest?.description || pageData.hero.description}
-          </p>
-
-          {/* Meta Info Bar (Dates, Venue, Host) */}
-          <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-4 pt-1 text-xs font-medium text-white/90">
-            <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full border border-white/20">
-              <Calendar className="w-4 h-4 text-[#89f5e7]" />
-              <span>{fest?.startDate || settings.startDate} to {fest?.endDate || settings.endDate}</span>
-            </div>
-            <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full border border-white/20">
-              <MapPin className="w-4 h-4 text-[#89f5e7]" />
-              <span>{fest ? `${fest.venue || ''}${fest.institution ? `, ${fest.institution}` : ''}` : (settings.venue || 'Grand University Campus')}</span>
-            </div>
-          </div>
-
-          {/* Dynamic Countdown Clock / Status Indicator */}
-          <div className="pt-2">
-            {countdown.status === 'upcoming' && (
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-center gap-1.5 sm:gap-2.5">
-                  <div className="bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl px-3.5 py-2.5 sm:px-5 sm:py-3 text-center min-w-[62px] sm:min-w-[76px] shadow-lg">
-                    <span className="font-mono font-black text-xl sm:text-3xl text-white block leading-none">
-                      {countdown.days}
-                    </span>
-                    <span className="text-[9px] sm:text-[10px] uppercase font-bold text-teal-100 tracking-wider">Days</span>
-                  </div>
-                  <span className="text-white/60 font-black text-lg leading-none">:</span>
-                  <div className="bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl px-3.5 py-2.5 sm:px-5 sm:py-3 text-center min-w-[62px] sm:min-w-[76px] shadow-lg">
-                    <span className="font-mono font-black text-xl sm:text-3xl text-white block leading-none">
-                      {String(countdown.hours).padStart(2, '0')}
-                    </span>
-                    <span className="text-[9px] sm:text-[10px] uppercase font-bold text-teal-100 tracking-wider">Hours</span>
-                  </div>
-                  <span className="text-white/60 font-black text-lg leading-none">:</span>
-                  <div className="bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl px-3.5 py-2.5 sm:px-5 sm:py-3 text-center min-w-[62px] sm:min-w-[76px] shadow-lg">
-                    <span className="font-mono font-black text-xl sm:text-3xl text-white block leading-none">
-                      {String(countdown.minutes).padStart(2, '0')}
-                    </span>
-                    <span className="text-[9px] sm:text-[10px] uppercase font-bold text-teal-100 tracking-wider">Mins</span>
-                  </div>
-                  <span className="text-white/60 font-black text-lg leading-none">:</span>
-                  <div className="bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl px-3.5 py-2.5 sm:px-5 sm:py-3 text-center min-w-[62px] sm:min-w-[76px] shadow-lg">
-                    <span className="font-mono font-black text-xl sm:text-3xl text-[#6ffbbe] block leading-none">
-                      {String(countdown.seconds).padStart(2, '0')}
-                    </span>
-                    <span className="text-[9px] sm:text-[10px] uppercase font-bold text-[#6ffbbe] tracking-wider">Secs</span>
-                  </div>
-                </div>
-                <p className="text-[11px] text-teal-100/80 font-medium">Countdown to Opening Ceremony & Stage Competitions</p>
-              </div>
-            )}
-
-            {countdown.status === 'live' && (
-              <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#10b981]/25 backdrop-blur-md border border-[#10b981]/60 text-[#6ffbbe] text-xs font-bold uppercase tracking-wider shadow-lg">
-                <span className="relative flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#10b981] opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-[#10b981]"></span>
-                </span>
-                <span>Festival Is Live · Competitions in Progress</span>
-              </div>
-            )}
-
-            {countdown.status === 'concluded' && (
-              <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-amber-500/20 backdrop-blur-md border border-amber-400/40 text-amber-200 text-xs font-bold uppercase tracking-wider shadow-md">
-                <Trophy className="w-4 h-4 text-amber-300" />
-                <span>Festival Concluded · Official Ratified Standings</span>
-              </div>
-            )}
-          </div>
-
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-3 w-full sm:w-auto">
-            <button
-              type="button"
-              onClick={() => openAuth('participant', 'register')}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-full text-xs sm:text-sm font-bold shadow-[0_4px_14px_rgba(13,148,136,0.35)] hover:shadow-[0_6px_20px_rgba(13,148,136,0.45)] hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
-            >
-              <span>{pageData.hero.primaryCtaText || 'Register Now'}</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTabSection('schedule')}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-white/15 backdrop-blur-md border border-white/25 text-white rounded-full text-xs sm:text-sm font-semibold hover:bg-white/25 active:scale-[0.98] transition-all cursor-pointer"
-            >
-              <span>{pageData.hero.secondaryCtaText || 'View Schedule'}</span>
-              <ChevronRight className="w-4 h-4 text-teal-200" />
-            </button>
-          </div>
-
-          {/* Quick Chest Number Student Search Bar directly in Hero */}
-          <div className="w-full max-w-xl mx-auto pt-6 text-left">
-            <div className="relative bg-white/95 backdrop-blur-md rounded-2xl p-2.5 sm:p-3 shadow-[0_8px_20px_-4px_rgba(13,148,136,0.15)] border border-[#99f6e4] space-y-2">
-              <div className="flex items-center gap-2">
-                <div className="pl-3 text-[#0d9488]">
-                  <Search className="w-4 h-4 sm:w-5 sm:h-5 text-[#0d9488]" />
-                </div>
-                <input
-                  type="text"
-                  value={studentSearchQuery}
-                  onChange={(e) => setStudentSearchQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && studentSearchQuery.trim()) {
-                      setActiveTabSection('student_search');
-                    }
-                  }}
-                  placeholder="Search student by Chest Number (e.g. 104) or Name..."
-                  className="flex-1 bg-transparent border-0 focus:outline-none text-[#0f172a] placeholder:text-slate-400 text-xs sm:text-sm py-2 px-1 font-medium"
-                />
-                {studentSearchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setStudentSearchQuery('')}
-                    className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
-                    title="Clear"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (studentSearchQuery.trim()) {
-                      setActiveTabSection('student_search');
-                    }
-                  }}
-                  className="px-5 py-2.5 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-full text-xs font-bold transition-all shrink-0 shadow-xs active:scale-95 cursor-pointer"
-                >
-                  Search
-                </button>
-              </div>
-
-              {/* Fast Search Pills */}
-              <div className="flex flex-wrap items-center gap-1.5 pt-1 px-2 text-[11px] text-slate-400">
-                <span className="font-semibold text-slate-500">Quick Lookups:</span>
-                {festParticipants.slice(0, 3).map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => {
-                      setStudentSearchQuery(p.chestNumber || p.name);
-                      setActiveTabSection('student_search');
-                    }}
-                    className="px-2.5 py-0.5 rounded-full bg-[#f0fdfa] hover:bg-[#ccfbf1] border border-[#99f6e4] text-[#0f766e] font-mono font-bold transition-colors cursor-pointer"
-                  >
-                    #{p.chestNumber || p.id}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => setActiveTabSection('student_search')}
-                  className="px-2.5 py-0.5 rounded-full bg-[#f0f9ff] hover:bg-[#e0f2fe] border border-[#bae6fd] text-[#0284c7] font-semibold transition-colors cursor-pointer"
-                >
-                  Student Directory →
-                </button>
-              </div>
-
-              {/* Floating Instant Matches Dropdown */}
-              {studentSearchQuery.trim().length > 0 && (
-                <div className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl border border-[#99f6e4] shadow-2xl overflow-hidden z-50 max-h-80 overflow-y-auto divide-y divide-[#f0fdfa]">
-                  {matchedStudents.length === 0 ? (
-                    <div className="p-4 text-center text-xs text-slate-500">
-                      No participant found for <strong className="text-slate-800 font-bold">"{studentSearchQuery}"</strong>. Check the chest number and try again.
-                    </div>
-                  ) : (
-                    matchedStudents.slice(0, 6).map((student) => {
-                      const team = teams.find((t) => t.id === student.teamId);
-                      const stats = getStudentStats(student.id);
-                      return (
-                        <div
-                          key={student.id}
-                          onClick={() => {
-                            setSelectedStudentForModal(student);
-                            setActiveTabSection('student_search');
-                          }}
-                          className="w-full p-3 hover:bg-[#f0fdfa] flex items-center justify-between gap-3 text-left transition-colors cursor-pointer"
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-8 h-8 rounded-full bg-[#0d9488] text-white font-bold text-xs flex items-center justify-center shrink-0">
-                              {student.name.charAt(0)}
-                            </div>
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="font-bold text-sm text-[#0f172a] truncate">{student.name}</span>
-                                <span className="font-mono font-bold text-xs bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4] px-2 py-0.5 rounded-full">
-                                  Chest #{student.chestNumber || student.id}
-                                </span>
-                              </div>
-                              <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
-                                <span className="text-slate-700 font-medium">{team?.name || 'Team'}</span>
-                                <span>•</span>
-                                <span>{student.category}</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="text-right shrink-0">
-                            <span className="font-mono font-bold text-sm text-[#0f172a]">{stats.totalPoints} pts</span>
-                            <div className="text-[10px] text-slate-400 mt-0.5">
-                              {stats.goldCount}🥇 {stats.silverCount}🥈 {stats.bronzeCount}🥉
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                  <div className="p-2.5 bg-[#f0fdfa] text-center border-t border-[#ccfbf1]">
-                    <button
-                      type="button"
-                      onClick={() => setActiveTabSection('student_search')}
-                      className="text-xs font-bold text-[#0d9488] hover:text-[#0f766e]"
-                    >
-                      View all in Student Directory →
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
-      )}
-
-      {/* ==================================================================== */}
-      {/* 3. MAIN SECTION: CURATED MAIN PHOTOS                                */}
-      {/* ==================================================================== */}
-      {mainFeaturedPhotos.length > 0 && activeTabSection === 'overview' && (
-        <section className="py-16 bg-[#faf8ff] border-b border-[#e2e8f0]">
-          <div className="max-w-7xl mx-auto px-4 sm:px-8">
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
-              <div>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f0fdfa] border border-[#99f6e4] text-[#0f766e] text-xs font-bold uppercase tracking-wider">
-                  Featured Gallery
-                </span>
-                <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#0f172a] mt-2 font-display">
-                  Fest Moments & Highlights
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setActiveTabSection('gallery')}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white hover:bg-[#f0fdfa] text-xs font-bold text-[#0f766e] border border-[#e2e8f0] hover:border-[#99f6e4] shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04)] transition-all group cursor-pointer"
-              >
-                <span>View Full Photo Gallery</span>
-                <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {mainFeaturedPhotos.slice(0, 6).map((photo) => (
-                <div
-                  key={photo.id}
-                  onClick={() => setSelectedPhoto(photo)}
-                  className="group cursor-pointer rounded-2xl overflow-hidden bg-white border border-[#e2e8f0] shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04)] hover:shadow-[0_8px_20px_-4px_rgba(13,148,136,0.12)] hover:border-[#99f6e4] transition-all duration-200 flex flex-col"
-                >
-                  <div className="aspect-16/10 w-full overflow-hidden bg-slate-100 relative">
-                    <img
-                      src={photo.url}
-                      alt={photo.caption}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                      <Maximize2 className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md" />
-                    </div>
-                  </div>
-                  <div className="p-4">
-                    <h4 className="text-sm font-bold text-[#0f172a] group-hover:text-[#0d9488] transition-colors">
-                      {photo.caption}
-                    </h4>
-                    {photo.description && (
-                      <p className="text-xs text-[#64748b] mt-1 line-clamp-2">
-                        {photo.description}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ==================================================================== */}
-      {/* 4. OVERVIEW SECTION: STRUCTURED BENTO GRID & METRICS                 */}
+      {/* 2. OVERVIEW TAB: MATCHING STRUCTURE MODEL (MINT & SKY COLORS)        */}
       {/* ==================================================================== */}
       {activeTabSection === 'overview' && (
         <>
-          {/* Festival Quick Metrics Strip */}
-          <section className="border-b border-[#e2e8f0] bg-[#faf8ff] py-5">
+          {/* ================================================================ */}
+          {/* A. FEATURED MEDIA CAROUSEL / SHOWCASE BANNER                     */}
+          {/* ================================================================ */}
+          <section className="relative px-3 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-6 max-w-7xl mx-auto w-full">
+            <div className="relative w-full rounded-3xl overflow-hidden shadow-[0_15px_40px_-10px_rgba(15,23,42,0.12)] border border-[#e2e8f0] bg-gradient-to-br from-[#06332e] via-[#00685f] to-[#044c69] text-white min-h-[460px] sm:min-h-[520px] flex flex-col justify-between p-6 sm:p-10">
+              
+              {/* Carousel Background Layer: Video / Photos / Radial Compass Placeholder */}
+              {pageData.hero.videoUrl && !videoFailed ? (
+                <>
+                  <video
+                    ref={videoRef}
+                    src={pageData.hero.videoUrl}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    poster={pageData.hero.videoPosterUrl}
+                    onError={() => setVideoFailed(true)}
+                    className="absolute inset-0 w-full h-full object-cover object-center z-0 opacity-40 scale-105 transition-all duration-700"
+                  />
+                  {/* Accessible Video Control Toggle */}
+                  <button
+                    type="button"
+                    onClick={toggleVideoPlayback}
+                    title={isPlaying ? 'Pause Background Video' : 'Play Background Video'}
+                    className="absolute bottom-4 right-4 z-20 px-3 py-1.5 rounded-full bg-black/40 hover:bg-black/60 border border-white/20 text-white backdrop-blur-md transition-colors text-xs flex items-center gap-1.5"
+                  >
+                    {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                    <span className="text-[10px] font-medium pr-1">{isPlaying ? 'Pause' : 'Play'}</span>
+                  </button>
+                </>
+              ) : mainFeaturedPhotos.length > 0 ? (
+                <>
+                  <img
+                    src={mainFeaturedPhotos[currentSlideIndex % mainFeaturedPhotos.length]?.url}
+                    alt={mainFeaturedPhotos[currentSlideIndex % mainFeaturedPhotos.length]?.caption || 'Featured Festival Moment'}
+                    className="absolute inset-0 w-full h-full object-cover object-center z-0 opacity-35 transition-all duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#06332e] via-[#06332e]/40 to-[#06332e]/70 z-0" />
+                </>
+              ) : (
+                /* Concentric Radial Compass Placeholder Illustration as in the reference model */
+                <div className="absolute inset-0 z-0 flex items-center justify-center opacity-30 pointer-events-none overflow-hidden">
+                  <div className="relative w-[340px] sm:w-[460px] h-[340px] sm:h-[460px] rounded-full border border-white/20 flex items-center justify-center">
+                    <div className="w-[260px] sm:w-[350px] h-[260px] sm:h-[350px] rounded-full border border-white/25 flex items-center justify-center">
+                      <div className="w-[180px] sm:w-[240px] h-[180px] sm:h-[240px] rounded-full border border-white/30 flex items-center justify-center">
+                        <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center">
+                          <ImageIcon className="w-10 h-10 text-white/80" />
+                        </div>
+                      </div>
+                    </div>
+                    {/* Radial crosshair lines */}
+                    <div className="absolute inset-x-0 top-1/2 h-px bg-white/20"></div>
+                    <div className="absolute inset-y-0 left-1/2 w-px bg-white/20"></div>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-full h-px bg-white/10 rotate-45"></div>
+                      <div className="w-full h-px bg-white/10 -rotate-45"></div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Ambient Luminous Floating Glow Orbs */}
+              <div aria-hidden="true" className="absolute inset-0 overflow-hidden pointer-events-none z-10">
+                <div className="absolute -top-20 -left-20 w-80 h-80 bg-[#89f5e7]/15 rounded-full blur-3xl"></div>
+                <div className="absolute top-1/2 -right-20 w-88 h-88 bg-[#5bb8fe]/15 rounded-full blur-3xl"></div>
+              </div>
+
+              {/* Top Controls: 1/1 Slide Indicator Badge */}
+              <div className="relative z-20 flex items-center justify-between w-full">
+                {pageData.logo.logoUrl && pageData.logo.alignment === 'center' ? (
+                  <img
+                    src={pageData.logo.logoUrl}
+                    alt="Fest Logo"
+                    style={{ width: `${pageData.logo.widthPx || 120}px` }}
+                    className="h-9 object-contain drop-shadow-md"
+                  />
+                ) : (
+                  <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/25 text-[#89f5e7] text-xs font-semibold tracking-wide uppercase shadow-sm">
+                    <Sparkles className="w-3.5 h-3.5 text-[#6ffbbe]" />
+                    <span>{fest ? `${fest.name} · ${fest.institution || ''}` : (settings.festEdition || 'Annual Inter-Collegiate Fest')}</span>
+                  </div>
+                )}
+
+                {/* Top Right Slide Counter Badge (Matching Model 1/1) */}
+                <div className="px-3 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/20 text-white font-mono text-xs font-bold shadow-sm">
+                  {mainFeaturedPhotos.length > 0 ? `${(currentSlideIndex % mainFeaturedPhotos.length) + 1}/${mainFeaturedPhotos.length}` : '1/1'}
+                </div>
+              </div>
+
+              {/* Carousel Navigation Chevrons (< and >) */}
+              <button
+                type="button"
+                onClick={() => setCurrentSlideIndex((prev) => (prev > 0 ? prev - 1 : (mainFeaturedPhotos.length > 0 ? mainFeaturedPhotos.length - 1 : 0)))}
+                className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/30 hover:bg-black/60 backdrop-blur-md border border-white/20 text-white flex items-center justify-center transition-all cursor-pointer shadow-md"
+                aria-label="Previous slide"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentSlideIndex((prev) => (mainFeaturedPhotos.length > 0 ? (prev + 1) % mainFeaturedPhotos.length : 0))}
+                className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/30 hover:bg-black/60 backdrop-blur-md border border-white/20 text-white flex items-center justify-center transition-all cursor-pointer shadow-md"
+                aria-label="Next slide"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+
+              {/* Center Hero Information Overlay */}
+              <div className="relative z-20 max-w-4xl mx-auto text-center space-y-4 my-auto py-6">
+                <h2 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight drop-shadow-md font-display">
+                  {pageData.hero.heading && !pageData.hero.heading.includes('Celebrate Passion') ? pageData.hero.heading : `Welcome to ${festName}`}
+                </h2>
+
+                <p className="text-xs sm:text-base lg:text-lg text-white/90 max-w-2xl mx-auto font-normal leading-relaxed">
+                  {fest?.description || pageData.hero.description}
+                </p>
+
+                {/* Dates & Venue Info Pills */}
+                <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-4 pt-1 text-xs font-medium text-white/90">
+                  <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full border border-white/20">
+                    <Calendar className="w-4 h-4 text-[#89f5e7]" />
+                    <span>{fest?.startDate || settings.startDate} to {fest?.endDate || settings.endDate}</span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full border border-white/20">
+                    <MapPin className="w-4 h-4 text-[#89f5e7]" />
+                    <span>{fest ? `${fest.venue || ''}${fest.institution ? `, ${fest.institution}` : ''}` : (settings.venue || 'Grand University Campus')}</span>
+                  </div>
+                </div>
+
+                {/* Dynamic Countdown Clock / Status Indicator */}
+                <div className="pt-2">
+                  {countdown.status === 'upcoming' && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-center gap-1.5 sm:gap-2.5">
+                        <div className="bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl px-3.5 py-2 sm:px-4 sm:py-2.5 text-center min-w-[58px] sm:min-w-[68px] shadow-lg">
+                          <span className="font-mono font-black text-xl sm:text-2xl text-white block leading-none">
+                            {countdown.days}
+                          </span>
+                          <span className="text-[9px] uppercase font-bold text-teal-100 tracking-wider">Days</span>
+                        </div>
+                        <span className="text-white/60 font-black text-lg leading-none">:</span>
+                        <div className="bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl px-3.5 py-2 sm:px-4 sm:py-2.5 text-center min-w-[58px] sm:min-w-[68px] shadow-lg">
+                          <span className="font-mono font-black text-xl sm:text-2xl text-white block leading-none">
+                            {String(countdown.hours).padStart(2, '0')}
+                          </span>
+                          <span className="text-[9px] uppercase font-bold text-teal-100 tracking-wider">Hours</span>
+                        </div>
+                        <span className="text-white/60 font-black text-lg leading-none">:</span>
+                        <div className="bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl px-3.5 py-2 sm:px-4 sm:py-2.5 text-center min-w-[58px] sm:min-w-[68px] shadow-lg">
+                          <span className="font-mono font-black text-xl sm:text-2xl text-white block leading-none">
+                            {String(countdown.minutes).padStart(2, '0')}
+                          </span>
+                          <span className="text-[9px] uppercase font-bold text-teal-100 tracking-wider">Mins</span>
+                        </div>
+                        <span className="text-white/60 font-black text-lg leading-none">:</span>
+                        <div className="bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl px-3.5 py-2 sm:px-4 sm:py-2.5 text-center min-w-[58px] sm:min-w-[68px] shadow-lg">
+                          <span className="font-mono font-black text-xl sm:text-2xl text-[#6ffbbe] block leading-none">
+                            {String(countdown.seconds).padStart(2, '0')}
+                          </span>
+                          <span className="text-[9px] uppercase font-bold text-[#6ffbbe] tracking-wider">Secs</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {countdown.status === 'live' && (
+                    <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[#10b981]/25 backdrop-blur-md border border-[#10b981]/60 text-[#6ffbbe] text-xs font-bold uppercase tracking-wider shadow-lg">
+                      <span className="relative flex h-2.5 w-2.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#10b981] opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#10b981]"></span>
+                      </span>
+                      <span>Festival Is Live · Competitions in Progress</span>
+                    </div>
+                  )}
+
+                  {countdown.status === 'concluded' && (
+                    <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-amber-500/20 backdrop-blur-md border border-amber-400/40 text-amber-200 text-xs font-bold uppercase tracking-wider shadow-md">
+                      <Trophy className="w-4 h-4 text-amber-300" />
+                      <span>Festival Concluded · Official Ratified Standings</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Call To Action Buttons */}
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2 w-full sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={() => openAuth('participant', 'register')}
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-full text-xs sm:text-sm font-bold shadow-[0_4px_14px_rgba(13,148,136,0.35)] hover:shadow-[0_6px_20px_rgba(13,148,136,0.45)] hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+                  >
+                    <span>{pageData.hero.primaryCtaText || 'Register Now'}</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTabSection('schedule')}
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-white/15 backdrop-blur-md border border-white/25 text-white rounded-full text-xs sm:text-sm font-semibold hover:bg-white/25 active:scale-[0.98] transition-all cursor-pointer"
+                  >
+                    <span>{pageData.hero.secondaryCtaText || 'View Schedule'}</span>
+                    <ChevronRight className="w-4 h-4 text-teal-200" />
+                  </button>
+                </div>
+
+                {/* Quick Chest Number Student Search Bar */}
+                <div className="w-full max-w-lg mx-auto pt-4 text-left">
+                  <div className="relative bg-white/95 backdrop-blur-md rounded-2xl p-2.5 shadow-[0_8px_20px_-4px_rgba(13,148,136,0.15)] border border-[#99f6e4] space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <div className="pl-2 text-[#0d9488]">
+                        <Search className="w-4 h-4 text-[#0d9488]" />
+                      </div>
+                      <input
+                        type="text"
+                        value={studentSearchQuery}
+                        onChange={(e) => setStudentSearchQuery(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && studentSearchQuery.trim()) {
+                            setActiveTabSection('student_search');
+                          }
+                        }}
+                        placeholder="Search student by Chest Number (e.g. 104) or Name..."
+                        className="flex-1 bg-transparent border-0 focus:outline-none text-[#0f172a] placeholder:text-slate-400 text-xs sm:text-sm py-1.5 px-1 font-medium"
+                      />
+                      {studentSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setStudentSearchQuery('')}
+                          className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+                          title="Clear"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (studentSearchQuery.trim()) {
+                            setActiveTabSection('student_search');
+                          }
+                        }}
+                        className="px-4 py-2 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-full text-xs font-bold transition-all shrink-0 shadow-xs active:scale-95 cursor-pointer"
+                      >
+                        Search
+                      </button>
+                    </div>
+
+                    {/* Fast Search Pills */}
+                    <div className="flex flex-wrap items-center gap-1.5 pt-0.5 px-1 text-[11px] text-slate-400">
+                      <span className="font-semibold text-slate-500">Quick Lookups:</span>
+                      {festParticipants.slice(0, 3).map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => {
+                            setStudentSearchQuery(p.chestNumber || p.name);
+                            setActiveTabSection('student_search');
+                          }}
+                          className="px-2 py-0.5 rounded-full bg-[#f0fdfa] hover:bg-[#ccfbf1] border border-[#99f6e4] text-[#0f766e] font-mono font-bold transition-colors cursor-pointer text-[10px]"
+                        >
+                          #{p.chestNumber || p.id}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setActiveTabSection('student_search')}
+                        className="px-2 py-0.5 rounded-full bg-[#f0f9ff] hover:bg-[#e0f2fe] border border-[#bae6fd] text-[#0284c7] font-semibold transition-colors cursor-pointer text-[10px]"
+                      >
+                        Directory →
+                      </button>
+                    </div>
+
+                    {/* Floating Instant Matches Dropdown */}
+                    {studentSearchQuery.trim().length > 0 && (
+                      <div className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl border border-[#99f6e4] shadow-2xl overflow-hidden z-50 max-h-72 overflow-y-auto divide-y divide-[#f0fdfa]">
+                        {matchedStudents.length === 0 ? (
+                          <div className="p-4 text-center text-xs text-slate-500">
+                            No participant found for <strong className="text-slate-800 font-bold">"{studentSearchQuery}"</strong>.
+                          </div>
+                        ) : (
+                          matchedStudents.slice(0, 5).map((student) => {
+                            const team = teams.find((t) => t.id === student.teamId);
+                            const stats = getStudentStats(student.id);
+                            return (
+                              <div
+                                key={student.id}
+                                onClick={() => {
+                                  setSelectedStudentForModal(student);
+                                  setActiveTabSection('student_search');
+                                }}
+                                className="w-full p-2.5 hover:bg-[#f0fdfa] flex items-center justify-between gap-3 text-left transition-colors cursor-pointer"
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <div className="w-7 h-7 rounded-full bg-[#0d9488] text-white font-bold text-xs flex items-center justify-center shrink-0">
+                                    {student.name.charAt(0)}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="font-bold text-xs sm:text-sm text-[#0f172a] truncate">{student.name}</span>
+                                      <span className="font-mono font-bold text-[10px] bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4] px-1.5 py-0.2 rounded-full">
+                                        #{student.chestNumber || student.id}
+                                      </span>
+                                    </div>
+                                    <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                                      <span>{team?.name || 'Team'}</span>
+                                      <span>•</span>
+                                      <span>{student.category}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <span className="font-mono font-bold text-xs text-[#0f172a]">{stats.totalPoints} pts</span>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom Dot Pagination Indicator */}
+              <div className="relative z-20 flex items-center justify-center gap-2 pt-2">
+                {(mainFeaturedPhotos.length > 0 ? mainFeaturedPhotos : [1]).map((_, idx) => (
+                  <span
+                    key={idx}
+                    className={`h-2 rounded-full transition-all ${
+                      idx === (currentSlideIndex % (mainFeaturedPhotos.length || 1))
+                        ? 'w-6 bg-white'
+                        : 'w-2 bg-white/40'
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* ================================================================ */}
+          {/* B. 4 CIRCULAR STATS BADGES STRIP (EXACT MATCH TO REFERENCE MODEL)*/}
+          {/* ================================================================ */}
+          <section className="py-12 bg-[#faf8ff] border-b border-[#e2e8f0]">
             <div className="max-w-7xl mx-auto px-4 sm:px-8">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-                <div className="flex items-center gap-3 p-3.5 sm:p-4 rounded-2xl bg-white border border-[#e2e8f0] shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04)]">
-                  <div className="w-10 h-10 rounded-xl bg-[#f0fdfa] border border-[#ccfbf1] text-[#0d9488] flex items-center justify-center shrink-0">
-                    <Award className="w-5 h-5 text-[#0d9488]" />
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 text-center">
+                
+                {/* 1. Programs */}
+                <div className="flex flex-col items-center">
+                  <div className="w-16 h-16 rounded-full bg-[#f0fdfa] border border-[#ccfbf1] text-[#0d9488] flex items-center justify-center shadow-xs mb-3 group hover:scale-105 transition-transform">
+                    <Calendar className="w-7 h-7 text-[#0d9488]" />
                   </div>
-                  <div className="min-w-0">
-                    <span className="font-mono font-black text-lg sm:text-xl text-[#0f172a] leading-tight block">
-                      {publishedProgrammes.length > 0 ? publishedProgrammes.length : '40+'}
-                    </span>
-                    <span className="text-[10px] sm:text-[11px] font-semibold text-[#64748b] uppercase tracking-wider block truncate">
-                      Collegiate Events
-                    </span>
-                  </div>
+                  <span className="font-mono font-black text-3xl sm:text-4xl text-[#0f172a] block leading-none">
+                    {publishedProgrammes.length > 0 ? publishedProgrammes.length : 0}
+                  </span>
+                  <h4 className="font-bold text-sm sm:text-base text-[#0f172a] mt-2">Programs</h4>
+                  <p className="text-[11px] text-[#64748b] mt-0.5">Exciting programs · Collegiate Events</p>
                 </div>
 
-                <div className="flex items-center gap-3 p-3.5 sm:p-4 rounded-2xl bg-white border border-[#e2e8f0] shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04)]">
-                  <div className="w-10 h-10 rounded-xl bg-[#f0f9ff] border border-[#bae6fd] text-[#0284c7] flex items-center justify-center shrink-0">
-                    <Shield className="w-5 h-5 text-[#0284c7]" />
+                {/* 2. Participants */}
+                <div className="flex flex-col items-center">
+                  <div className="w-16 h-16 rounded-full bg-[#f0f9ff] border border-[#bae6fd] text-[#0284c7] flex items-center justify-center shadow-xs mb-3 group hover:scale-105 transition-transform">
+                    <Users className="w-7 h-7 text-[#0284c7]" />
                   </div>
-                  <div className="min-w-0">
-                    <span className="font-mono font-black text-lg sm:text-xl text-[#0f172a] leading-tight block">
-                      {teams.length > 0 ? teams.length : '4'}
-                    </span>
-                    <span className="text-[10px] sm:text-[11px] font-semibold text-[#64748b] uppercase tracking-wider block truncate">
-                      Competing Houses
-                    </span>
-                  </div>
+                  <span className="font-mono font-black text-3xl sm:text-4xl text-[#0f172a] block leading-none">
+                    {festParticipants.length}
+                  </span>
+                  <h4 className="font-bold text-sm sm:text-base text-[#0f172a] mt-2">Participants</h4>
+                  <p className="text-[11px] text-[#64748b] mt-0.5">Talented individuals</p>
                 </div>
 
-                <div className="flex items-center gap-3 p-3.5 sm:p-4 rounded-2xl bg-white border border-[#e2e8f0] shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04)]">
-                  <div className="w-10 h-10 rounded-xl bg-[#f0fdf4] border border-[#bbf7d0] text-[#10b981] flex items-center justify-center shrink-0">
-                    <Users className="w-5 h-5 text-[#10b981]" />
+                {/* 3. Teams */}
+                <div className="flex flex-col items-center">
+                  <div className="w-16 h-16 rounded-full bg-[#fef3c7] border border-[#fde68a] text-[#d97706] flex items-center justify-center shadow-xs mb-3 group hover:scale-105 transition-transform">
+                    <Award className="w-7 h-7 text-[#d97706]" />
                   </div>
-                  <div className="min-w-0">
-                    <span className="font-mono font-black text-lg sm:text-xl text-[#0f172a] leading-tight block">
-                      {festParticipants.length > 0 ? festParticipants.length : '100+'}
-                    </span>
-                    <span className="text-[10px] sm:text-[11px] font-semibold text-[#64748b] uppercase tracking-wider block truncate">
-                      Contestants
-                    </span>
-                  </div>
+                  <span className="font-mono font-black text-3xl sm:text-4xl text-[#0f172a] block leading-none">
+                    {teams.length > 0 ? teams.length : 4}
+                  </span>
+                  <h4 className="font-bold text-sm sm:text-base text-[#0f172a] mt-2">Teams</h4>
+                  <p className="text-[11px] text-[#64748b] mt-0.5">Collaborating groups · Competing Houses</p>
                 </div>
 
-                <div className="flex items-center gap-3 p-3.5 sm:p-4 rounded-2xl bg-white border border-[#e2e8f0] shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04)]">
-                  <div className="w-10 h-10 rounded-xl bg-[#f0fdfa] border border-[#ccfbf1] text-[#0d9488] flex items-center justify-center shrink-0">
-                    <Trophy className="w-5 h-5 text-[#0d9488]" />
+                {/* 4. Venues */}
+                <div className="flex flex-col items-center">
+                  <div className="w-16 h-16 rounded-full bg-[#f0fdf4] border border-[#bbf7d0] text-[#10b981] flex items-center justify-center shadow-xs mb-3 group hover:scale-105 transition-transform">
+                    <MapPin className="w-7 h-7 text-[#10b981]" />
                   </div>
-                  <div className="min-w-0">
-                    <span className="font-mono font-black text-lg sm:text-xl text-[#0f172a] leading-tight block">
-                      {publishedResults.length}
-                    </span>
-                    <span className="text-[10px] sm:text-[11px] font-semibold text-[#64748b] uppercase tracking-wider block truncate">
-                      Ratified Results
-                    </span>
-                  </div>
+                  <span className="font-mono font-black text-3xl sm:text-4xl text-[#0f172a] block leading-none">
+                    {publishedResults.length > 0 ? publishedResults.length : 6}
+                  </span>
+                  <h4 className="font-bold text-sm sm:text-base text-[#0f172a] mt-2">Venues</h4>
+                  <p className="text-[11px] text-[#64748b] mt-0.5">Event locations · Ratified Results</p>
                 </div>
               </div>
             </div>
           </section>
 
-          {/* Structured Bento Grid */}
+          {/* ================================================================ */}
+          {/* C. ABOUT {FESTNAME} SECTION (MATCHING REFERENCE MODEL)           */}
+          {/* ================================================================ */}
+          <section className="py-16 bg-[#faf8ff] border-b border-[#e2e8f0]">
+            <div className="max-w-7xl mx-auto px-4 sm:px-8">
+              {/* Centered Heading with Decorative Gradient Underline */}
+              <div className="text-center max-w-2xl mx-auto mb-12">
+                <h3 className="text-3xl sm:text-4xl font-extrabold text-[#0f172a] tracking-tight font-display">
+                  About <span className="bg-gradient-to-r from-[#00685f] via-[#0d9488] to-[#006398] bg-clip-text text-transparent">{festName}</span>
+                </h3>
+                <div className="w-20 h-1 bg-gradient-to-r from-[#00685f] to-[#006398] rounded-full mx-auto mt-2.5"></div>
+                <p className="text-xs sm:text-sm text-[#64748b] mt-2 font-medium">Festival overview</p>
+              </div>
+
+              {/* 2-Column Split: Our Vision vs Festival Image */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+                {/* Left Column: Our Vision & Highlights */}
+                <div className="space-y-6">
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="w-1.5 h-6 bg-[#0d9488] rounded-full"></span>
+                      <h4 className="font-bold text-xl text-[#0f172a] font-display">Our Vision</h4>
+                    </div>
+                    <p className="text-sm text-[#334155] leading-relaxed">
+                      Welcome to our festival platform. {fest?.description || pageData.hero.description || 'Welcome to our premier inter-collegiate arts and cultural championship. Designed to celebrate competitive spirit, creative expression, and authentic teamwork with real-time scoring and clash-free coordination.'}
+                    </p>
+                  </div>
+
+                  {/* Highlights Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                    <div className="p-4 rounded-2xl bg-white border border-[#e2e8f0] shadow-xs">
+                      <div className="w-8 h-8 rounded-xl bg-[#f0fdfa] text-[#0d9488] border border-[#ccfbf1] flex items-center justify-center mb-2">
+                        <Trophy className="w-4 h-4" />
+                      </div>
+                      <h5 className="font-bold text-xs text-[#0f172a]">40+ Events</h5>
+                      <p className="text-[11px] text-[#64748b] mt-0.5">Stage & literary arts</p>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-white border border-[#e2e8f0] shadow-xs">
+                      <div className="w-8 h-8 rounded-xl bg-[#f0f9ff] text-[#0284c7] border border-[#bae6fd] flex items-center justify-center mb-2">
+                        <Shield className="w-4 h-4" />
+                      </div>
+                      <h5 className="font-bold text-xs text-[#0f172a]">Live Scoring</h5>
+                      <p className="text-[11px] text-[#64748b] mt-0.5">Transparent tallies</p>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-white border border-[#e2e8f0] shadow-xs">
+                      <div className="w-8 h-8 rounded-xl bg-[#f0fdf4] text-[#10b981] border border-[#bbf7d0] flex items-center justify-center mb-2">
+                        <Award className="w-4 h-4" />
+                      </div>
+                      <h5 className="font-bold text-xs text-[#0f172a]">Honors</h5>
+                      <p className="text-[11px] text-[#64748b] mt-0.5">Medals & certs</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column: Festival Image Showcase or Model Placeholder */}
+                <div>
+                  {mainFeaturedPhotos.length > 0 ? (
+                    <div
+                      onClick={() => setSelectedPhoto(mainFeaturedPhotos[0])}
+                      className="group cursor-pointer rounded-3xl overflow-hidden bg-white border border-[#e2e8f0] shadow-[0_8px_30px_rgba(15,23,42,0.06)] hover:border-[#99f6e4] transition-all relative aspect-16/10"
+                    >
+                      <img
+                        src={mainFeaturedPhotos[0].url}
+                        alt={mainFeaturedPhotos[0].caption || 'Festival showcase'}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex items-end p-6">
+                        <div>
+                          <h5 className="text-white font-bold text-sm">{mainFeaturedPhotos[0].caption}</h5>
+                          {mainFeaturedPhotos[0].description && (
+                            <p className="text-xs text-white/80 mt-0.5 line-clamp-1">{mainFeaturedPhotos[0].description}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-[#f8fafc] border-2 border-dashed border-[#e2e8f0] rounded-3xl p-8 sm:p-12 flex flex-col items-center justify-center text-center aspect-16/10">
+                      <div className="w-16 h-16 rounded-2xl bg-white border border-[#e2e8f0] text-[#0d9488] shadow-xs flex items-center justify-center mb-3">
+                        <ImageIcon className="w-8 h-8" />
+                      </div>
+                      <h5 className="font-bold text-sm text-[#0f172a]">Festival Image</h5>
+                      <p className="text-[11px] text-[#64748b] mt-1">Image placeholder for festival showcase</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* ================================================================ */}
+          {/* D. CHAMPIONSHIP STANDINGS (3D PODIUM) & CAMPUS GATEWAYS          */}
+          {/* ================================================================ */}
           <section className="py-12 max-w-7xl mx-auto px-4 sm:px-8 space-y-8">
-            {/* Bento Row 1: Welcome & Highlights (2 cols) + Official Portals Gateway (1 col) */}
+            
+            {/* Bento Row 1: Official Portals Gateway & Highlights */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
-              
-              {/* Bento Card 1: Official Festival Brief & Highlights */}
+              {/* Official Festival Brief Card */}
               <div className="lg:col-span-2 bg-white rounded-3xl border border-[#e2e8f0] p-6 sm:p-8 shadow-[0_4px_16px_-4px_rgba(15,23,42,0.05)] flex flex-col justify-between">
                 <div>
                   <div className="flex items-center gap-2 mb-3">
@@ -778,58 +868,15 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                   </p>
                 </div>
 
-                {/* Highlights Feature Grid */}
-                <div className="mt-6 pt-6 border-t border-[#e2e8f0]">
-                  <h4 className="text-[11px] font-bold uppercase tracking-wider text-[#64748b] mb-3.5">
-                    Festival Highlights & Standards
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {pageData.content.highlights && pageData.content.highlights.length > 0 ? (
-                      pageData.content.highlights.map((h, idx) => (
-                        <div
-                          key={idx}
-                          className="p-3.5 rounded-2xl bg-[#faf8ff] border border-[#e2e8f0] flex flex-col justify-between"
-                        >
-                          <div className="w-8 h-8 rounded-xl bg-[#f0fdfa] text-[#0d9488] border border-[#ccfbf1] flex items-center justify-center mb-2">
-                            {idx === 0 ? (
-                              <Trophy className="w-4 h-4" />
-                            ) : idx === 1 ? (
-                              <Shield className="w-4 h-4" />
-                            ) : (
-                              <Award className="w-4 h-4" />
-                            )}
-                          </div>
-                          <span className="font-bold text-xs text-[#0f172a] line-clamp-3">{h}</span>
-                        </div>
-                      ))
-                    ) : (
-                      <>
-                        <div className="p-3.5 rounded-2xl bg-[#faf8ff] border border-[#e2e8f0] flex flex-col justify-between">
-                          <div className="w-8 h-8 rounded-xl bg-[#f0fdfa] text-[#0d9488] border border-[#ccfbf1] flex items-center justify-center mb-2">
-                            <Trophy className="w-4 h-4" />
-                          </div>
-                          <h5 className="font-bold text-xs text-[#0f172a]">40+ Accredited Events</h5>
-                          <p className="text-[11px] text-[#64748b] mt-0.5">Stage, on-stage and off-stage arts competitions.</p>
-                        </div>
-
-                        <div className="p-3.5 rounded-2xl bg-[#faf8ff] border border-[#e2e8f0] flex flex-col justify-between">
-                          <div className="w-8 h-8 rounded-xl bg-[#f0f9ff] text-[#0284c7] border border-[#bae6fd] flex items-center justify-center mb-2">
-                            <Shield className="w-4 h-4" />
-                          </div>
-                          <h5 className="font-bold text-xs text-[#0f172a]">Real-Time Scoring</h5>
-                          <p className="text-[11px] text-[#64748b] mt-0.5">Instant judge tabulation with transparent ratifications.</p>
-                        </div>
-
-                        <div className="p-3.5 rounded-2xl bg-[#faf8ff] border border-[#e2e8f0] flex flex-col justify-between">
-                          <div className="w-8 h-8 rounded-xl bg-[#f0fdf4] text-[#10b981] border border-[#bbf7d0] flex items-center justify-center mb-2">
-                            <Award className="w-4 h-4" />
-                          </div>
-                          <h5 className="font-bold text-xs text-[#0f172a]">Certified Honors</h5>
-                          <p className="text-[11px] text-[#64748b] mt-0.5">Official medals, trophies, and university certifications.</p>
-                        </div>
-                      </>
-                    )}
-                  </div>
+                <div className="mt-6 pt-5 border-t border-[#e2e8f0] flex items-center justify-between text-xs text-[#64748b]">
+                  <span>Accredited Collegiate Championship</span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTabSection('schedule')}
+                    className="font-bold text-[#0d9488] hover:text-[#0f766e] cursor-pointer"
+                  >
+                    View Timetable →
+                  </button>
                 </div>
               </div>
 
@@ -915,7 +962,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                     <span className="w-2 h-2 rounded-full bg-[#10b981] animate-pulse"></span>
                   </div>
                   <h4 className="text-xl sm:text-2xl font-extrabold text-[#0f172a] tracking-tight mt-1.5 font-display">
-                    Championship Standings & Leaders
+                    3D Stepped Championship Podium
                   </h4>
                   <p className="text-xs sm:text-sm text-[#64748b] mt-0.5">
                     Real-time ratified scores from stage competitions and house performances.
@@ -1157,7 +1204,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               </div>
             </div>
 
-            {/* Bento Row 3: Upcoming Programme Schedule (2 cols) + Secretariat & Contact Desk (1 col) */}
+            {/* Bento Row 3: Upcoming Programme Schedule + Campus Grounds & Stages */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
               
               {/* Bento Card 4: Upcoming Schedule Highlights */}
@@ -1291,6 +1338,96 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                   </button>
                 </div>
               </div>
+            </div>
+          </section>
+
+          {/* ================================================================ */}
+          {/* E. "GET IN TOUCH" CONTACT DESK (MATCHING REFERENCE MODEL)        */}
+          {/* ================================================================ */}
+          <section id="contact" className="py-16 max-w-3xl mx-auto px-4 sm:px-8">
+            <div className="text-center mb-8">
+              <h3 className="text-3xl sm:text-4xl font-extrabold text-[#0f172a] tracking-tight font-display">
+                Get in Touch
+              </h3>
+              <div className="w-16 h-1 bg-gradient-to-r from-[#00685f] to-[#006398] rounded-full mx-auto mt-2.5"></div>
+              <p className="text-xs sm:text-sm text-[#64748b] mt-2">
+                Have questions? Want to collaborate? We'd love to hear from you!
+              </p>
+            </div>
+
+            <div className="bg-white rounded-3xl border border-[#e2e8f0] p-6 sm:p-8 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.06)]">
+              <div className="flex items-center gap-2 mb-5">
+                <span className="w-1.5 h-5 bg-[#0d9488] rounded-full"></span>
+                <h4 className="font-bold text-base text-[#0f172a]">Send us a Message</h4>
+              </div>
+
+              {contactSent && (
+                <div className="mb-4 p-4 rounded-2xl bg-[#f0fdfa] border border-[#99f6e4] text-[#0f766e] text-xs font-semibold flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#0d9488]" />
+                  <span>Thank you! Your message has been sent to the festival convenors.</span>
+                </div>
+              )}
+
+              <form onSubmit={handleContactSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1 ml-1">Your Name</label>
+                  <div className="relative flex items-center">
+                    <span className="absolute left-4 text-slate-400">
+                      <User className="w-4 h-4" />
+                    </span>
+                    <input
+                      type="text"
+                      required
+                      value={contactName}
+                      onChange={(e) => setContactName(e.target.value)}
+                      placeholder="Enter your full name"
+                      className="w-full pl-11 pr-4 py-3 bg-[#faf8ff] rounded-2xl border border-[#e2e8f0] focus:border-[#0d9488] focus:bg-white focus:outline-none text-xs sm:text-sm transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1 ml-1">Email Address</label>
+                  <div className="relative flex items-center">
+                    <span className="absolute left-4 text-slate-400">
+                      <Mail className="w-4 h-4" />
+                    </span>
+                    <input
+                      type="email"
+                      required
+                      value={contactEmail}
+                      onChange={(e) => setContactEmail(e.target.value)}
+                      placeholder="Enter your email address"
+                      className="w-full pl-11 pr-4 py-3 bg-[#faf8ff] rounded-2xl border border-[#e2e8f0] focus:border-[#0d9488] focus:bg-white focus:outline-none text-xs sm:text-sm transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1 ml-1">Your Message</label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-3.5 text-slate-400">
+                      <FileText className="w-4 h-4" />
+                    </span>
+                    <textarea
+                      required
+                      rows={4}
+                      value={contactMessage}
+                      onChange={(e) => setContactMessage(e.target.value)}
+                      placeholder="Tell us how we can help you..."
+                      className="w-full pl-11 pr-4 py-3 bg-[#faf8ff] rounded-2xl border border-[#e2e8f0] focus:border-[#0d9488] focus:bg-white focus:outline-none text-xs sm:text-sm transition-all resize-none"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-3.5 px-6 rounded-full bg-gradient-to-r from-[#00685f] to-[#006398] hover:from-[#0f766e] hover:to-[#0284c7] text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>Send Message</span>
+                </button>
+              </form>
             </div>
           </section>
         </>
@@ -2447,18 +2584,214 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       )}
 
       {/* ==================================================================== */}
-      {/* FOOTER                                                               */}
+      {/* FLOATING BOTTOM NAVIGATION PILL DOCK (MATCHING REFERENCE MODEL)      */}
       {/* ==================================================================== */}
-      <footer className="mt-auto border-t border-[#e2e8f0] bg-[#faf8ff] py-8 px-4 sm:px-8 text-xs text-[#64748b]">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div>
-            <p className="font-semibold text-[#0f172a]">© 2026 {festName}. Powered by Festoria Festival Management Platform.</p>
-            <p className="text-[11px] text-[#64748b] mt-0.5">Unified collegiate governance & scoring infrastructure.</p>
+      <aside aria-label="Quick festival navigation" className="fixed bottom-5 inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
+        <div className="pointer-events-auto bg-white/95 backdrop-blur-xl border border-[#e2e8f0] rounded-full px-2 sm:px-3 py-1.5 shadow-[0_12px_36px_-6px_rgba(15,23,42,0.18)] flex items-center gap-1 sm:gap-1.5 ring-1 ring-black/5">
+          {/* Brand Monogram */}
+          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#00685f] to-[#0d9488] flex items-center justify-center text-white font-extrabold text-xs shrink-0 select-none shadow-xs ml-1 mr-0.5">
+            <span>{festName.charAt(0) || 'F'}</span>
           </div>
 
-          <div className="flex items-center gap-4">
-            <a href={getAppUrl()} className="text-[#0f766e] hover:text-[#0d9488] font-bold min-h-[44px] inline-flex items-center">Festoria Home</a>
-            <a href={getAppUrl('admin.html')} className="text-[#0f766e] hover:text-[#0d9488] font-bold min-h-[44px] inline-flex items-center">Admin Sign In</a>
+          <button
+            type="button"
+            onClick={() => setActiveTabSection('overview')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+              activeTabSection === 'overview'
+                ? 'bg-[#0d9488] text-white shadow-xs'
+                : 'text-[#334155] hover:text-[#0d9488] hover:bg-[#f0fdfa]'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Home</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTabSection('schedule')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+              activeTabSection === 'schedule'
+                ? 'bg-[#0d9488] text-white shadow-xs'
+                : 'text-[#334155] hover:text-[#0d9488] hover:bg-[#f0fdfa]'
+            }`}
+          >
+            <Calendar className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Schedules</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTabSection('results')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+              activeTabSection === 'results'
+                ? 'bg-[#0d9488] text-white shadow-xs'
+                : 'text-[#334155] hover:text-[#0d9488] hover:bg-[#f0fdfa]'
+            }`}
+          >
+            <Trophy className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Results</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTabSection('student_search')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+              activeTabSection === 'student_search'
+                ? 'bg-[#0d9488] text-white shadow-xs'
+                : 'text-[#334155] hover:text-[#0d9488] hover:bg-[#f0fdfa]'
+            }`}
+          >
+            <Search className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">My Result</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTabSection('bulletin')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+              activeTabSection === 'bulletin'
+                ? 'bg-[#0d9488] text-white shadow-xs'
+                : 'text-[#334155] hover:text-[#0d9488] hover:bg-[#f0fdfa]'
+            }`}
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">Downloads</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTabSection('gallery')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+              activeTabSection === 'gallery'
+                ? 'bg-[#0d9488] text-white shadow-xs'
+                : 'text-[#334155] hover:text-[#0d9488] hover:bg-[#f0fdfa]'
+            }`}
+          >
+            <ImageIcon className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">Wall</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* ==================================================================== */}
+      {/* 10. DARK FESTIVAL FOOTER (MATCHING REFERENCE MODEL)                  */}
+      {/* ==================================================================== */}
+      <footer className="mt-auto bg-[#0b1120] text-slate-300 pt-16 pb-28 border-t border-slate-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 pb-12 border-b border-slate-800">
+            {/* Col 1: Fest Brand & Copyright */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#00685f] to-[#0d9488] flex items-center justify-center text-white font-black text-sm shadow-md select-none">
+                  <span>{festName.charAt(0) || 'F'}</span>
+                </div>
+                <span className="text-xl font-black text-white tracking-tight font-display">
+                  {festName}
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 leading-relaxed max-w-sm">
+                {fest?.description || 'The official autonomous digital festival portal powered by Festoria OS.'}
+              </p>
+              <div className="text-[11px] text-slate-500 pt-1">
+                © {new Date().getFullYear()} {festName}. All rights reserved.
+              </div>
+            </div>
+
+            {/* Col 2: Quick Links */}
+            <div>
+              <h5 className="text-xs font-bold text-white uppercase tracking-wider mb-4">
+                Quick Links
+              </h5>
+              <ul className="space-y-2.5 text-xs text-slate-400">
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTabSection('results')}
+                    className="hover:text-white transition-colors cursor-pointer"
+                  >
+                    Results
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTabSection('student_search')}
+                    className="hover:text-white transition-colors cursor-pointer"
+                  >
+                    My Result
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTabSection('bulletin')}
+                    className="hover:text-white transition-colors cursor-pointer"
+                  >
+                    Downloads
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTabSection('schedule')}
+                    className="hover:text-white transition-colors cursor-pointer"
+                  >
+                    Schedules
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTabSection('gallery')}
+                    className="hover:text-white transition-colors cursor-pointer"
+                  >
+                    Wall
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            {/* Col 3: Made with Festoria Platform */}
+            <div className="space-y-3">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                Made with
+              </span>
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-white font-extrabold text-xs shadow-xs">
+                  <span>F</span>
+                </div>
+                <span className="font-extrabold text-white text-base font-display">
+                  Festoria
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Manage registrations, scheduling, scoring, and results — all in one platform. No paperwork, no chaos. Just smooth fests, every time.
+              </p>
+              <div className="pt-2">
+                <a
+                  href={getAppUrl()}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-gradient-to-r from-[#00685f] to-[#0d9488] hover:from-[#0f766e] hover:to-[#0f766e] text-white text-xs font-bold shadow-md hover:shadow-lg transition-all"
+                >
+                  <span>Create Your Own Fest</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </a>
+              </div>
+            </div>
+          </div>
+
+          {/* Sub Footer */}
+          <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-[10px] text-slate-400 font-mono">
+                OS
+              </div>
+              <span>Powered by Festoria Festival Operating System</span>
+            </div>
+            <div className="flex items-center gap-6">
+              <a href="#" className="hover:text-slate-300 transition-colors">Privacy Policy</a>
+              <a href="#" className="hover:text-slate-300 transition-colors">Terms and Conditions</a>
+              <a href="#contact" className="hover:text-slate-300 transition-colors">Contact Us</a>
+            </div>
           </div>
         </div>
       </footer>
