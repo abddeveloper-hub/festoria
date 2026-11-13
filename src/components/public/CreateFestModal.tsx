@@ -27,7 +27,9 @@ import {
   HelpCircle,
   Briefcase,
   Globe,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import {
   formatPhoneDisplay,
@@ -109,10 +111,18 @@ export const CreateFestModal: React.FC<CreateFestModalProps> = ({
   const [authMode, setAuthMode] = useState<'signin' | 'register'>('signin');
   const [authPassword, setAuthPassword] = useState('');
   const [authConfirmPassword, setAuthConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [verifiedUid, setVerifiedUid] = useState<string | null>(null);
   const [verifiedPhone, setVerifiedPhone] = useState<string | null>(null);
+
+  const fillOrganizerDemo = () => {
+    setEmailAddress('admin@festoria.app');
+    setMobileNumber('9840123001');
+    setAuthPassword('FestAdmin@2025!');
+    setErrorMessage('');
+  };
 
   // Result state
   const [generatedAppId, setGeneratedAppId] = useState('');
@@ -477,69 +487,76 @@ export const CreateFestModal: React.FC<CreateFestModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 overflow-y-auto">
-      <div className="relative w-full max-w-3xl bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden my-6">
-        {/* Modal Header */}
-        <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between border-b border-slate-800">
-          <div className="flex items-center gap-3">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-md p-3 sm:p-4 overflow-y-auto">
+      <div className="relative w-full max-w-3xl bg-white rounded-[32px] shadow-[0_25px_60px_-15px_rgba(13,92,88,0.3)] border border-teal-600/30 overflow-hidden my-4 sm:my-6 animate-in fade-in zoom-in-95 duration-200">
+        {/* Modal Header (Botanical Teal) */}
+        <div className="relative bg-[#0d5c58] text-white px-6 py-5 flex items-center justify-between overflow-hidden border-b border-teal-700/40">
+          {/* Abstract Mint Organic Blobs */}
+          <div className="absolute -top-10 -left-10 w-36 h-36 bg-[#8ee6d3] rounded-full opacity-60 mix-blend-screen pointer-events-none transform -rotate-12 blur-[0.5px]">
+            <div className="w-full h-full rounded-full border-[8px] border-[#69d9c2] opacity-30"></div>
+          </div>
+          <div className="absolute -top-3 left-20 w-16 h-16 bg-[#76dec8] rounded-full opacity-50 pointer-events-none"></div>
+
+          <div className="relative z-10 flex items-center gap-3">
             <img
               src={FESTORIA_LOGO}
               alt="Festoria Logo"
               onError={handleLogoError}
-              className="w-9 h-9 rounded-lg object-contain border border-slate-700 bg-white shadow-xs"
+              className="w-10 h-10 rounded-xl object-contain border border-teal-400/40 bg-white shadow-xs p-0.5"
             />
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold tracking-tight text-white">
+                <h2 className="text-base sm:text-lg font-bold tracking-tight text-white font-display">
                   Create New Fest / Organise a Fest
                 </h2>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-amber-300 border border-slate-700">
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#8ee6d3]/20 text-teal-100 border border-[#8ee6d3]/40">
                   Super Admin Approval Required
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-teal-100/80 mt-0.5">
                 Apply to host your institution's premier festival with autonomous scoring, houses, and schedule management.
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="relative z-10 p-2 rounded-full text-teal-200 hover:text-white hover:bg-white/10 transition-colors"
+            aria-label="Close modal"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Modal Navigation Tabs: Apply vs Track */}
-        <div className="flex border-b border-slate-200 bg-slate-50 px-6 pt-2">
+        <div className="flex border-b border-teal-100 bg-[#f3f7f6] px-6 pt-3 gap-2">
           <button
             onClick={() => setActiveTab('apply')}
-            className={`px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors flex items-center gap-2 ${
+            className={`px-4 py-2.5 text-xs font-bold rounded-t-xl transition-all flex items-center gap-2 ${
               activeTab === 'apply'
-                ? 'border-slate-900 text-slate-900 bg-white rounded-t-lg'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
+                ? 'bg-white text-[#0d5c58] shadow-xs border-t-2 border-[#0d5c58]'
+                : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+            <Sparkles className="w-3.5 h-3.5 text-teal-600" />
             <span>Submit Application</span>
           </button>
 
           <button
             onClick={() => setActiveTab('track')}
-            className={`px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors flex items-center gap-2 ${
+            className={`px-4 py-2.5 text-xs font-bold rounded-t-xl transition-all flex items-center gap-2 ${
               activeTab === 'track'
-                ? 'border-slate-900 text-slate-900 bg-white rounded-t-lg'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
+                ? 'bg-white text-[#0d5c58] shadow-xs border-t-2 border-[#0d5c58]'
+                : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            <Search className="w-3.5 h-3.5 text-slate-600" />
+            <Search className="w-3.5 h-3.5 text-teal-600" />
             <span>Track Existing Application</span>
           </button>
         </div>
 
         {/* Global Error Banner */}
         {errorMessage && (
-          <div className="mx-6 mt-4 p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex flex-col gap-2">
+          <div className="mx-6 mt-4 p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex flex-col gap-2">
             <div className="flex items-start gap-2.5">
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
               <div className="flex-1 font-medium leading-relaxed">{errorMessage}</div>
@@ -565,33 +582,58 @@ export const CreateFestModal: React.FC<CreateFestModalProps> = ({
           {/* ========================================================= */}
           {activeTab === 'apply' && (
             <div>
-              {/* STAGE A: ORGANIZER PASSWORD AUTHENTICATION */}
+              {/* STAGE A: ORGANIZER PASSWORD AUTHENTICATION (BOTANICAL TEAL & MINT DESIGN) */}
               {submissionStep === 'auth' && (
-                <div className="max-w-md mx-auto py-4 space-y-5">
-                  <div className="text-center space-y-2">
-                    <div className="w-12 h-12 rounded-full bg-slate-100 border border-slate-200 text-slate-800 flex items-center justify-center mx-auto">
-                      <ShieldCheck className="w-6 h-6 text-slate-700" />
+                <div className="max-w-md mx-auto py-2 space-y-4">
+                  {/* Botanical Greeting & Plant Card */}
+                  <div className="relative overflow-hidden bg-gradient-to-br from-[#0d5c58] to-[#116963] rounded-3xl p-6 text-white shadow-md">
+                    {/* Mint organic blobs */}
+                    <div className="absolute -top-10 -left-10 w-36 h-36 bg-[#8ee6d3] rounded-full opacity-60 mix-blend-screen pointer-events-none transform -rotate-12 blur-[0.5px]"></div>
+                    <div className="absolute -top-2 left-12 w-16 h-16 bg-[#76dec8] rounded-full opacity-50 pointer-events-none"></div>
+
+                    <div className="relative z-10 max-w-[240px]">
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/15 text-[10px] font-bold text-teal-100 border border-white/20 mb-2">
+                        <ShieldCheck className="w-3 h-3 text-teal-200" />
+                        <span>Festoria Organizer Portal</span>
+                      </div>
+                      <h3 className="text-2xl font-extrabold tracking-tight">
+                        {authMode === 'signin' ? 'Welcome Back!' : 'Join Festoria!'}
+                      </h3>
+                      <p className="text-xs text-teal-100/90 leading-relaxed mt-1">
+                        {authMode === 'signin'
+                          ? 'Authenticate with your organizer credentials to launch your fest.'
+                          : 'Create your festival organizer account to submit an application.'}
+                      </p>
                     </div>
-                    <h3 className="text-sm font-bold text-slate-900">
-                      Organizer Authentication
-                    </h3>
-                    <p className="text-xs text-slate-500 leading-relaxed">
-                      To preserve platform integrity and securely assign you as the authoritative Fest Admin upon Super Admin approval, please authenticate with your account credentials.
-                    </p>
+
+                    {/* Swaying Botanical Plant in Pot */}
+                    <div className="absolute right-4 bottom-0 z-20 flex flex-col items-center plant-bounce pointer-events-none" style={{ transformOrigin: 'bottom center' }}>
+                      <svg className="w-18 h-28 drop-shadow-md" fill="none" viewBox="0 0 100 150" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M50 8C43 45 44 80 50 120C56 80 57 45 50 8Z" fill="#58c4aa"></path>
+                        <path d="M50 18C47 48 48 78 50 120C53 78 54 48 50 18Z" fill="#7de0ca"></path>
+                        <path d="M48 60C30 50 18 20 20 8C20 30 32 70 49 95Z" fill="#44b499"></path>
+                        <path d="M52 50C68 35 78 12 76 5C76 25 66 65 51 90Z" fill="#6ad2bc"></path>
+                        <path d="M50 75C40 70 32 55 35 48C38 60 44 75 50 85Z" fill="#88ebd6"></path>
+                      </svg>
+                      <div className="w-10 h-8 bg-white rounded-b-lg rounded-t-xs shadow-sm flex items-center justify-center border-t border-slate-100 -mt-1 relative overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-tr from-slate-100 to-transparent"></div>
+                        <div className="w-2 h-1 bg-[#44b499]/30 rounded-full"></div>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Mode Selector */}
-                  <div className="flex p-1 bg-slate-100 rounded-lg border border-slate-200 text-xs font-semibold">
+                  {/* Mode Selector Pill */}
+                  <div className="flex p-1 bg-[#f4f7f6] rounded-full border border-slate-200/80 text-xs font-bold">
                     <button
                       type="button"
                       onClick={() => {
                         setAuthMode('signin');
                         setErrorMessage('');
                       }}
-                      className={`flex-1 py-1.5 rounded-md transition-all ${
+                      className={`flex-1 py-2 rounded-full transition-all ${
                         authMode === 'signin'
-                          ? 'bg-white text-slate-900 shadow-2xs'
-                          : 'text-slate-600 hover:text-slate-900'
+                          ? 'bg-white text-[#0d5c58] shadow-xs'
+                          : 'text-slate-500 hover:text-slate-900'
                       }`}
                     >
                       Sign In
@@ -602,27 +644,45 @@ export const CreateFestModal: React.FC<CreateFestModalProps> = ({
                         setAuthMode('register');
                         setErrorMessage('');
                       }}
-                      className={`flex-1 py-1.5 rounded-md transition-all ${
+                      className={`flex-1 py-2 rounded-full transition-all ${
                         authMode === 'register'
-                          ? 'bg-white text-slate-900 shadow-2xs'
-                          : 'text-slate-600 hover:text-slate-900'
+                          ? 'bg-white text-[#0d5c58] shadow-xs'
+                          : 'text-slate-500 hover:text-slate-900'
                       }`}
                     >
                       Register New Account
                     </button>
                   </div>
 
+                  {/* Demo Credentials Auto-Fill Pill */}
+                  <div className="flex items-center justify-between px-3.5 py-2 bg-[#e6f7f5] border border-teal-200/60 rounded-2xl text-[11px]">
+                    <span className="font-semibold text-teal-800 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-teal-600" />
+                      <span>Demo Organizer Account:</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={fillOrganizerDemo}
+                      className="font-bold text-[#0d5c58] hover:underline"
+                    >
+                      Auto-Fill Credentials
+                    </button>
+                  </div>
+
                   {authMode === 'signin' ? (
                     <form onSubmit={handleOrganizerSignIn} className="space-y-3.5">
                       <div>
-                        <label className="block text-xs font-medium text-slate-700 mb-1">
+                        <label className="block text-xs font-semibold text-slate-700 mb-1 ml-1">
                           Email Address or Mobile Number <span className="text-rose-500">*</span>
                         </label>
-                        <div className="relative">
+                        <div className="relative flex items-center">
+                          <span className="absolute left-4 text-slate-400">
+                            <User className="w-4 h-4 text-slate-400" />
+                          </span>
                           <input
                             type="text"
                             required
-                            placeholder="name@college.edu or 98401 23001"
+                            placeholder="admin@festoria.app or 98401 23001"
                             value={emailAddress || mobileNumber}
                             onChange={(e) => {
                               const val = e.target.value;
@@ -633,134 +693,180 @@ export const CreateFestModal: React.FC<CreateFestModalProps> = ({
                                 setEmailAddress(val);
                               }
                             }}
-                            className="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:ring-1 focus:ring-slate-900"
+                            className="w-full bg-[#f4f7f6] hover:bg-[#edf3f1] focus:bg-white text-slate-800 placeholder-slate-400 text-xs font-medium rounded-full py-3 pl-11 pr-4 border border-transparent focus:border-teal-500 focus:ring-2 focus:ring-teal-200 outline-none transition duration-200"
                           />
-                          <User className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-xs font-medium text-slate-700 mb-1">
+                        <label className="block text-xs font-semibold text-slate-700 mb-1 ml-1">
                           Account Password <span className="text-rose-500">*</span>
                         </label>
-                        <div className="relative">
+                        <div className="relative flex items-center">
+                          <span className="absolute left-4 text-slate-400">
+                            <Lock className="w-4 h-4 text-slate-400" />
+                          </span>
                           <input
-                            type="password"
+                            type={showPassword ? 'text' : 'password'}
                             required
-                            placeholder="Enter password"
+                            placeholder="Enter account password"
                             value={authPassword}
                             onChange={(e) => setAuthPassword(e.target.value)}
-                            className="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:ring-1 focus:ring-slate-900"
+                            className="w-full bg-[#f4f7f6] hover:bg-[#edf3f1] focus:bg-white text-slate-800 placeholder-slate-400 text-xs font-medium rounded-full py-3 pl-11 pr-11 border border-transparent focus:border-teal-500 focus:ring-2 focus:ring-teal-200 outline-none transition duration-200"
                           />
-                          <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-4 text-slate-400 hover:text-slate-600 focus:outline-none"
+                          >
+                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
                         </div>
                       </div>
 
-                      <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full flex items-center justify-center gap-2 py-2.5 bg-slate-900 text-white rounded-lg text-xs font-semibold hover:bg-slate-800 transition-colors shadow-xs disabled:opacity-50"
-                      >
-                        {loading ? (
-                          <span>Verifying Credentials...</span>
-                        ) : (
-                          <>
-                            <span>Sign In & Proceed</span>
-                            <ArrowRight className="w-3.5 h-3.5" />
-                          </>
-                        )}
-                      </button>
+                      <div className="pt-1">
+                        <button
+                          type="submit"
+                          disabled={loading}
+                          className="w-full bg-[#0d5c58] hover:bg-[#094845] active:scale-[0.98] text-white font-semibold py-3.5 px-6 rounded-full shadow-md shadow-teal-950/20 text-xs tracking-wide transition-all duration-150 flex items-center justify-center space-x-2 disabled:opacity-50 cursor-pointer"
+                        >
+                          {loading ? (
+                            <span>Verifying Credentials...</span>
+                          ) : (
+                            <>
+                              <span>Sign In & Proceed</span>
+                              <ArrowRight className="w-4 h-4" />
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </form>
                   ) : (
                     <form onSubmit={handleOrganizerRegister} className="space-y-3">
                       <div>
-                        <label className="block text-xs font-medium text-slate-700 mb-1">
+                        <label className="block text-xs font-semibold text-slate-700 mb-1 ml-1">
                           Full Legal Name <span className="text-rose-500">*</span>
                         </label>
-                        <input
-                          type="text"
-                          required
-                          placeholder="e.g. Dr. K. Ramanathan"
-                          value={organizerName}
-                          onChange={(e) => setOrganizerName(e.target.value)}
-                          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:ring-1 focus:ring-slate-900"
-                        />
+                        <div className="relative flex items-center">
+                          <span className="absolute left-4 text-slate-400">
+                            <User className="w-4 h-4 text-slate-400" />
+                          </span>
+                          <input
+                            type="text"
+                            required
+                            placeholder="e.g. Dr. K. Ramanathan"
+                            value={organizerName}
+                            onChange={(e) => setOrganizerName(e.target.value)}
+                            className="w-full bg-[#f4f7f6] hover:bg-[#edf3f1] focus:bg-white text-slate-800 placeholder-slate-400 text-xs font-medium rounded-full py-3 pl-11 pr-4 border border-transparent focus:border-teal-500 focus:ring-2 focus:ring-teal-200 outline-none transition duration-200"
+                          />
+                        </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1">
+                          <label className="block text-xs font-semibold text-slate-700 mb-1 ml-1">
                             Official Email <span className="text-rose-500">*</span>
                           </label>
-                          <input
-                            type="email"
-                            required
-                            placeholder="convenor@college.edu"
-                            value={emailAddress}
-                            onChange={(e) => setEmailAddress(e.target.value)}
-                            className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:ring-1 focus:ring-slate-900"
-                          />
+                          <div className="relative flex items-center">
+                            <span className="absolute left-4 text-slate-400">
+                              <Mail className="w-4 h-4 text-slate-400" />
+                            </span>
+                            <input
+                              type="email"
+                              required
+                              placeholder="convenor@college.edu"
+                              value={emailAddress}
+                              onChange={(e) => setEmailAddress(e.target.value)}
+                              className="w-full bg-[#f4f7f6] hover:bg-[#edf3f1] focus:bg-white text-slate-800 placeholder-slate-400 text-xs font-medium rounded-full py-3 pl-11 pr-4 border border-transparent focus:border-teal-500 focus:ring-2 focus:ring-teal-200 outline-none transition duration-200"
+                            />
+                          </div>
                         </div>
+
                         <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1">
+                          <label className="block text-xs font-semibold text-slate-700 mb-1 ml-1">
                             Mobile Number <span className="text-rose-500">*</span>
                           </label>
-                          <input
-                            type="tel"
-                            required
-                            placeholder="98401 23001"
-                            value={mobileNumber}
-                            onChange={(e) => setMobileNumber(e.target.value)}
-                            className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:ring-1 focus:ring-slate-900"
-                          />
+                          <div className="relative flex items-center">
+                            <span className="absolute left-4 text-slate-400">
+                              <Phone className="w-4 h-4 text-slate-400" />
+                            </span>
+                            <input
+                              type="tel"
+                              required
+                              placeholder="98401 23001"
+                              value={mobileNumber}
+                              onChange={(e) => setMobileNumber(e.target.value)}
+                              className="w-full bg-[#f4f7f6] hover:bg-[#edf3f1] focus:bg-white text-slate-800 placeholder-slate-400 text-xs font-medium rounded-full py-3 pl-11 pr-4 border border-transparent focus:border-teal-500 focus:ring-2 focus:ring-teal-200 outline-none transition duration-200"
+                            />
+                          </div>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1">
+                          <label className="block text-xs font-semibold text-slate-700 mb-1 ml-1">
                             Password (Min 6) <span className="text-rose-500">*</span>
                           </label>
-                          <input
-                            type="password"
-                            required
-                            minLength={6}
-                            placeholder="Create password"
-                            value={authPassword}
-                            onChange={(e) => setAuthPassword(e.target.value)}
-                            className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:ring-1 focus:ring-slate-900"
-                          />
+                          <div className="relative flex items-center">
+                            <span className="absolute left-4 text-slate-400">
+                              <Lock className="w-4 h-4 text-slate-400" />
+                            </span>
+                            <input
+                              type={showPassword ? 'text' : 'password'}
+                              required
+                              minLength={6}
+                              placeholder="Create password"
+                              value={authPassword}
+                              onChange={(e) => setAuthPassword(e.target.value)}
+                              className="w-full bg-[#f4f7f6] hover:bg-[#edf3f1] focus:bg-white text-slate-800 placeholder-slate-400 text-xs font-medium rounded-full py-3 pl-11 pr-11 border border-transparent focus:border-teal-500 focus:ring-2 focus:ring-teal-200 outline-none transition duration-200"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword(!showPassword)}
+                              className="absolute right-4 text-slate-400 hover:text-slate-600 focus:outline-none"
+                            >
+                              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
                         </div>
+
                         <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1">
+                          <label className="block text-xs font-semibold text-slate-700 mb-1 ml-1">
                             Confirm Password <span className="text-rose-500">*</span>
                           </label>
-                          <input
-                            type="password"
-                            required
-                            minLength={6}
-                            placeholder="Confirm password"
-                            value={authConfirmPassword}
-                            onChange={(e) => setAuthConfirmPassword(e.target.value)}
-                            className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:ring-1 focus:ring-slate-900"
-                          />
+                          <div className="relative flex items-center">
+                            <span className="absolute left-4 text-slate-400">
+                              <Lock className="w-4 h-4 text-slate-400" />
+                            </span>
+                            <input
+                              type={showPassword ? 'text' : 'password'}
+                              required
+                              minLength={6}
+                              placeholder="Confirm password"
+                              value={authConfirmPassword}
+                              onChange={(e) => setAuthConfirmPassword(e.target.value)}
+                              className="w-full bg-[#f4f7f6] hover:bg-[#edf3f1] focus:bg-white text-slate-800 placeholder-slate-400 text-xs font-medium rounded-full py-3 pl-11 pr-4 border border-transparent focus:border-teal-500 focus:ring-2 focus:ring-teal-200 outline-none transition duration-200"
+                            />
+                          </div>
                         </div>
                       </div>
 
-                      <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full flex items-center justify-center gap-2 py-2.5 bg-slate-900 text-white rounded-lg text-xs font-semibold hover:bg-slate-800 transition-colors shadow-xs disabled:opacity-50 mt-1"
-                      >
-                        {loading ? (
-                          <span>Creating Account...</span>
-                        ) : (
-                          <>
-                            <span>Create Account & Continue</span>
-                            <ArrowRight className="w-3.5 h-3.5" />
-                          </>
-                        )}
-                      </button>
+                      <div className="pt-1">
+                        <button
+                          type="submit"
+                          disabled={loading}
+                          className="w-full bg-[#0d5c58] hover:bg-[#094845] active:scale-[0.98] text-white font-semibold py-3.5 px-6 rounded-full shadow-md shadow-teal-950/20 text-xs tracking-wide transition-all duration-150 flex items-center justify-center space-x-2 disabled:opacity-50 cursor-pointer"
+                        >
+                          {loading ? (
+                            <span>Creating Account...</span>
+                          ) : (
+                            <>
+                              <span>Create Account & Continue</span>
+                              <ArrowRight className="w-3.5 h-3.5" />
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </form>
                   )}
                 </div>
