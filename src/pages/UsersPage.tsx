@@ -26,6 +26,8 @@ export const UsersPage: React.FC = () => {
     activityLogs,
     judges,
     teams,
+    activeFestId,
+    currentPortal,
     addUser,
     updateUser,
     deleteUser,
@@ -57,6 +59,11 @@ export const UsersPage: React.FC = () => {
     const s = (search || '').trim().toLowerCase();
     return (users || []).filter((u) => {
       if (!u) return false;
+      // In Fest Admin portal: Never show platform Super Admins and never show users from another fest
+      if (currentPortal !== 'super_admin') {
+        if (u.role === 'super_admin') return false;
+        if (u.festId && u.festId !== activeFestId) return false;
+      }
       const matchesSearch =
         !s ||
         (u.name || '').toLowerCase().includes(s) ||
@@ -69,7 +76,7 @@ export const UsersPage: React.FC = () => {
 
       return true;
     });
-  }, [users, search, roleFilter, statusFilter]);
+  }, [users, search, roleFilter, statusFilter, activeFestId, currentPortal]);
 
   const handleOpenAdd = () => {
     setEditingUser(null);
@@ -170,12 +177,12 @@ export const UsersPage: React.FC = () => {
             className="text-xs bg-white border border-slate-200 rounded px-2.5 py-1.5 text-slate-800"
           >
             <option value="all">All Roles</option>
-            <option value="super_admin">Super Admin</option>
-            <option value="admin">Admin</option>
+            <option value="admin">Fest Admin</option>
             <option value="programme_manager">Programme Manager</option>
             <option value="score_manager">Score Manager</option>
             <option value="judge">Judge</option>
             <option value="team_leader">Team Leader</option>
+            <option value="participant">Participant</option>
           </select>
 
           <select

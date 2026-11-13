@@ -332,6 +332,7 @@ export interface ScheduleSlot {
 
 export interface ActivityLog {
   id: string;
+  festId?: string;
   userId: string;
   userName: string;
   userRole: Role;

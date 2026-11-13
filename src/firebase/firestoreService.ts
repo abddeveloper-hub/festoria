@@ -808,7 +808,7 @@ export async function saveResultToFirestore(result: ApprovedResult): Promise<voi
     try {
       await setDoc(doc(db, 'results', result.id), {
         ...result,
-        festId: 'FEST-01',
+        festId: result.festId || 'FEST-01',
         updatedAt: serverTimestamp()
       }, { merge: true });
     } catch (e) {

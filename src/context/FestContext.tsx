@@ -225,10 +225,13 @@ interface FestContextType {
   categories: FestCategory[];
   teamProgrammeEntries: TeamProgrammeEntry[];
   scores: ScoreSubmission[];
+  allScores?: ScoreSubmission[];
   results: ApprovedResult[];
+  allResults?: ApprovedResult[];
   scheduleSlots: ScheduleSlot[];
   allScheduleSlots?: ScheduleSlot[];
   users: User[];
+  allUsers?: User[];
   setUsers: React.Dispatch<React.SetStateAction<User[]>>;
   activityLogs: ActivityLog[];
   announcements: Announcement[];
@@ -570,6 +573,37 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     return scheduleSlots.filter((s) => (s.festId ? s.festId === activeFestId : activeFestId === 'FEST-01'));
   }, [scheduleSlots, activeFestId, currentPortal]);
 
+  const festUsers = useMemo(() => {
+    if (currentPortal === 'super_admin') return users;
+    const currentFestObj = fests.find((f) => f.id === activeFestId);
+    return (users || []).filter((u) => {
+      if (!u) return false;
+      // Super admin accounts are platform-level and belong strictly in the super admin page
+      if (u.role === 'super_admin') return false;
+      // Only users belonging to this specific active fest
+      if (u.festId) return u.festId === activeFestId;
+      // If user is fest admin of active fest by email matching
+      if ((u.role === 'admin' || u.role === 'fest_admin') && u.email && currentFestObj?.adminEmail && u.email.toLowerCase() === currentFestObj.adminEmail.toLowerCase()) return true;
+      // Legacy users without festId: only include if active fest is FEST-01
+      return activeFestId === 'FEST-01';
+    });
+  }, [users, activeFestId, fests, currentPortal]);
+
+  const festScores = useMemo(() => {
+    if (currentPortal === 'super_admin') return scores;
+    return scores.filter((s) => (s.festId ? s.festId === activeFestId : activeFestId === 'FEST-01'));
+  }, [scores, activeFestId, currentPortal]);
+
+  const festResults = useMemo(() => {
+    if (currentPortal === 'super_admin') return results;
+    return results.filter((r) => (r.festId ? r.festId === activeFestId : activeFestId === 'FEST-01'));
+  }, [results, activeFestId, currentPortal]);
+
+  const festActivityLogs = useMemo(() => {
+    if (currentPortal === 'super_admin') return activityLogs;
+    return activityLogs.filter((a) => (a.festId ? a.festId === activeFestId : activeFestId === 'FEST-01'));
+  }, [activityLogs, activeFestId, currentPortal]);
+
   const activeTeam = useMemo(() => {
     return festTeams.find((t) => t.id === activeTeamId) || festTeams[0];
   }, [festTeams, activeTeamId]);
@@ -909,6 +943,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
   const logActivity = (action: string, targetType: ActivityLog['targetType'], targetId: string | undefined, details: string) => {
     const newLog: ActivityLog = {
       id: `LOG-${Date.now().toString().slice(-6)}`,
+      festId: activeFestId,
       userId: currentUser.id,
       userName: currentUser.name,
       userRole: currentUser.role,
@@ -1291,12 +1326,14 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       const newId = `SC-${Date.now().toString().slice(-4)}`;
       const newScore: ScoreSubmission = {
         ...data,
+        festId: (data as any).festId || activeFestId,
         id: newId,
         totalScore,
         submittedAt: now,
         revisionHistory: [],
       };
       setScores((prev) => [newScore, ...prev]);
+      saveScoreToFirestore(newScore);
       logActivity('SUBMIT_SCORE', 'score', newId, `Submitted score entry for ${data.programmeId} (${totalScore} marks).`);
       addToast('success', 'Score Submitted', 'Score recorded successfully.');
     }
@@ -1407,6 +1444,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
 
       const resObj: ApprovedResult = {
         id: `RES-${programmeId}-${rank}`,
+        festId: programme.festId || activeFestId,
         programmeId,
         rank,
         isTeamProgramme,
@@ -1536,15 +1574,20 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       addToast('error', 'Missing Data', 'User name and email are required.');
       return false;
     }
+    const festTarget = data.festId || activeFestId;
     const targetEmail = (data.email || '').toLowerCase().trim();
-    const exists = (users || []).some((u) => u?.email && u.email.toLowerCase().trim() === targetEmail);
+    const exists = (users || []).some(
+      (u) => (u?.festId ? u.festId === festTarget : festTarget === 'FEST-01') &&
+             u?.email && u.email.toLowerCase().trim() === targetEmail
+    );
     if (exists) {
-      addToast('error', 'Duplicate Email', `User with email ${data.email} already exists.`);
+      addToast('error', 'Duplicate Email', `User with email ${data.email} already exists in this festival.`);
       return false;
     }
     const newId = `USR-${(users.length + 1).toString().padStart(2, '0')}`;
     const newUser: User = {
       ...data,
+      festId: festTarget,
       id: newId,
       createdAt: new Date().toISOString().slice(0, 10),
     };
@@ -1554,7 +1597,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       return updated;
     });
     saveUserToFirestore(newUser).catch(() => {});
-    logActivity('CREATE_USER', 'user', newId, `Created user ${data.name} with role ${data.role}.`);
+    logActivity('CREATE_USER', 'user', newId, `Created user ${data.name} with role ${data.role} for fest ${festTarget}.`);
     addToast('success', 'User Created', `Account for ${data.name} created.`);
     return true;
   };
@@ -3781,13 +3824,16 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
         allProgrammes: programmes,
         categories,
         teamProgrammeEntries,
-        scores,
-        results,
+        scores: festScores,
+        allScores: scores,
+        results: festResults,
+        allResults: results,
         scheduleSlots: festScheduleSlots,
         allScheduleSlots: scheduleSlots,
-        users,
+        users: festUsers,
+        allUsers: users,
         setUsers,
-        activityLogs,
+        activityLogs: festActivityLogs,
         announcements,
         gallery,
         fests,
