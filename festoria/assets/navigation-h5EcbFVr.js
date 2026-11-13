@@ -1,0 +1,1 @@
+var e=()=>`/festoria/`,t=(t=``)=>{let n=e().replace(/\/$/,``),r=t.replace(/^\//,``);return r?(r.startsWith(`?`)||r.startsWith(`#`),`${n}/${r}`):`${n}/`},n=(e=``)=>{window.location.href=t(e)};export{n,t};
