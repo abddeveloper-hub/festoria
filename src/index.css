@@ -124,7 +124,16 @@ textarea {
   will-change: transform;
 }
 
-/* Card sheen shine on hover */
+/* Botanical leaf and organic shape styles */
+@keyframes soft-sway {
+  0% { transform: rotate(0deg); }
+  50% { transform: rotate(1.5deg); }
+  100% { transform: rotate(-1deg); }
+}
+.plant-bounce {
+  animation: soft-sway 6s ease-in-out infinite alternate;
+}
+
 .sheen-effect {
   position: relative;
   overflow: hidden;
