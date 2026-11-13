@@ -289,9 +289,9 @@ export const FestoriaHomePage: React.FC = () => {
       {/* ==================================================================== */}
       {/* 2. HERO SECTION                                                      */}
       {/* ==================================================================== */}
-      <section className="relative pt-8 pb-6 px-5 max-w-lg md:max-w-2xl lg:max-w-4xl mx-auto text-center sm:text-left">
+      <section className="relative pt-10 sm:pt-14 pb-8 px-5 max-w-4xl mx-auto flex flex-col items-center text-center">
         {/* Live Status Badges Stack */}
-        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-4">
+        <div className="flex flex-wrap items-center justify-center gap-2 mb-5">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/90 backdrop-blur-sm border border-emerald-200/80 shadow-xs transition-transform hover:scale-[1.02]">
             <span className="flex h-2 w-2 relative">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -306,18 +306,18 @@ export const FestoriaHomePage: React.FC = () => {
         </div>
 
         {/* Hero Title & Pitch */}
-        <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900 leading-[1.15] mb-3 font-display">
+        <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900 leading-[1.15] mb-4 font-display text-center max-w-3xl">
           Festivals Managed <br />
           <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent">
             Flawlessly & Faster.
           </span>
         </h1>
-        <p className="text-slate-600 text-xs sm:text-sm md:text-base leading-relaxed mb-6 font-normal max-w-xl">
+        <p className="text-slate-600 text-xs sm:text-sm md:text-base leading-relaxed mb-7 font-normal max-w-2xl mx-auto text-center">
           The gold standard for high-energy arts fests, campus tournaments, and inter-college championships. Real-time scores, auto-clash schedules, and instant public micro-portals.
         </p>
 
         {/* Call to Actions with dynamic micro-interactions */}
-        <div className="flex flex-col sm:flex-row gap-2.5 mb-7 max-w-md">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-8 w-full max-w-md mx-auto">
           <button
             type="button"
             onClick={() => openCreateFest('apply')}
@@ -336,7 +336,7 @@ export const FestoriaHomePage: React.FC = () => {
         </div>
 
         {/* Live Fest Metrics Ribbon */}
-        <div className="grid grid-cols-3 gap-2 bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-2xl p-3.5 shadow-sm text-center divide-x divide-slate-100 max-w-lg">
+        <div className="grid grid-cols-3 gap-2 bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-2xl p-4 shadow-sm text-center divide-x divide-slate-100 w-full max-w-lg mx-auto">
           <div className="pr-1">
             <p className="text-lg sm:text-xl font-extrabold text-slate-900 font-display">50k+</p>
             <p className="text-[9px] uppercase font-bold text-slate-400 tracking-wider mt-0.5">Entries Logged</p>
@@ -461,15 +461,15 @@ export const FestoriaHomePage: React.FC = () => {
       {/* 4. FEATURE GRID SECTION (12 FEATURE CARDS WITH SHEEN EFFECT)         */}
       {/* ==================================================================== */}
       <section className="px-5 py-8 max-w-5xl mx-auto" data-purpose="festie-features-grid" id="features">
-        <div className="mb-6">
-          <div className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-emerald-600 mb-1">
+        <div className="mb-8 text-center max-w-2xl mx-auto">
+          <div className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-emerald-600 mb-1.5">
             <Activity className="w-3.5 h-3.5" />
             <span>Built For High Pressure</span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-snug font-display">
             Everything you need to pull off perfection.
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 mt-1.5 max-w-lg mx-auto">
             Engineered for seamless campus arts, debates, dances & athletic championships.
           </p>
         </div>
