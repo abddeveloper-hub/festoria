@@ -406,11 +406,24 @@ export async function saveTeamToFirestore(team: Team): Promise<void> {
     try {
       await setDoc(doc(db, 'teams', team.id), {
         ...team,
-        festId: 'FEST-01',
+        festId: team.festId || 'FEST-01',
         updatedAt: serverTimestamp()
       }, { merge: true });
     } catch (e) {
       console.warn('[Firestore] saveTeamToFirestore error:', e);
+    }
+  }
+}
+
+export async function deleteTeamFromFirestore(teamId: string): Promise<void> {
+  const teams = StorageService.getTeams();
+  StorageService.saveTeams(teams.filter((t) => t.id !== teamId));
+
+  if (isFirebaseConfigured && db) {
+    try {
+      await deleteDoc(doc(db, 'teams', teamId));
+    } catch (e) {
+      console.warn('[Firestore] deleteTeamFromFirestore error:', e);
     }
   }
 }
@@ -686,11 +699,24 @@ export async function saveProgrammeToFirestore(programme: Programme): Promise<vo
     try {
       await setDoc(doc(db, 'programmes', programme.id), {
         ...programme,
-        festId: 'FEST-01',
+        festId: programme.festId || 'FEST-01',
         updatedAt: serverTimestamp()
       }, { merge: true });
     } catch (e) {
       console.warn('[Firestore] saveProgrammeToFirestore error:', e);
+    }
+  }
+}
+
+export async function deleteProgrammeFromFirestore(programmeId: string): Promise<void> {
+  const programmes = StorageService.getProgrammes();
+  StorageService.saveProgrammes(programmes.filter((p) => p.id !== programmeId));
+
+  if (isFirebaseConfigured && db) {
+    try {
+      await deleteDoc(doc(db, 'programmes', programmeId));
+    } catch (e) {
+      console.warn('[Firestore] deleteProgrammeFromFirestore error:', e);
     }
   }
 }

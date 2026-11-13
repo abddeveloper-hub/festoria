@@ -66,8 +66,10 @@ import {
   deleteUserFromFirestore,
   saveParticipantToFirestore,
   saveTeamToFirestore,
+  deleteTeamFromFirestore,
   saveUserToFirestore,
   saveProgrammeToFirestore,
+  deleteProgrammeFromFirestore,
   saveScoreToFirestore,
   saveResultToFirestore,
   saveTeamLeaderInvitation,
@@ -211,20 +213,26 @@ interface FestContextType {
   // Fest-Level Data Collections (for current fest)
   settings: FestSettings;
   teams: Team[];
+  allTeams?: Team[];
+  setTeams?: React.Dispatch<React.SetStateAction<Team[]>>;
   participants: Participant[];
+  allParticipants?: Participant[];
+  setParticipants: React.Dispatch<React.SetStateAction<Participant[]>>;
   judges: Judge[];
+  allJudges?: Judge[];
   programmes: Programme[];
+  allProgrammes?: Programme[];
   categories: FestCategory[];
   teamProgrammeEntries: TeamProgrammeEntry[];
   scores: ScoreSubmission[];
   results: ApprovedResult[];
   scheduleSlots: ScheduleSlot[];
+  allScheduleSlots?: ScheduleSlot[];
   users: User[];
+  setUsers: React.Dispatch<React.SetStateAction<User[]>>;
   activityLogs: ActivityLog[];
   announcements: Announcement[];
   gallery: GalleryItem[];
-  setParticipants: React.Dispatch<React.SetStateAction<Participant[]>>;
-  setUsers: React.Dispatch<React.SetStateAction<User[]>>;
 
   // Platform-Level Collections (Super Admin)
   fests: Fest[];
@@ -536,9 +544,35 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
   const [assignments, setAssignments] = useState<ProgrammeAssignment[]>(() => StorageService.getAssignments());
   const [teamLeaderInvitations, setTeamLeaderInvitations] = useState<TeamLeaderInvitation[]>(() => StorageService.getTeamLeaderInvitations());
 
+  // Scoped views for active festival (multi-tenancy isolation across distinct fests)
+  const festTeams = useMemo(() => {
+    if (currentPortal === 'super_admin') return teams;
+    return teams.filter((t) => (t.festId ? t.festId === activeFestId : activeFestId === 'FEST-01'));
+  }, [teams, activeFestId, currentPortal]);
+
+  const festProgrammes = useMemo(() => {
+    if (currentPortal === 'super_admin') return programmes;
+    return programmes.filter((p) => (p.festId ? p.festId === activeFestId : activeFestId === 'FEST-01'));
+  }, [programmes, activeFestId, currentPortal]);
+
+  const festParticipants = useMemo(() => {
+    if (currentPortal === 'super_admin') return participants;
+    return participants.filter((p) => (p.festId ? p.festId === activeFestId : activeFestId === 'FEST-01'));
+  }, [participants, activeFestId, currentPortal]);
+
+  const festJudges = useMemo(() => {
+    if (currentPortal === 'super_admin') return judges;
+    return judges.filter((j) => (j.festId ? j.festId === activeFestId : activeFestId === 'FEST-01'));
+  }, [judges, activeFestId, currentPortal]);
+
+  const festScheduleSlots = useMemo(() => {
+    if (currentPortal === 'super_admin') return scheduleSlots;
+    return scheduleSlots.filter((s) => (s.festId ? s.festId === activeFestId : activeFestId === 'FEST-01'));
+  }, [scheduleSlots, activeFestId, currentPortal]);
+
   const activeTeam = useMemo(() => {
-    return teams.find((t) => t.id === activeTeamId) || teams[0];
-  }, [teams, activeTeamId]);
+    return festTeams.find((t) => t.id === activeTeamId) || festTeams[0];
+  }, [festTeams, activeTeamId]);
 
   // Participant Portal State
   const [participantTab, setParticipantTab] = useState<ParticipantNavigationTab>(() => {
@@ -559,8 +593,8 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
   }, [activeParticipantId]);
 
   const activeParticipant = useMemo(() => {
-    return participants.find((p) => p.id === activeParticipantId) || participants[0];
-  }, [participants, activeParticipantId]);
+    return festParticipants.find((p) => p.id === activeParticipantId) || festParticipants[0];
+  }, [festParticipants, activeParticipantId]);
 
   // Dashboard filter state
   const [dashboardFilters, setDashboardFilters] = useState({
@@ -944,32 +978,32 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     addToast('info', 'Signed Out', 'You have been successfully signed out.');
   };
 
-  // Dynamic Leaderboard
+  // Dynamic Leaderboard (Scoped to active fest)
   const leaderboard = useMemo(() => {
-    return calculateLeaderboard(teams, results, programmes);
-  }, [teams, results, programmes]);
+    return calculateLeaderboard(festTeams, results, festProgrammes);
+  }, [festTeams, results, festProgrammes]);
 
-  // Dynamic Category Scoreboards (Individual competitions only)
+  // Dynamic Category Scoreboards (Scoped to active fest)
   const getCategoryScoreboard = useCallback(
     (categoryName: string): CategoryIndividualLeaderboardEntry[] => {
-      return calculateCategoryScoreboards(categoryName, participants, teams, results, programmes);
+      return calculateCategoryScoreboards(categoryName, festParticipants, festTeams, results, festProgrammes);
     },
-    [participants, teams, results, programmes]
+    [festParticipants, festTeams, results, festProgrammes]
   );
 
-  // Dynamic Schedule Conflicts
+  // Dynamic Schedule Conflicts (Scoped to active fest)
   const scheduleConflicts = useMemo(() => {
-    return detectScheduleConflicts(programmes, participants);
-  }, [programmes, participants]);
+    return detectScheduleConflicts(festProgrammes, festParticipants);
+  }, [festProgrammes, festParticipants]);
 
-  // Summary Metrics (All dynamic!)
+  // Summary Metrics (Scoped to active fest)
   const summaryStats = useMemo(() => {
-    const totalParticipants = participants.filter((p) => p.status !== 'inactive').length;
-    const totalTeams = teams.filter((t) => t.status === 'active').length;
-    const totalProgrammes = programmes.length;
-    const totalJudges = judges.filter((j) => j.status === 'active').length;
-    const completedProgrammes = programmes.filter((p) => p.status === 'completed').length;
-    const upcomingProgrammes = programmes.filter((p) => p.status === 'scheduled' || p.status === 'ongoing').length;
+    const totalParticipants = festParticipants.filter((p) => p.status !== 'inactive').length;
+    const totalTeams = festTeams.filter((t) => t.status === 'active').length;
+    const totalProgrammes = festProgrammes.length;
+    const totalJudges = festJudges.filter((j) => j.status === 'active').length;
+    const completedProgrammes = festProgrammes.filter((p) => p.status === 'completed').length;
+    const upcomingProgrammes = festProgrammes.filter((p) => p.status === 'scheduled' || p.status === 'ongoing').length;
     const pendingScores = scores.filter((s) => s.status === 'pending' || s.status === 'submitted' || s.status === 'reviewed').length;
     const publishedResults = results.filter((r) => r.published).length;
 
@@ -983,7 +1017,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       pendingScores,
       publishedResults,
     };
-  }, [participants, teams, programmes, judges, scores, results]);
+  }, [festParticipants, festTeams, festProgrammes, festJudges, scores, results]);
 
   // Participant Management
   const addParticipant = (data: Omit<Participant, 'id' | 'createdAt'>): boolean => {
@@ -1086,19 +1120,24 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       addToast('error', 'Permission Denied', 'Only authorized Fest Admins can manage judges.');
       return false;
     }
-    const exists = judges.some((j) => j.email.toLowerCase() === data.email.toLowerCase());
+    const festTarget = (data as any).festId || activeFestId;
+    const exists = judges.some(
+      (j) => ((j as any).festId ? (j as any).festId === festTarget : festTarget === 'FEST-01') &&
+             j.email.toLowerCase() === data.email.toLowerCase()
+    );
     if (exists) {
-      addToast('error', 'Duplicate Judge', `A judge with email ${data.email} already exists.`);
+      addToast('error', 'Duplicate Judge', `A judge with email ${data.email} already exists in this festival.`);
       return false;
     }
     const newId = `JD-0${judges.length + 1}`;
     const newJudge: Judge = {
       ...data,
+      festId: festTarget,
       id: newId,
       createdAt: new Date().toISOString().slice(0, 10),
     };
     setJudges((prev) => [...prev, newJudge]);
-    logActivity('ADD_JUDGE', 'judge', newId, `Added judge ${data.name} (${newId}).`);
+    logActivity('ADD_JUDGE', 'judge', newId, `Added judge ${data.name} (${newId}) to fest ${festTarget}.`);
     addToast('success', 'Judge Created', `${data.name} has been added to the judging panel.`);
     return true;
   };
@@ -1121,22 +1160,29 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       addToast('error', 'Permission Denied', 'Only authorized Fest Admins can manage programmes.');
       return false;
     }
-    const exists = programmes.some((p) => p.code.toLowerCase() === data.code.toLowerCase());
+    const festTarget = data.festId || activeFestId;
+    const exists = programmes.some(
+      (p) => (p.festId ? p.festId === festTarget : festTarget === 'FEST-01') &&
+             p.code.toLowerCase() === data.code.toLowerCase()
+    );
     if (exists) {
-      addToast('error', 'Duplicate Programme Code', `Code ${data.code} is already in use.`);
+      addToast('error', 'Duplicate Programme Code', `Code ${data.code} is already in use in this festival.`);
       return false;
     }
     const newId = `PRG-${(programmes.length + 101).toString()}`;
     const newProgramme: Programme = {
       ...data,
+      festId: festTarget,
       id: newId,
       resultPublished: false,
     };
     setProgrammes((prev) => [...prev, newProgramme]);
+    saveProgrammeToFirestore(newProgramme);
 
     // Also add to schedule slots
     const newSlot: ScheduleSlot = {
       id: `SCH-${(scheduleSlots.length + 1).toString().padStart(2, '0')}`,
+      festId: festTarget,
       programmeId: newId,
       venue: data.venue,
       stage: data.stage,
@@ -1147,15 +1193,20 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     };
     setScheduleSlots((prev) => [...prev, newSlot]);
 
-    logActivity('CREATE_PROGRAMME', 'programme', newId, `Created programme ${data.name} (${data.code}).`);
+    logActivity('CREATE_PROGRAMME', 'programme', newId, `Created programme ${data.name} (${data.code}) for fest ${festTarget}.`);
     addToast('success', 'Programme Added', `${data.name} added successfully.`);
     return true;
   };
 
   const updateProgramme = (id: string, updates: Partial<Programme>) => {
-    setProgrammes((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, ...updates } : p))
-    );
+    setProgrammes((prev) => {
+      const next = prev.map((p) => (p.id === id ? { ...p, ...updates } : p));
+      const updated = next.find((p) => p.id === id);
+      if (updated) {
+        saveProgrammeToFirestore(updated);
+      }
+      return next;
+    });
     // Also sync schedule slot if time/venue changes
     setScheduleSlots((prev) =>
       prev.map((s) => {
@@ -1180,6 +1231,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
   const deleteProgramme = (id: string) => {
     setProgrammes((prev) => prev.filter((p) => p.id !== id));
     setScheduleSlots((prev) => prev.filter((s) => s.programmeId !== id));
+    deleteProgrammeFromFirestore(id);
     logActivity('DELETE_PROGRAMME', 'programme', id, `Deleted programme ${id}.`);
     addToast('info', 'Programme Deleted', 'The programme was deleted.');
   };
@@ -1415,31 +1467,45 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
 
   // Team Management
   const addTeam = (data: Omit<Team, 'id' | 'createdAt'>): boolean => {
-    const exists = teams.some((t) => t.code.toLowerCase() === data.code.toLowerCase());
+    const festTarget = data.festId || activeFestId;
+    const exists = teams.some(
+      (t) => (t.festId ? t.festId === festTarget : festTarget === 'FEST-01') &&
+             t.code.toLowerCase() === data.code.toLowerCase()
+    );
     if (exists) {
-      addToast('error', 'Duplicate Team Code', `Team code "${data.code}" already exists.`);
+      addToast('error', 'Duplicate Team Code', `Team code "${data.code}" already exists in this festival.`);
       return false;
     }
-    const newId = `TM-${(teams.length + 1).toString().padStart(2, '0')}`;
+    const newId = `TM-${Date.now().toString().slice(-4)}`;
     const newTeam: Team = {
       ...data,
+      festId: festTarget,
       id: newId,
       createdAt: new Date().toISOString().slice(0, 10),
     };
     setTeams((prev) => [...prev, newTeam]);
-    logActivity('CREATE_TEAM', 'team', newId, `Created team ${data.name} (${data.code}).`);
+    saveTeamToFirestore(newTeam);
+    logActivity('CREATE_TEAM', 'team', newId, `Created team ${data.name} (${data.code}) for fest ${festTarget}.`);
     addToast('success', 'Team Added', `${data.name} created successfully.`);
     return true;
   };
 
   const updateTeam = (id: string, updates: Partial<Team>) => {
-    setTeams((prev) => prev.map((t) => (t.id === id ? { ...t, ...updates } : t)));
+    setTeams((prev) => {
+      const next = prev.map((t) => (t.id === id ? { ...t, ...updates } : t));
+      const updated = next.find((t) => t.id === id);
+      if (updated) {
+        saveTeamToFirestore(updated);
+      }
+      return next;
+    });
     logActivity('UPDATE_TEAM', 'team', id, `Updated team profile for ${id}.`);
     addToast('success', 'Team Updated', 'Team settings saved.');
   };
 
   const deleteTeam = (id: string) => {
     setTeams((prev) => prev.filter((t) => t.id !== id));
+    deleteTeamFromFirestore(id);
     logActivity('DELETE_TEAM', 'team', id, `Deleted team ${id}.`);
     addToast('info', 'Team Removed', 'Team was deactivated.');
   };
@@ -3703,16 +3769,22 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
         logout,
         hasPermission,
         settings,
-        teams,
-        participants,
+        teams: festTeams,
+        allTeams: teams,
+        setTeams,
+        participants: festParticipants,
+        allParticipants: participants,
         setParticipants,
-        judges,
-        programmes,
+        judges: festJudges,
+        allJudges: judges,
+        programmes: festProgrammes,
+        allProgrammes: programmes,
         categories,
         teamProgrammeEntries,
         scores,
         results,
-        scheduleSlots,
+        scheduleSlots: festScheduleSlots,
+        allScheduleSlots: scheduleSlots,
         users,
         setUsers,
         activityLogs,
