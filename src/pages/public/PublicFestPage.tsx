@@ -2934,7 +2934,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
           />
 
           <div className="fixed inset-y-0 right-0 max-w-full flex pl-8 sm:pl-10 z-50">
-            <div className="w-screen max-w-sm sm:max-w-md bg-white shadow-2xl flex flex-col justify-between border-l border-[#e2e8f0] animate-in slide-in-from-right duration-300">
+            <div className="w-full max-w-sm sm:max-w-md bg-white shadow-2xl flex flex-col justify-between border-l border-[#e2e8f0] animate-in slide-in-from-right duration-300">
               
               {/* Drawer Header */}
               <div className="p-4 sm:p-5 border-b border-[#e2e8f0] flex items-center justify-between bg-[#faf8ff]">

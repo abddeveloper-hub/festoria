@@ -787,11 +787,14 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
   // One-time purge of legacy cached demo data from browser localStorage
   useEffect(() => {
     try {
+      const PURGE_KEY = 'festflow_legacy_demo_purged_v2';
+      if (localStorage.getItem(PURGE_KEY)) {
+        return;
+      }
       const storedFests = localStorage.getItem('festflow_fests');
       if (
         storedFests &&
         (storedFests.includes('Luminaria') ||
-          storedFests.includes('FEST-01') ||
           storedFests.includes('Vibrance') ||
           storedFests.includes('Kalautsav'))
       ) {
@@ -818,6 +821,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
         setComplaints([]);
         setAssignments([]);
       }
+      localStorage.setItem(PURGE_KEY, 'true');
     } catch (e) {
       // ignore
     }

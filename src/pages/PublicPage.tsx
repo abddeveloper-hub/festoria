@@ -1,8 +1,16 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, Suspense, lazy } from 'react';
 import { useFest } from '../context/FestContext';
 import { FestoriaHomePage } from './public/FestoriaHomePage';
-import { PublicFestPage } from './public/PublicFestPage';
-import { InvitationAcceptPage } from './public/InvitationAcceptPage';
+
+const PublicFestPage = lazy(() => import('./public/PublicFestPage').then((m) => ({ default: m.PublicFestPage })));
+const InvitationAcceptPage = lazy(() => import('./public/InvitationAcceptPage').then((m) => ({ default: m.InvitationAcceptPage })));
+
+const PublicPageLoadingFallback: React.FC = () => (
+  <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 text-slate-700">
+    <div className="w-9 h-9 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin" />
+    <p className="mt-3 text-xs font-medium text-slate-500">Loading Festival Portal...</p>
+  </div>
+);
 
 export const PublicPage: React.FC = () => {
   const { activeFestId, fests } = useFest();
@@ -46,12 +54,20 @@ export const PublicPage: React.FC = () => {
 
   // If an invitation token is accessed, render the secure token validation and claim page
   if (isInviteRoute) {
-    return <InvitationAcceptPage />;
+    return (
+      <Suspense fallback={<PublicPageLoadingFallback />}>
+        <InvitationAcceptPage />
+      </Suspense>
+    );
   }
 
   // If a specific fest is targeted (/f/{festId}), render that fest's public page with admin-managed media
   if (targetedFestId) {
-    return <PublicFestPage festId={targetedFestId} />;
+    return (
+      <Suspense fallback={<PublicPageLoadingFallback />}>
+        <PublicFestPage festId={targetedFestId} />
+      </Suspense>
+    );
   }
 
   // Otherwise, render the Central Festoria Homepage (STRICTLY NO PHOTOS, NO VIDEOS, pure modern typography and vector styling)
