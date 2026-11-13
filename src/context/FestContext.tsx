@@ -42,6 +42,7 @@ import {
 import {
   StorageService,
   GUEST_USER,
+  DEFAULT_FEST_CATEGORIES,
   calculateLeaderboard,
   calculateCategoryScoreboards,
   CategoryIndividualLeaderboardEntry,
@@ -223,6 +224,7 @@ interface FestContextType {
   programmes: Programme[];
   allProgrammes?: Programme[];
   categories: FestCategory[];
+  allCategories?: FestCategory[];
   teamProgrammeEntries: TeamProgrammeEntry[];
   scores: ScoreSubmission[];
   allScores?: ScoreSubmission[];
@@ -532,8 +534,58 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       const queryFest = urlParams.get('fest') || urlParams.get('festId');
       if (queryFest) return queryFest;
     }
-    return 'FEST-01';
+    const loggedUser = StorageService.getCurrentUser();
+    if (loggedUser && loggedUser.role !== 'super_admin') {
+      if (loggedUser.festId) return loggedUser.festId;
+      const allFests = StorageService.getFests();
+      const matched = allFests.find(
+        (f) =>
+          (f.adminEmail && loggedUser.email && f.adminEmail.toLowerCase() === loggedUser.email.toLowerCase()) ||
+          (f.adminId && f.adminId === loggedUser.id)
+      );
+      if (matched) return matched.id;
+    }
+    const allFests = StorageService.getFests();
+    if (allFests && allFests.length > 0) {
+      return allFests[allFests.length - 1].id;
+    }
+    return 'FEST-04';
   });
+
+  const activeFest = useMemo(() => {
+    return fests.find((f) => f.id === activeFestId) || fests[0];
+  }, [fests, activeFestId]);
+
+  // Derived settings strictly scoped to the active fest
+  const festSettings = useMemo<FestSettings>(() => {
+    const base = settings;
+    if (!activeFest) return base;
+    return {
+      ...base,
+      festName: activeFest.name || base.festName,
+      festEdition: activeFest.edition || base.festEdition,
+      tagline: activeFest.tagline || base.tagline,
+      startDate: activeFest.startDate || base.startDate,
+      endDate: activeFest.endDate || base.endDate,
+      venue: activeFest.venue || base.venue,
+      organizer: activeFest.institution || base.organizer,
+      contactEmail: activeFest.adminEmail || base.contactEmail,
+      contactPhone: activeFest.adminPhone || base.contactPhone,
+    };
+  }, [activeFest, settings]);
+
+  // Derived categories strictly scoped to the active fest (or default template scoped to this fest)
+  const festCategories = useMemo(() => {
+    if (currentPortal === 'super_admin') return categories;
+    const scoped = (categories || []).filter((c) => (c.festId ? c.festId === activeFestId : activeFestId === 'FEST-01'));
+    if (scoped.length > 0) return scoped;
+
+    return DEFAULT_FEST_CATEGORIES.map((cat: FestCategory) => ({
+      ...cat,
+      id: `${cat.id}_${activeFestId}`,
+      festId: activeFestId,
+    }));
+  }, [categories, activeFestId, currentPortal]);
 
   // Team Leader State
   const [activeTeamId, setActiveTeamId] = useState<string>(() => {
@@ -580,14 +632,27 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       if (!u) return false;
       // Super admin accounts are platform-level and belong strictly in the super admin page
       if (u.role === 'super_admin') return false;
-      // Only users belonging to this specific active fest
+      // If user has a festId, only show if it strictly matches activeFestId
       if (u.festId) return u.festId === activeFestId;
-      // If user is fest admin of active fest by email matching
-      if ((u.role === 'admin' || u.role === 'fest_admin') && u.email && currentFestObj?.adminEmail && u.email.toLowerCase() === currentFestObj.adminEmail.toLowerCase()) return true;
-      // Legacy users without festId: only include if active fest is FEST-01
-      return activeFestId === 'FEST-01';
+      // If user is designated fest admin by email matching or ID
+      if (
+        (u.role === 'admin' || u.role === 'fest_admin') &&
+        ((u.email && currentFestObj?.adminEmail && u.email.toLowerCase() === currentFestObj.adminEmail.toLowerCase()) ||
+         (currentFestObj?.adminId && u.id === currentFestObj.adminId))
+      ) {
+        return true;
+      }
+      // Check if user is linked to a judge or team belonging to activeFestId
+      if (u.linkedJudgeId && judges.some((j) => j.id === u.linkedJudgeId && (!j.festId || j.festId === activeFestId))) {
+        return true;
+      }
+      if (u.linkedTeamId && teams.some((t) => t.id === u.linkedTeamId && (!t.festId || t.festId === activeFestId))) {
+        return true;
+      }
+      // Never leak unassociated or platform accounts into a fest admin page
+      return false;
     });
-  }, [users, activeFestId, fests, currentPortal]);
+  }, [users, activeFestId, fests, currentPortal, judges, teams]);
 
   const festScores = useMemo(() => {
     if (currentPortal === 'super_admin') return scores;
@@ -719,6 +784,100 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     window.addEventListener('popstate', handleUrlChange);
     return () => window.removeEventListener('popstate', handleUrlChange);
   }, []);
+
+  // Synchronize activeFestId with currentUser's festId or matching fest by email/id
+  useEffect(() => {
+    if (!currentUser || currentUser.role === 'super_admin') return;
+    let targetFestId = currentUser.festId;
+    if (!targetFestId) {
+      const matchedFest = fests.find(
+        (f) =>
+          (f.adminEmail && currentUser.email && f.adminEmail.toLowerCase() === currentUser.email.toLowerCase()) ||
+          (f.adminId && f.adminId === currentUser.id)
+      );
+      if (matchedFest) targetFestId = matchedFest.id;
+    }
+    if (targetFestId && activeFestId !== targetFestId) {
+      setActiveFestId(targetFestId);
+      if (!currentUser.festId) {
+        setCurrentUser((prev) => ({ ...prev, festId: targetFestId }));
+      }
+    }
+  }, [currentUser, fests, activeFestId]);
+
+  // Self-healing migration for previously created programmes/categories/teams/participants on laptop
+  useEffect(() => {
+    if (!currentUser || currentUser.role === 'super_admin' || !activeFestId || activeFestId === 'FEST-01') return;
+
+    // 1. Sync programmes that lack festId or have 'FEST-01' fallback
+    const misalignedProgrammes = programmes.filter(
+      (p) => !p.festId || (p.festId === 'FEST-01' && activeFestId !== 'FEST-01')
+    );
+    if (misalignedProgrammes.length > 0) {
+      misalignedProgrammes.forEach((p) => {
+        const aligned: Programme = { ...p, festId: activeFestId };
+        saveProgrammeToFirestore(aligned);
+      });
+      setProgrammes((prev) =>
+        prev.map((p) => (!p.festId || p.festId === 'FEST-01' ? { ...p, festId: activeFestId } : p))
+      );
+    }
+
+    // 2. Sync categories (including custom 'Ground zone', 'Zero zone') to active fest in Firestore
+    const festCatsToSync = categories.filter((c: FestCategory) => c.festId === activeFestId);
+    if (festCatsToSync.length === 0) {
+      const targetCats: FestCategory[] = categories.length > 0 ? categories : DEFAULT_FEST_CATEGORIES;
+      const syncedCats: FestCategory[] = targetCats.map((c: FestCategory) => ({
+        ...c,
+        id: c.id.includes(activeFestId) ? c.id : `${c.id}_${activeFestId}`,
+        festId: activeFestId,
+      }));
+      syncedCats.forEach((cat: FestCategory) => saveCategoryToFirestore(cat));
+      setCategories((prev) => [
+        ...prev.filter((c: FestCategory) => c.festId !== activeFestId),
+        ...syncedCats,
+      ]);
+    } else {
+      const unlinkedCustom = categories.filter(
+        (c: FestCategory) => c.festId !== activeFestId && (c.name === 'Ground zone' || c.name === 'Zero zone' || !c.festId)
+      );
+      if (unlinkedCustom.length > 0) {
+        unlinkedCustom.forEach((c: FestCategory) => {
+          const targetId = c.id.includes(activeFestId) ? c.id : `${c.id}_${activeFestId}`;
+          const alignedCat: FestCategory = { ...c, id: targetId, festId: activeFestId };
+          saveCategoryToFirestore(alignedCat);
+        });
+      }
+    }
+
+    // 3. Sync teams that lack festId or have 'FEST-01' fallback
+    const misalignedTeams = teams.filter(
+      (t) => !t.festId || (t.festId === 'FEST-01' && activeFestId !== 'FEST-01')
+    );
+    if (misalignedTeams.length > 0) {
+      misalignedTeams.forEach((t) => {
+        const aligned: Team = { ...t, festId: activeFestId };
+        saveTeamToFirestore(aligned);
+      });
+      setTeams((prev) =>
+        prev.map((t) => (!t.festId || t.festId === 'FEST-01' ? { ...t, festId: activeFestId } : t))
+      );
+    }
+
+    // 4. Sync participants that lack festId or have 'FEST-01' fallback
+    const misalignedParticipants = participants.filter(
+      (p) => !p.festId || (p.festId === 'FEST-01' && activeFestId !== 'FEST-01')
+    );
+    if (misalignedParticipants.length > 0) {
+      misalignedParticipants.forEach((p) => {
+        const aligned: Participant = { ...p, festId: activeFestId };
+        saveParticipantToFirestore(aligned);
+      });
+      setParticipants((prev) =>
+        prev.map((p) => (!p.festId || p.festId === 'FEST-01' ? { ...p, festId: activeFestId } : p))
+      );
+    }
+  }, [currentUser, activeFestId, programmes, categories, teams, participants]);
 
   // Firebase Live Sync State
   const [firebaseStatus, setFirebaseStatus] = useState<{
@@ -1065,6 +1224,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     const newId = `PT-${(participants.length + 101).toString()}`;
     const newParticipant: Participant = {
       ...data,
+      festId: data.festId || activeFestId,
       id: newId,
       createdAt: new Date().toISOString().slice(0, 10),
     };
@@ -1129,11 +1289,14 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       } else {
         existingEmails.add(item.email.toLowerCase());
         const newId = `PT-${(participants.length + addedCount + 101).toString()}`;
-        toAdd.push({
+        const pObj: Participant = {
           ...item,
+          festId: item.festId || activeFestId,
           id: newId,
           createdAt: new Date().toISOString().slice(0, 10),
-        });
+        };
+        toAdd.push(pObj);
+        saveParticipantToFirestore(pObj);
         addedCount++;
       }
     });
@@ -1636,9 +1799,31 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
   // Settings
   const updateSettings = (newSettings: FestSettings) => {
     setSettings(newSettings);
+    // Also synchronize active fest metadata and pointRules in fests list
+    setFests((prev) =>
+      prev.map((f) => {
+        if (f.id === activeFestId) {
+          const updatedFest: Fest = {
+            ...f,
+            name: newSettings.festName || f.name,
+            edition: newSettings.festEdition || f.edition,
+            tagline: newSettings.tagline || f.tagline,
+            startDate: newSettings.startDate || f.startDate,
+            endDate: newSettings.endDate || f.endDate,
+            venue: newSettings.venue || f.venue,
+            institution: newSettings.organizer || f.institution,
+            adminEmail: newSettings.contactEmail || f.adminEmail,
+            adminPhone: newSettings.contactPhone || f.adminPhone,
+          };
+          saveFestToFirestore(updatedFest);
+          return updatedFest;
+        }
+        return f;
+      })
+    );
     saveFestSettingsToFirestore(activeFestId, newSettings);
-    logActivity('UPDATE_SETTINGS', 'settings', undefined, 'Updated global fest settings & scoring point rules.');
-    addToast('success', 'Settings Saved', 'Fest configuration has been updated.');
+    logActivity('UPDATE_SETTINGS', 'settings', undefined, `Updated settings for ${newSettings.festName} (${activeFestId}).`);
+    addToast('success', 'Settings Saved', `${newSettings.festName} configuration has been updated.`);
   };
 
   const addAnnouncement = (data: Omit<Announcement, 'id' | 'createdAt' | 'author'>) => {
@@ -2361,9 +2546,6 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     }
   };
 
-  const activeFest = useMemo(() => {
-    return fests.find((f) => f.id === activeFestId) || fests[0];
-  }, [fests, activeFestId]);
 
   // Team Leader Portal Mutators
   const submitComplaint = (data: Omit<Complaint, 'id' | 'submittedAt' | 'updatedAt' | 'statusHistory'>) => {
@@ -2601,51 +2783,63 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       addToast('error', 'Invalid Name', 'Category name is required.');
       return false;
     }
-    if (categories.some((c) => c.name.toLowerCase() === trimmed.toLowerCase())) {
+    const currentFestCats = festCategories;
+    if (currentFestCats.some((c: FestCategory) => c.name.toLowerCase() === trimmed.toLowerCase())) {
       addToast('error', 'Category Exists', `Category "${trimmed}" already exists.`);
       return false;
     }
-    const id = `CAT-${Date.now().toString().slice(-6)}`;
+    const targetFest = catData.festId || activeFestId;
+    const id = `CAT-${targetFest}-${Date.now().toString().slice(-6)}`;
     const newCat: FestCategory = {
       ...catData,
       id,
       name: trimmed,
-      festId: catData.festId || activeFestId || 'FEST-01',
+      festId: targetFest,
       enabled: catData.enabled ?? true,
       createdAt: new Date().toISOString(),
     };
     setCategories((prev) => [...prev, newCat]);
     await saveCategoryToFirestore(newCat);
-    logActivity('CREATE_CATEGORY', 'settings', id, `Created category "${trimmed}".`);
+    logActivity('CREATE_CATEGORY', 'settings', id, `Created category "${trimmed}" for fest ${targetFest}.`);
     addToast('success', 'Category Created', `Category "${trimmed}" successfully added.`);
     return true;
   };
 
   const updateCategory = async (id: string, updates: Partial<FestCategory>): Promise<void> => {
-    const existing = categories.find((c) => c.id === id);
+    const targetFest = activeFestId || 'FEST-04';
+    const existing = festCategories.find((c: FestCategory) => c.id === id) || categories.find((c: FestCategory) => c.id === id);
     const oldName = existing?.name;
     const newName = updates.name?.trim();
 
-    setCategories((prev) =>
-      prev.map((c) => {
-        if (c.id === id) {
-          const updated = {
-            ...c,
-            ...updates,
-            name: newName || c.name,
-            updatedAt: new Date().toISOString(),
-          };
-          saveCategoryToFirestore(updated);
-          return updated;
-        }
-        return c;
-      })
-    );
+    // Ensure category ID is scoped to active fest so it doesn't collide with default templates or other fests
+    const effectiveId = id.includes(targetFest) ? id : `${id}_${targetFest}`;
+
+    const updated: FestCategory = {
+      ...(existing || {}),
+      ...updates,
+      id: effectiveId,
+      festId: targetFest,
+      name: newName || existing?.name || '',
+      enabled: updates.enabled ?? existing?.enabled ?? true,
+      createdAt: existing?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    setCategories((prev) => {
+      const exists = prev.some((c: FestCategory) => c.id === effectiveId);
+      if (exists) {
+        return prev.map((c: FestCategory) => (c.id === effectiveId ? updated : c));
+      }
+      return [...prev, updated];
+    });
+
+    await saveCategoryToFirestore(updated);
 
     // If category name was renamed, cascade updates across programmes, participants, and entries
     if (oldName && newName && oldName.toLowerCase() !== newName.toLowerCase()) {
       setProgrammes((prev) =>
         prev.map((prg) => {
+          if (prg.festId && prg.festId !== targetFest) return prg;
           let modified = false;
           let cat = prg.category;
           let eligible = prg.eligibleCategories;
@@ -2672,6 +2866,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
 
       setParticipants((prev) =>
         prev.map((p) => {
+          if (p.festId && p.festId !== targetFest) return p;
           if (p.category?.toLowerCase() === oldName.toLowerCase()) {
             const updatedP = { ...p, category: newName };
             saveParticipantToFirestore(updatedP);
@@ -2683,6 +2878,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
 
       setTeamProgrammeEntries((prev) =>
         prev.map((entry) => {
+          if (entry.festId && entry.festId !== targetFest) return entry;
           if (entry.categoryId?.toLowerCase() === oldName.toLowerCase()) {
             const updatedEntry = { ...entry, categoryId: newName };
             saveTeamProgrammeEntryToFirestore(updatedEntry);
@@ -2692,7 +2888,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
         })
       );
 
-      logActivity('UPDATE_CATEGORY', 'settings', id, `Renamed category from "${oldName}" to "${newName}".`);
+      logActivity('UPDATE_CATEGORY', 'settings', effectiveId, `Renamed category from "${oldName}" to "${newName}".`);
       addToast('success', 'Category Renamed', `Category "${oldName}" renamed to "${newName}". Associated records updated.`);
     } else {
       addToast('info', 'Category Updated', 'Category settings saved.');
@@ -2700,28 +2896,41 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
   };
 
   const deleteCategory = async (id: string): Promise<void> => {
-    const cat = categories.find((c) => c.id === id);
+    const targetFest = activeFestId || 'FEST-04';
+    const cat = festCategories.find((c: FestCategory) => c.id === id) || categories.find((c: FestCategory) => c.id === id);
     if (!cat) return;
-    if (cat.isSystem) {
+    if (cat.isSystem && !id.includes(targetFest)) {
       addToast('warning', 'System Protected', 'System default categories cannot be removed.');
       return;
     }
-    setCategories((prev) => prev.filter((c) => c.id !== id));
-    await deleteCategoryFromFirestore(id, activeFestId);
+    setCategories((prev) => prev.filter((c: FestCategory) => c.id !== id && c.id !== `${id}_${targetFest}`));
+    await deleteCategoryFromFirestore(id, targetFest);
     addToast('info', 'Category Removed', `Category "${cat.name}" removed.`);
   };
 
   const toggleGeneralCategory = async (enabled: boolean): Promise<void> => {
-    setCategories((prev) =>
-      prev.map((c) => {
-        if (c.isGeneral || c.id === 'CAT-GEN') {
-          const updated = { ...c, enabled, updatedAt: new Date().toISOString() };
-          saveCategoryToFirestore(updated);
-          return updated;
-        }
-        return c;
-      })
-    );
+    const targetFest = activeFestId || 'FEST-04';
+    const genId = `CAT-GEN_${targetFest}`;
+    const existing = festCategories.find((c: FestCategory) => c.isGeneral || c.id === 'CAT-GEN' || c.id === genId);
+    const updatedGen: FestCategory = {
+      id: genId,
+      festId: targetFest,
+      name: 'General',
+      description: 'Open to participants of any age or classification without minimum or maximum age limit.',
+      isGeneral: true,
+      enabled,
+      isSystem: true,
+      createdAt: existing?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    setCategories((prev) => {
+      const exists = prev.some((c: FestCategory) => c.id === genId);
+      if (exists) {
+        return prev.map((c: FestCategory) => (c.id === genId ? updatedGen : c));
+      }
+      return [...prev, updatedGen];
+    });
+    await saveCategoryToFirestore(updatedGen);
     updateSettings({ ...settings, generalCategoryEnabled: enabled });
     addToast('info', 'General Category', `General Category ${enabled ? 'Enabled' : 'Disabled'}.`);
   };
@@ -3811,7 +4020,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
         switchCurrentUser,
         logout,
         hasPermission,
-        settings,
+        settings: festSettings,
         teams: festTeams,
         allTeams: teams,
         setTeams,
@@ -3822,7 +4031,8 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
         allJudges: judges,
         programmes: festProgrammes,
         allProgrammes: programmes,
-        categories,
+        categories: festCategories,
+        allCategories: categories,
         teamProgrammeEntries,
         scores: festScores,
         allScores: scores,

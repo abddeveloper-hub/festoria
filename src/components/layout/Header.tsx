@@ -199,16 +199,6 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
 
       {/* Right: Actions, Public Link, and Role Switcher */}
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Team Leader Portal Button */}
-        <button
-          onClick={() => switchPortal('team_leader')}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded hover:bg-slate-50 hover:border-slate-300 transition-colors"
-          title="Open Team Leader Portal"
-        >
-          <Trophy className="w-3.5 h-3.5 text-slate-500" />
-          <span className="hidden sm:inline">Team Leader Portal</span>
-        </button>
-
         {/* View Public Portal Button */}
         <button
           onClick={() => {

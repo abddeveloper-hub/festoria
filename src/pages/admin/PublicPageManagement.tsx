@@ -40,15 +40,16 @@ import {
 import { PublicFestPage } from '../public/PublicFestPage';
 
 export const PublicPageManagement: React.FC = () => {
-  const { activeFestId, settings, addToast } = useFest();
-  const currentFestId = activeFestId || 'FEST-01';
+  const { activeFestId, activeFest, settings, addToast } = useFest();
+  const currentFestId = activeFest?.id || activeFestId || 'FEST-04';
+  const festName = activeFest?.name || settings.festName;
 
   const [activeSubTab, setActiveSubTab] = useState<
     'hero' | 'logo' | 'photos' | 'gallery' | 'content' | 'preview'
   >('hero');
 
   const [pageData, setPageData] = useState<FestPublicPageData>(() =>
-    getDefaultFestPublicPage(currentFestId, settings.festName)
+    getDefaultFestPublicPage(currentFestId, festName, activeFest)
   );
 
   const [loading, setLoading] = useState(true);
@@ -57,15 +58,17 @@ export const PublicPageManagement: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Load draft data on mount
+  // Load draft data on mount or when active fest changes
   useEffect(() => {
     let isMounted = true;
     async function loadData() {
       setLoading(true);
       try {
-        const draft = await fetchDraftFestPage(currentFestId, settings.festName);
+        const draft = await fetchDraftFestPage(currentFestId, festName);
         if (isMounted && draft) {
           setPageData(draft);
+        } else if (isMounted) {
+          setPageData(getDefaultFestPublicPage(currentFestId, festName, activeFest));
         }
       } catch (err) {
         console.warn('Failed to load draft:', err);
@@ -77,7 +80,7 @@ export const PublicPageManagement: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [currentFestId, settings.festName]);
+  }, [currentFestId, festName, activeFest]);
 
   // Handle Save Draft
   const handleSaveDraft = async () => {
@@ -102,7 +105,7 @@ export const PublicPageManagement: React.FC = () => {
     try {
       await publishFestPage(currentFestId, pageData);
       setStatusMessage({ type: 'success', text: 'Public page published! All changes are now live.' });
-      addToast('success', 'Published Live', `Published public fest page for ${settings.festName}!`);
+      addToast('success', 'Published Live', `Published public fest page for ${festName}!`);
     } catch (err: any) {
       setStatusMessage({ type: 'error', text: err.message || 'Failed to publish changes.' });
       addToast('error', 'Error', 'Failed to publish public changes.');
@@ -278,11 +281,14 @@ export const PublicPageManagement: React.FC = () => {
               <Globe className="w-4 h-4" />
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight text-slate-900">
-                Public Page Management
+              <h1 className="text-xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+                <span>Public Page Management</span>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
+                  {festName} ({currentFestId})
+                </span>
               </h1>
               <p className="text-xs text-slate-500 font-medium">
-                Manage hero video, PNG logo, and curated photos for your public portal (/f/{currentFestId})
+                Manage hero media, logo, content, and photos for {festName} (/f/{currentFestId})
               </p>
             </div>
           </div>

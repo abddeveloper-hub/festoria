@@ -224,52 +224,6 @@ export const SuperAdminHeader: React.FC<SuperAdminHeaderProps> = ({ setMobileOpe
 
         {/* Right: Actions, Notifications, Role Switcher */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Quick Fest Selector for Fest Admin jump */}
-          <div className="relative hidden xl:block">
-            <button
-              onClick={() => setShowFestSelector(!showFestSelector)}
-              className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium border border-slate-200 rounded bg-slate-50 text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-            >
-              <Building2 className="w-3.5 h-3.5 text-slate-500" />
-              <span>Fest Admin Mode</span>
-              <ChevronDown className="w-3 h-3 text-slate-400" />
-            </button>
-
-            {showFestSelector && (
-              <div className="absolute right-0 mt-1.5 w-60 bg-white border border-slate-200 rounded shadow-lg p-1 z-50 text-xs">
-                <div className="px-2 py-1 text-[10px] font-semibold text-slate-400 uppercase">
-                  Select Fest to Manage
-                </div>
-                {fests.map((f) => (
-                  <button
-                    key={f.id}
-                    onClick={() => {
-                      setShowFestSelector(false);
-                      switchPortal('fest_admin', f.id);
-                    }}
-                    className="w-full text-left px-2 py-1.5 hover:bg-slate-50 rounded flex items-center justify-between"
-                  >
-                    <div className="truncate">
-                      <div className="font-medium text-slate-900 truncate">{f.name}</div>
-                      <div className="text-[10px] text-slate-400 truncate">{f.institution}</div>
-                    </div>
-                    <span className="text-[10px] font-mono px-1 rounded bg-slate-100 text-slate-600 ml-1.5">{f.id}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Quick Team Leader Portal Jump */}
-          <button
-            onClick={() => switchPortal('team_leader')}
-            className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium border border-slate-200 rounded bg-slate-50 text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-            title="Open Team Leader Portal"
-          >
-            <Trophy className="w-3.5 h-3.5 text-slate-500" />
-            <span>Team Leader</span>
-          </button>
-
           {/* Notifications Popover */}
           <div className="relative">
             <button

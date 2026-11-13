@@ -131,14 +131,6 @@ export const FestMonitoringPage: React.FC = () => {
                 ))}
               </select>
             </div>
-
-            <button
-              onClick={() => switchPortal('fest_admin', currentFest?.id)}
-              className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-medium"
-            >
-              <span>Fest Admin Portal</span>
-              <ExternalLink className="w-3 h-3 text-slate-400" />
-            </button>
           </div>
         </div>
 

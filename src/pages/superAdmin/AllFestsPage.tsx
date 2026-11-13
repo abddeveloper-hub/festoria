@@ -313,13 +313,6 @@ export const AllFestsPage: React.FC = () => {
                     <span>Edit</span>
                   </button>
                   <button
-                    onClick={() => switchPortal('fest_admin', fest.id)}
-                    className="px-2.5 py-1 text-xs font-semibold bg-slate-900 text-white rounded hover:bg-slate-800 inline-flex items-center gap-1"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    <span>Admin Panel</span>
-                  </button>
-                  <button
                     onClick={() => {
                       setDeleteModalFest(fest);
                       setDeleteConfirmationText('');
@@ -431,14 +424,6 @@ export const AllFestsPage: React.FC = () => {
                           className="p-1 rounded border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-
-                        <button
-                          onClick={() => switchPortal('fest_admin', fest.id)}
-                          title="Enter Fest Admin Panel"
-                          className="p-1 rounded border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
                         </button>
 
                         {fest.status === 'suspended' ? (

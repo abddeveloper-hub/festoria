@@ -253,7 +253,7 @@ export const ShareFestPage: React.FC = () => {
                 Share Fest & Invitation System
               </h1>
               <p className="text-xs text-slate-500 font-medium">
-                {settings.festName} ({activeFestId}) • Secure, tokenized role links for participants, judges & team leaders
+                {activeFest?.name || settings.festName} ({activeFestId}) • Secure, tokenized role links for participants, judges & team leaders
               </p>
             </div>
           </div>
@@ -330,7 +330,7 @@ export const ShareFestPage: React.FC = () => {
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
           <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Active Fest</div>
           <div className="text-lg font-black text-slate-900 mt-1">{activeFestId}</div>
-          <div className="text-[11px] text-indigo-600 font-medium truncate mt-0.5">{settings.festName}</div>
+          <div className="text-[11px] text-indigo-600 font-medium truncate mt-0.5">{activeFest?.name || settings.festName}</div>
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
@@ -447,7 +447,7 @@ export const ShareFestPage: React.FC = () => {
                 2. Participant Registration
               </h2>
               <p className="text-xs text-slate-500 mt-1">
-                Direct onboarding link that pre-binds contestant registration directly to <strong>{settings.festName}</strong> ({activeFestId}). Preserves full admin approval workflow.
+                Direct onboarding link that pre-binds contestant registration directly to <strong>{activeFest?.name || settings.festName}</strong> ({activeFestId}). Preserves full admin approval workflow.
               </p>
             </div>
 
@@ -484,7 +484,7 @@ export const ShareFestPage: React.FC = () => {
                 onClick={() =>
                   handleShareWhatsApp(
                     participantRegisterUrl,
-                    `🏆 Register now as a participant for *${settings.festName}*! Click to complete your official registration:`
+                    `🏆 Register now as a participant for *${activeFest?.name || settings.festName}*! Click to complete your official registration:`
                   )
                 }
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors shadow-2xs"
@@ -772,7 +772,7 @@ export const ShareFestPage: React.FC = () => {
         <div className="text-xs text-slate-600 space-y-1">
           <p className="font-bold text-slate-900">Festoria Security & Access Safeguards</p>
           <p>
-            • Every role link is bound strictly to <strong>{settings.festName} ({activeFestId})</strong> and cannot access other collegiate fests.
+            • Every role link is bound strictly to <strong>{activeFest?.name || settings.festName} ({activeFestId})</strong> and cannot access other collegiate fests.
           </p>
           <p>
             • Permissions are verified strictly on the server upon password authentication. Knowing an invitation URL never grants automatic access.

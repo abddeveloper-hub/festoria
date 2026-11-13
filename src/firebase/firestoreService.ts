@@ -377,10 +377,12 @@ export async function saveUserToFirestore(user: User): Promise<void> {
 // ==========================================
 // 3. TEAMS SERVICE
 // ==========================================
-export async function fetchTeams(festId: string = 'FEST-01'): Promise<Team[]> {
+export async function fetchTeams(festId?: string): Promise<Team[]> {
   if (isFirebaseConfigured && db) {
     try {
-      const q = query(collection(db, 'teams'), where('festId', '==', festId));
+      const q = festId
+        ? query(collection(db, 'teams'), where('festId', '==', festId))
+        : collection(db, 'teams');
       const snap = await getDocs(q);
       if (!snap.empty) {
         return snap.docs.map((d) => d.data() as Team);
@@ -404,11 +406,11 @@ export async function saveTeamToFirestore(team: Team): Promise<void> {
 
   if (isFirebaseConfigured && db) {
     try {
-      await setDoc(doc(db, 'teams', team.id), {
+      await setDoc(doc(db, 'teams', team.id), cleanFirestoreData({
         ...team,
-        festId: team.festId || 'FEST-01',
+        festId: team.festId,
         updatedAt: serverTimestamp()
-      }, { merge: true });
+      }), { merge: true });
     } catch (e) {
       console.warn('[Firestore] saveTeamToFirestore error:', e);
     }
@@ -431,7 +433,7 @@ export async function deleteTeamFromFirestore(teamId: string): Promise<void> {
 // ==========================================
 // 4. PARTICIPANTS SERVICE
 // ==========================================
-export async function fetchParticipants(_festId: string = 'FEST-01'): Promise<Participant[]> {
+export async function fetchParticipants(_festId?: string): Promise<Participant[]> {
   if (isFirebaseConfigured && db) {
     try {
       const snap = await getDocs(collection(db, 'participants'));
@@ -463,11 +465,11 @@ export async function saveParticipantToFirestore(participant: Participant): Prom
 
   if (isFirebaseConfigured && db) {
     try {
-      await setDoc(doc(db, 'participants', participant.id), {
+      await setDoc(doc(db, 'participants', participant.id), cleanFirestoreData({
         ...participant,
-        festId: participant.festId || 'FEST-01',
+        festId: participant.festId,
         updatedAt: serverTimestamp()
-      }, { merge: true });
+      }), { merge: true });
     } catch (e) {
       console.warn('[Firestore] saveParticipantToFirestore error:', e);
     }
@@ -671,7 +673,7 @@ export function subscribeToFestParticipantRequests(
 // ==========================================
 // 5. PROGRAMMES SERVICE
 // ==========================================
-export async function fetchProgrammes(_festId: string = 'FEST-01'): Promise<Programme[]> {
+export async function fetchProgrammes(_festId?: string): Promise<Programme[]> {
   if (isFirebaseConfigured && db) {
     try {
       const snap = await getDocs(collection(db, 'programmes'));
@@ -697,11 +699,11 @@ export async function saveProgrammeToFirestore(programme: Programme): Promise<vo
 
   if (isFirebaseConfigured && db) {
     try {
-      await setDoc(doc(db, 'programmes', programme.id), {
+      await setDoc(doc(db, 'programmes', programme.id), cleanFirestoreData({
         ...programme,
-        festId: programme.festId || 'FEST-01',
+        festId: programme.festId,
         updatedAt: serverTimestamp()
-      }, { merge: true });
+      }), { merge: true });
     } catch (e) {
       console.warn('[Firestore] saveProgrammeToFirestore error:', e);
     }
@@ -756,11 +758,11 @@ export async function saveScoreToFirestore(score: ScoreSubmission): Promise<void
 
   if (isFirebaseConfigured && db) {
     try {
-      await setDoc(doc(db, 'scores', score.id), {
+      await setDoc(doc(db, 'scores', score.id), cleanFirestoreData({
         ...score,
-        festId: (score as any).festId || 'FEST-01',
+        festId: (score as any).festId,
         updatedAt: serverTimestamp()
-      }, { merge: true });
+      }), { merge: true });
     } catch (e) {
       console.warn('[Firestore] saveScoreToFirestore error:', e);
     }
@@ -806,11 +808,11 @@ export async function saveResultToFirestore(result: ApprovedResult): Promise<voi
 
   if (isFirebaseConfigured && db) {
     try {
-      await setDoc(doc(db, 'results', result.id), {
+      await setDoc(doc(db, 'results', result.id), cleanFirestoreData({
         ...result,
-        festId: result.festId || 'FEST-01',
+        festId: result.festId,
         updatedAt: serverTimestamp()
-      }, { merge: true });
+      }), { merge: true });
     } catch (e) {
       console.warn('[Firestore] saveResultToFirestore error:', e);
     }
@@ -963,11 +965,11 @@ export async function saveProgrammeAssignmentToFirestore(assignment: ProgrammeAs
 
   if (isFirebaseConfigured && db) {
     try {
-      await setDoc(doc(db, 'programme_assignments', assignment.id), {
+      await setDoc(doc(db, 'programme_assignments', assignment.id), cleanFirestoreData({
         ...assignment,
-        festId: assignment.festId || 'FEST-01',
+        festId: assignment.festId,
         updatedAt: serverTimestamp()
-      }, { merge: true });
+      }), { merge: true });
     } catch (e) {
       console.warn('[Firestore] saveProgrammeAssignmentToFirestore error:', e);
     }
@@ -990,7 +992,7 @@ export async function deleteProgrammeAssignmentFromFirestore(assignmentId: strin
 // ==========================================
 // 10. COMPLAINTS & APPEALS SERVICE
 // ==========================================
-export async function fetchComplaints(_festId: string = 'FEST-01'): Promise<Complaint[]> {
+export async function fetchComplaints(_festId?: string): Promise<Complaint[]> {
   if (isFirebaseConfigured && db) {
     try {
       const auth = getFirebaseAuth();
@@ -1022,11 +1024,11 @@ export async function saveComplaintToFirestore(complaint: Complaint): Promise<vo
 
   if (isFirebaseConfigured && db) {
     try {
-      await setDoc(doc(db, 'complaints', complaint.id), {
+      await setDoc(doc(db, 'complaints', complaint.id), cleanFirestoreData({
         ...complaint,
-        festId: 'FEST-01',
+        festId: (complaint as any).festId,
         updatedAt: serverTimestamp()
-      }, { merge: true });
+      }), { merge: true });
     } catch (e) {
       console.warn('[Firestore] saveComplaintToFirestore error:', e);
     }
@@ -1059,7 +1061,7 @@ export async function updateComplaintInFirestore(
 // ==========================================
 // 11. ANNOUNCEMENTS SERVICE
 // ==========================================
-export async function fetchAnnouncements(_festId: string = 'FEST-01'): Promise<Announcement[]> {
+export async function fetchAnnouncements(_festId?: string): Promise<Announcement[]> {
   if (isFirebaseConfigured && db) {
     try {
       const snap = await getDocs(collection(db, 'announcements'));
@@ -1085,11 +1087,11 @@ export async function saveAnnouncementToFirestore(announcement: Announcement): P
 
   if (isFirebaseConfigured && db) {
     try {
-      await setDoc(doc(db, 'announcements', announcement.id), {
+      await setDoc(doc(db, 'announcements', announcement.id), cleanFirestoreData({
         ...announcement,
-        festId: 'FEST-01',
+        festId: (announcement as any).festId,
         createdAt: serverTimestamp()
-      }, { merge: true });
+      }), { merge: true });
     } catch (e) {
       console.warn('[Firestore] saveAnnouncementToFirestore error:', e);
     }
@@ -1113,12 +1115,12 @@ export async function deleteAnnouncementFromFirestore(announcementId: string): P
 // 12. FEST SETTINGS SERVICE
 // ==========================================
 export async function saveFestSettingsToFirestore(
-  festId: string = 'FEST-01',
+  festId: string,
   settings: FestSettings
 ): Promise<void> {
   StorageService.saveSettings(settings);
 
-  if (isFirebaseConfigured && db) {
+  if (isFirebaseConfigured && db && festId) {
     try {
       await setDoc(doc(db, 'fest_settings', festId), cleanFirestoreData({
         ...settings,
@@ -1518,12 +1520,12 @@ export async function fetchFestApplicationsByPhone(phone: string): Promise<FestR
 // PUBLIC FEST PAGE MEDIA & CONTENT MANAGEMENT
 // ==========================================
 
-export function getDefaultFestPublicPage(festId: string, festName?: string): FestPublicPageData {
+export function getDefaultFestPublicPage(festId: string, festName?: string, festDetails?: any): FestPublicPageData {
   return {
     festId,
     hero: {
       heading: festName ? `Welcome to ${festName}` : 'Celebrate Passion, Talent & Innovation',
-      description: 'The premier inter-collegiate annual cultural and technical championship.',
+      description: festDetails?.description || 'The premier inter-collegiate annual cultural and technical championship.',
       primaryCtaText: 'Register Now',
       primaryCtaLink: '#register',
       secondaryCtaText: 'View Schedule',
@@ -1538,13 +1540,13 @@ export function getDefaultFestPublicPage(festId: string, festName?: string): Fes
     content: {
       welcomeTitle: 'Official Festival Portal',
       welcomeMessage: 'Join thousands of delegates, participants, and spectators across multiple stages and auditoriums.',
-      aboutFest: 'A multi-day symposium of performing arts, literary contests, design hackathons, and intellectual debates.',
-      venueInfo: 'Grand Campus Convention Center & Amphitheatre',
-      contactEmail: 'abdwahidbc@gmail.com',
-      contactPhone: '9844691633',
-      contactInstagram: 'abd_l_wahid_',
+      aboutFest: festDetails?.description || 'A multi-day symposium of performing arts, literary contests, design hackathons, and intellectual debates.',
+      venueInfo: festDetails?.venue || 'Campus Convention Grounds',
+      contactEmail: festDetails?.adminEmail || 'contact@festoria.app',
+      contactPhone: festDetails?.adminPhone || '',
+      contactInstagram: '',
       highlights: [
-        'Over 40+ accredited collegiate events and competitions',
+        'Accredited collegiate events and competitions',
         'Official transparent judge scoring with real-time ratifications',
         'Certified medals and university honorarium trophies'
       ]
@@ -1558,7 +1560,8 @@ export function getDefaultFestPublicPage(festId: string, festName?: string): Fes
  * Fetches the published public fest page (viewable by all visitors).
  */
 export async function fetchPublishedFestPage(festId: string, festName?: string): Promise<FestPublicPageData> {
-  const cleanId = (festId || 'FEST-01').trim();
+  const cleanId = (festId || '').trim();
+  if (!cleanId) return getDefaultFestPublicPage('FEST-01', festName);
   const pageDocId = `${cleanId}_published`;
 
   if (isFirebaseConfigured && db) {
@@ -1587,7 +1590,8 @@ export async function fetchPublishedFestPage(festId: string, festName?: string):
  * Fetches the draft fest page for the Fest Admin to edit and preview.
  */
 export async function fetchDraftFestPage(festId: string, festName?: string): Promise<FestPublicPageData> {
-  const cleanId = (festId || 'FEST-01').trim();
+  const cleanId = (festId || '').trim();
+  if (!cleanId) return getDefaultFestPublicPage('FEST-01', festName);
   const draftDocId = `${cleanId}_draft`;
 
   if (isFirebaseConfigured && db) {
@@ -1617,7 +1621,8 @@ export async function fetchDraftFestPage(festId: string, festName?: string): Pro
  * Saves draft changes made by Fest Admin without publishing to public visitors.
  */
 export async function saveDraftFestPage(festId: string, pageData: FestPublicPageData): Promise<void> {
-  const cleanId = (festId || 'FEST-01').trim();
+  const cleanId = (festId || '').trim();
+  if (!cleanId) return;
   const draftDocId = `${cleanId}_draft`;
   const updated: FestPublicPageData = {
     ...pageData,
@@ -1627,9 +1632,10 @@ export async function saveDraftFestPage(festId: string, pageData: FestPublicPage
 
   if (isFirebaseConfigured && db) {
     try {
-      await setDoc(doc(db, 'fest_public_pages', draftDocId), updated, { merge: true });
+      await setDoc(doc(db, 'fest_public_pages', draftDocId), cleanFirestoreData(updated), { merge: true });
     } catch (e) {
       console.warn('[Firestore] saveDraftFestPage error:', e);
+      throw e;
     }
   }
 
@@ -1642,7 +1648,8 @@ export async function saveDraftFestPage(festId: string, pageData: FestPublicPage
  * Publishes draft changes to the live public-facing website.
  */
 export async function publishFestPage(festId: string, pageData: FestPublicPageData): Promise<void> {
-  const cleanId = (festId || 'FEST-01').trim();
+  const cleanId = (festId || '').trim();
+  if (!cleanId) return;
   const draftDocId = `${cleanId}_draft`;
   const publishedDocId = `${cleanId}_published`;
   const nowIso = new Date().toISOString();
@@ -1657,10 +1664,17 @@ export async function publishFestPage(festId: string, pageData: FestPublicPageDa
 
   if (isFirebaseConfigured && db) {
     try {
-      await setDoc(doc(db, 'fest_public_pages', publishedDocId), published);
-      await setDoc(doc(db, 'fest_public_pages', draftDocId), published);
+      await setDoc(doc(db, 'fest_public_pages', publishedDocId), cleanFirestoreData(published));
+      await setDoc(doc(db, 'fest_public_pages', draftDocId), cleanFirestoreData(published));
+      try {
+        await updateDoc(doc(db, 'fests', cleanId), {
+          publicPagePublished: true,
+          updatedAt: serverTimestamp()
+        });
+      } catch {}
     } catch (e) {
       console.warn('[Firestore] publishFestPage error:', e);
+      throw e;
     }
   }
 
@@ -1745,7 +1759,7 @@ export async function createFestInvitation(data: {
   createdByAdminName: string;
   notes?: string;
 }): Promise<FestInvitation> {
-  const festId = (data.festId || 'FEST-01').trim();
+  const festId = (data.festId || '').trim();
   const tokenPrefix = data.role === 'judge' ? 'tok_jd' : 'tok_tl';
   const token = generateInvitationToken(tokenPrefix);
   const invId = `INV-${data.role === 'judge' ? 'JD' : 'TL'}-${Date.now().toString(36).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`;
@@ -1777,7 +1791,7 @@ export async function createFestInvitation(data: {
   // 1. Save in Firestore if configured
   if (isFirebaseConfigured && db) {
     try {
-      await setDoc(doc(db, 'fest_invitations', invId), invitation);
+      await setDoc(doc(db, 'fest_invitations', invId), cleanFirestoreData(invitation));
     } catch (e) {
       console.warn('[Firestore] createFestInvitation error:', e);
     }
@@ -1799,7 +1813,8 @@ export async function createFestInvitation(data: {
  * Fetches all invitations associated with a specific fest.
  */
 export async function fetchFestInvitations(festId: string): Promise<FestInvitation[]> {
-  const cleanId = (festId || 'FEST-01').trim();
+  const cleanId = (festId || '').trim();
+  if (!cleanId) return [];
 
   if (isFirebaseConfigured && db) {
     try {

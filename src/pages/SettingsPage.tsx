@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useFest } from '../context/FestContext';
 import { FestSettings } from '../types';
 import { Modal } from '../components/common/Modal';
@@ -32,6 +32,8 @@ export const SettingsPage: React.FC = () => {
     addToast,
     categories,
     navigateToTabWithFilter,
+    activeFestId,
+    activeFest,
   } = useFest();
 
   const [formData, setFormData] = useState<FestSettings>({ ...settings });
@@ -39,6 +41,11 @@ export const SettingsPage: React.FC = () => {
   const [newAnnTitle, setNewAnnTitle] = useState('');
   const [newAnnContent, setNewAnnContent] = useState('');
   const [newAnnCategory, setNewAnnCategory] = useState<'general' | 'schedule_change' | 'results' | 'urgent'>('general');
+
+  // Keep form data synchronized with current active fest settings
+  useEffect(() => {
+    setFormData({ ...settings });
+  }, [settings]);
 
   const canEdit = hasPermission(['super_admin', 'admin']);
 
@@ -71,11 +78,14 @@ export const SettingsPage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
         <div>
-          <h2 className="text-base font-bold text-slate-900">
-            System & Fest Settings
+          <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+            <span>System & Fest Settings</span>
+            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
+              {activeFest?.name || settings.festName} ({activeFestId})
+            </span>
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Configure fest metadata, scoring rules, public visibility switches, and announcements.
+            Configure fest metadata, venue, scoring rules, public visibility switches, and announcements for {activeFest?.name || settings.festName}.
           </p>
         </div>
 

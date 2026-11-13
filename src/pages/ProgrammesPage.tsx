@@ -55,6 +55,7 @@ export const ProgrammesPage: React.FC = () => {
     hasPermission,
     addToast,
     navigateToTabWithFilter,
+    activeFestId,
   } = useFest();
 
   const [search, setSearch] = useState('');
@@ -349,6 +350,7 @@ export const ProgrammesPage: React.FC = () => {
       criteria: formData.criteria,
       registeredParticipantIds: formData.registeredParticipantIds,
       registeredTeamIds: formData.registeredTeamIds,
+      festId: activeFestId,
     };
 
     if (editingProgramme) {
@@ -375,7 +377,7 @@ export const ProgrammesPage: React.FC = () => {
     }
 
     const success = await addCategory({
-      festId: 'FEST-01',
+      festId: activeFestId,
       name: newCatName.trim(),
       description: newCatDescription.trim() || undefined,
       minAge: minA,
