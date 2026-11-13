@@ -31,7 +31,7 @@ import {
   VerifyOtpResult,
   RequestOtpResult
 } from '../services/authService';
-import { User, Participant, Role } from '../types';
+import { User, Participant, Role, ParticipantCategory } from '../types';
 import { StorageService } from '../services/storage';
 
 /**
@@ -597,11 +597,67 @@ export async function signInWithCredentials(
         await updateDoc(userDocRef, { lastLoginAt: serverTimestamp() });
       } catch {}
 
+      // If user is a participant, ensure authoritative participant record exists and is active
+      let resolvedParticipant: Participant | undefined;
+      if (profile.role === 'participant') {
+        const expectedPartId = `PT-${uid.slice(0, 6).toUpperCase()}`;
+        try {
+          const partDocSnap = await getDoc(doc(firestoreDb, 'participants', expectedPartId));
+          if (partDocSnap.exists()) {
+            resolvedParticipant = partDocSnap.data() as Participant;
+          } else {
+            const q = query(collection(firestoreDb, 'participants'), where('userId', '==', uid));
+            const snap = await getDocs(q);
+            if (!snap.empty) {
+              resolvedParticipant = snap.docs[0].data() as Participant;
+            } else {
+              // Self-heal: recover missing participant record for valid participant account
+              const nowIso = new Date().toISOString();
+              const healedPart: Participant = {
+                id: expectedPartId,
+                userId: uid,
+                name: profile.name,
+                email: profile.email || '',
+                phone: profile.phone || '',
+                college: (profile as any).college || (profile as any).institution || 'College of Fine Arts',
+                classOrDivision: (profile as any).classOrDivision || '',
+                category: ((profile as any).category as ParticipantCategory) || 'Senior',
+                teamId: profile.linkedTeamId || 'TM-01',
+                festId: profile.festId || 'FEST-01',
+                status: 'registered',
+                approvalStatus: 'pending_approval',
+                registrationSource: 'self_registration',
+                registeredProgrammes: [],
+                createdAt: profile.createdAt || nowIso,
+                updatedAt: nowIso
+              };
+              try {
+                await setDoc(doc(firestoreDb, 'participants', expectedPartId), healedPart);
+                resolvedParticipant = healedPart;
+              } catch (healErr) {
+                console.warn('[Firebase Auth] Participant recovery note:', healErr);
+              }
+            }
+          }
+        } catch (pLookupErr) {
+          console.warn('[Firebase Auth] Participant lookup error:', pLookupErr);
+        }
+
+        if (resolvedParticipant) {
+          StorageService.saveParticipants([
+            ...StorageService.getParticipants().filter(p => p.id !== resolvedParticipant!.id),
+            resolvedParticipant
+          ]);
+          StorageService.saveActiveParticipantId(resolvedParticipant.id);
+        }
+      }
+
       return {
         success: true,
         message: `Authenticated successfully as ${profile.role.replace('_', ' ')}.`,
         role: profile.role,
         user: profile,
+        participant: resolvedParticipant,
         isNewUser: false
       };
     }
@@ -714,7 +770,10 @@ export async function registerParticipantWithCredentials(
     const qPhone = query(collection(firestoreDb, 'users'), where('phone', '==', normalizedPhone));
     const snapPhone = await getDocs(qPhone);
     if (!snapPhone.empty) {
-      return { success: false, message: 'An account with this mobile number is already registered.' };
+      return {
+        success: false,
+        message: 'An account with this mobile number is already registered. Please sign in with your password, or use a different number.'
+      };
     }
   } catch (dupErr) {
     console.warn('[Firebase Auth] Duplicate phone check error:', dupErr);

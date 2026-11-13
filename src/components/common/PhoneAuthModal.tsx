@@ -190,6 +190,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         if (result.role === 'participant') {
           if (result.participant?.id) {
             setActiveParticipantId(result.participant.id);
+            if (typeof setParticipants === 'function') {
+              setParticipants((prev) => [
+                result.participant!,
+                ...prev.filter((p) => p.id !== result.participant!.id),
+              ]);
+            }
           }
           addToast('success', 'Authenticated', `Welcome back, ${result.participant?.name || result.user?.name}!`);
           onClose();
@@ -405,9 +411,29 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
             {/* Error Message Alert */}
             {errorMessage && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-2.5 text-xs text-red-700 animate-in fade-in duration-150">
-                <AlertCircle className="w-4 h-4 shrink-0 text-red-600 mt-0.5" />
-                <div className="leading-relaxed font-medium">{errorMessage}</div>
+              <div className="p-3 bg-red-50 border border-red-200 rounded-2xl space-y-2 text-xs text-red-700 animate-in fade-in duration-150">
+                <div className="flex items-start gap-2.5">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-red-600 mt-0.5" />
+                  <div className="leading-relaxed font-medium">{errorMessage}</div>
+                </div>
+                {authMode === 'register' && (errorMessage.includes('already registered') || errorMessage.includes('already exists')) && (
+                  <div className="pt-2 border-t border-red-200/60 flex items-center justify-between">
+                    <span className="text-[11px] text-red-600 font-medium">Already registered with this number?</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const targetId = regPhone || regEmail;
+                        setErrorMessage('');
+                        setIdentifier(targetId);
+                        setAuthMode('signin');
+                        setActiveRole('participant');
+                      }}
+                      className="px-2.5 py-1 bg-white hover:bg-slate-50 border border-red-300 rounded-lg text-[11px] font-bold text-[#0d5c58] hover:underline flex items-center gap-1 shadow-xs transition-all"
+                    >
+                      Sign In Now <ArrowRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
