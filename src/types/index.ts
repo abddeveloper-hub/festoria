@@ -145,6 +145,7 @@ export type JudgeStatus = 'active' | 'inactive' | 'on_break';
 
 export interface Judge {
   id: string; // e.g. "JD-01"
+  festId?: string;
   name: string;
   email: string;
   phone: string;
@@ -318,6 +319,7 @@ export interface Team {
 
 export interface ScheduleSlot {
   id: string;
+  festId?: string;
   programmeId: string;
   venue: string;
   stage: string;

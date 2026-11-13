@@ -57,6 +57,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setActiveParticipantId,
     addToast,
     activeFestId,
+    setParticipants,
+    setUsers,
   } = useFest();
 
   const isSuperAdminVisible = showSuperAdmin || defaultRole === 'super_admin';
@@ -259,6 +261,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       if (regResult.success) {
         if (regResult.user) {
           switchCurrentUser(regResult.user.id, regResult.user);
+          if (typeof setUsers === 'function') {
+            setUsers((prev) => [regResult.user!, ...prev.filter((u) => u.id !== regResult.user!.id)]);
+          }
+        }
+        if (regResult.participant) {
+          if (typeof setParticipants === 'function') {
+            setParticipants((prev) => [
+              regResult.participant!,
+              ...prev.filter((p) => p.id !== regResult.participant!.id),
+            ]);
+          }
         }
         if (regResult.participantId) {
           setActiveParticipantId(regResult.participantId);

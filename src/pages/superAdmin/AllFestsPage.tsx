@@ -20,7 +20,9 @@ import {
   ShieldAlert,
   Globe,
   X,
-  CheckCircle2
+  CheckCircle2,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import { exportToCsv } from '../../services/storage';
 
@@ -33,6 +35,7 @@ export const AllFestsPage: React.FC = () => {
     suspendFest,
     reactivateFest,
     archiveFest,
+    deleteFestComplete,
     updateFestMetadata,
     switchPortal,
     setSuperAdminTab,
@@ -50,6 +53,9 @@ export const AllFestsPage: React.FC = () => {
   const [suspensionReason, setSuspensionReason] = useState('');
   const [archiveModalFest, setArchiveModalFest] = useState<Fest | null>(null);
   const [detailModalFest, setDetailModalFest] = useState<Fest | null>(null);
+  const [deleteModalFest, setDeleteModalFest] = useState<Fest | null>(null);
+  const [deleteConfirmationText, setDeleteConfirmationText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Edit form state
   const [editName, setEditName] = useState('');
@@ -313,6 +319,16 @@ export const AllFestsPage: React.FC = () => {
                     <ExternalLink className="w-3.5 h-3.5" />
                     <span>Admin Panel</span>
                   </button>
+                  <button
+                    onClick={() => {
+                      setDeleteModalFest(fest);
+                      setDeleteConfirmationText('');
+                    }}
+                    title="Permanently Delete Festival"
+                    className="p-1 text-xs font-medium border border-rose-200 text-rose-600 bg-rose-50 rounded hover:bg-rose-100 inline-flex items-center"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
             </div>
@@ -452,6 +468,17 @@ export const AllFestsPage: React.FC = () => {
                             <Archive className="w-3.5 h-3.5" />
                           </button>
                         )}
+
+                        <button
+                          onClick={() => {
+                            setDeleteModalFest(fest);
+                            setDeleteConfirmationText('');
+                          }}
+                          title="Permanently Delete Festival"
+                          className="p-1 rounded border border-rose-200 text-rose-600 hover:bg-rose-50"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -619,6 +646,101 @@ export const AllFestsPage: React.FC = () => {
                 className="px-4 py-1.5 bg-slate-900 text-white rounded hover:bg-slate-800 font-medium"
               >
                 Archive Fest
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PERMANENT FESTIVAL DELETION MODAL */}
+      {deleteModalFest && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl border border-rose-200 shadow-2xl max-w-md w-full p-6 text-slate-900 text-xs animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 text-rose-600 mb-3">
+              <div className="w-10 h-10 rounded-full bg-rose-50 border border-rose-200 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">
+                  Permanently Delete Festival
+                </h3>
+                <p className="text-[11px] text-slate-500 font-mono">
+                  {deleteModalFest.id} · {deleteModalFest.name}
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-900 mb-4 space-y-1.5 leading-relaxed">
+              <div className="flex items-center gap-1.5 font-bold text-rose-700">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span>Critical Warning: Cascading Deletion</span>
+              </div>
+              <p className="text-[11px] text-rose-800">
+                This action is <strong>irreversible</strong>. Deleting this festival will permanently wipe:
+              </p>
+              <ul className="list-disc pl-4 text-[10px] space-y-0.5 text-rose-800">
+                <li>All participating teams and rosters</li>
+                <li>All student and participant registrations</li>
+                <li>All competition programmes and judge evaluations</li>
+                <li>All submitted scores, approved results, and standings</li>
+                <li>All timetable schedules, appeals, and public CMS media</li>
+              </ul>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-[11px] font-semibold text-slate-700 mb-1.5">
+                Type <strong className="text-rose-600 font-mono font-bold select-all">{deleteModalFest.name}</strong> to confirm:
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmationText}
+                onChange={(e) => setDeleteConfirmationText(e.target.value)}
+                placeholder={deleteModalFest.name}
+                className="w-full px-3 py-2 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-rose-500 focus:outline-hidden font-medium"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteModalFest(null);
+                  setDeleteConfirmationText('');
+                }}
+                disabled={isDeleting}
+                className="px-3.5 py-1.5 border border-slate-200 rounded text-slate-700 hover:bg-slate-50 font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (deleteConfirmationText.trim().toLowerCase() !== deleteModalFest.name.trim().toLowerCase()) {
+                    return;
+                  }
+                  setIsDeleting(true);
+                  try {
+                    await deleteFestComplete(deleteModalFest.id);
+                    setDeleteModalFest(null);
+                    setDeleteConfirmationText('');
+                  } finally {
+                    setIsDeleting(false);
+                  }
+                }}
+                disabled={
+                  deleteConfirmationText.trim().toLowerCase() !== deleteModalFest.name.trim().toLowerCase() ||
+                  isDeleting
+                }
+                className="px-4 py-1.5 bg-rose-600 text-white rounded hover:bg-rose-700 disabled:opacity-50 font-bold inline-flex items-center gap-1.5 shadow-xs cursor-pointer disabled:cursor-not-allowed"
+              >
+                {isDeleting ? (
+                  <span>Deleting Everything...</span>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Permanently Delete</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

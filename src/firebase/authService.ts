@@ -823,6 +823,7 @@ export async function registerParticipantWithCredentials(
     teamId: requestedTeamId || 'TM-01',
     status: 'registered',
     approvalStatus: 'pending_approval',
+    registrationSource: 'self_registration',
     registeredProgrammes: [],
     festId: festId || 'FEST-01',
     createdAt: nowIso,
@@ -835,15 +836,29 @@ export async function registerParticipantWithCredentials(
     console.error('[Firebase Auth] Failed to save participant document:', pSaveErr);
   }
 
-  StorageService.setCurrentUser(userProfile);
-  StorageService.saveActiveParticipantId(participantId);
+  // Update persistent browser storage and notify active sessions
+  try {
+    StorageService.saveUsers([...StorageService.getUsers().filter(u => u.id !== uid), userProfile]);
+    StorageService.saveParticipants([...StorageService.getParticipants().filter(p => p.id !== participantId), participantDoc]);
+    StorageService.setCurrentUser(userProfile);
+    StorageService.saveActiveParticipantId(participantId);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('festoria_participants_changed', { detail: { participant: participantDoc } })
+      );
+    }
+  } catch (storageErr) {
+    console.warn('[Firebase Auth] Storage sync notice:', storageErr);
+  }
 
   return {
     success: true,
     message: 'Registration completed successfully.',
     userId: uid,
     participantId,
-    user: userProfile
+    user: userProfile,
+    participant: participantDoc
   };
 }
 

@@ -144,7 +144,7 @@ export const FestoriaHomePage: React.FC = () => {
             <button
               type="button"
               onClick={() => openAuth('auto')}
-              className="text-xs font-semibold px-3 py-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 active:scale-95 transition-all duration-150"
+              className="hidden sm:inline-flex text-xs font-semibold px-3 py-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 active:scale-95 transition-all duration-150"
             >
               Sign In
             </button>
@@ -152,20 +152,20 @@ export const FestoriaHomePage: React.FC = () => {
             <button
               type="button"
               onClick={() => openCreateFest('apply')}
-              className="group text-xs font-bold px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-[0_8px_20px_-3px_rgba(5,150,105,0.25)] hover:shadow-[0_10px_25px_-4px_rgba(16,185,129,0.35)] active:scale-95 transition-all duration-200 flex items-center gap-1 min-h-[38px]"
+              className="group text-xs font-bold px-3 py-2 sm:px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-[0_8px_20px_-3px_rgba(5,150,105,0.25)] hover:shadow-[0_10px_25px_-4px_rgba(16,185,129,0.35)] active:scale-95 transition-all duration-200 flex items-center gap-1 min-h-[38px] shrink-0"
             >
-              <span>Start Trial</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform duration-150" />
+              <span className="whitespace-nowrap">Start Trial</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform duration-150 shrink-0" />
             </button>
 
             {/* Mobile Hamburger Button */}
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden min-w-[40px] min-h-[40px] flex items-center justify-center p-2 rounded-xl text-slate-700 hover:bg-slate-100 transition-colors"
+              className="md:hidden min-w-[40px] min-h-[40px] flex items-center justify-center p-2 rounded-xl text-slate-700 hover:bg-slate-100 active:bg-slate-200 transition-colors shrink-0 touch-manipulation cursor-pointer"
               aria-label="Toggle navigation menu"
             >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              {mobileMenuOpen ? <X className="w-5 h-5 text-slate-900" /> : <Menu className="w-5 h-5 text-slate-900" />}
             </button>
           </div>
         </div>

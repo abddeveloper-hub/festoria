@@ -222,6 +222,18 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
     }
   }, [targetFestId]);
 
+  // Lock body scroll when mobile navigation drawer is open
+  useEffect(() => {
+    if (menuDrawerOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [menuDrawerOpen]);
+
   const publishedResults = results.filter((r) => r.published);
   const publicAnnouncements = announcements.filter((a) => a.isPublic);
   const publishedProgrammes = programmes.filter((p) => p.status !== 'draft');
@@ -285,44 +297,44 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       {/* ==================================================================== */}
       {/* 1. PUBLIC TOP NAVIGATION                                             */}
       {/* ==================================================================== */}
-      <nav className="sticky top-0 z-40 bg-[#faf8ff]/85 backdrop-blur-md border-b border-[#e2e8f0] px-4 sm:px-8 py-3.5 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <nav className="sticky top-0 z-40 bg-[#faf8ff]/95 backdrop-blur-md border-b border-[#e2e8f0] px-3.5 sm:px-8 py-2.5 sm:py-3.5 flex items-center justify-between gap-2 shadow-2xs">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
           {pageData.logo.logoUrl ? (
             <img
               src={pageData.logo.logoUrl}
               alt={festName}
               style={{ width: `${pageData.logo.widthPx || 120}px` }}
-              className="h-9 object-contain"
+              className="h-8 sm:h-9 object-contain shrink-0"
             />
           ) : (
             <img
               src={FESTORIA_LOGO}
               alt={festName}
               onError={handleLogoError}
-              className="w-9 h-9 rounded-xl object-contain shadow-xs border border-[#e2e8f0] bg-white p-0.5"
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl object-contain shadow-xs border border-[#e2e8f0] bg-white p-0.5 shrink-0"
             />
           )}
 
-          <div>
-            <h1 className="text-sm sm:text-base font-bold tracking-tight text-[#0f172a] leading-tight font-display">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xs sm:text-base font-bold tracking-tight text-[#0f172a] leading-tight font-display truncate">
               {festName}
             </h1>
-            <p className="text-[10px] sm:text-[11px] text-[#64748b] font-medium tracking-wide">
+            <p className="text-[9px] sm:text-[11px] text-[#64748b] font-medium tracking-wide truncate">
               {fest?.institution ? `${fest.institution} · ` : ''}{fest?.edition || settings.festEdition || 'Official Festival Portal'}
             </p>
           </div>
         </div>
 
         {/* Menu Bar Button */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             type="button"
             onClick={() => setMenuDrawerOpen(true)}
             aria-label="Open Navigation Menu"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#0d9488] hover:bg-[#0f766e] text-white text-xs font-bold transition-all shadow-[0_4px_14px_rgba(13,148,136,0.25)] hover:shadow-[0_6px_18px_rgba(13,148,136,0.35)] active:scale-95 cursor-pointer"
+            className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-full bg-[#0d9488] hover:bg-[#0f766e] active:bg-[#115e59] text-white text-xs font-bold transition-all shadow-[0_4px_14px_rgba(13,148,136,0.25)] hover:shadow-[0_6px_18px_rgba(13,148,136,0.35)] active:scale-95 cursor-pointer shrink-0 min-h-[36px] sm:min-h-[40px] touch-manipulation"
           >
-            <Menu className="w-4 h-4 text-white" />
-            <span>Menu</span>
+            <Menu className="w-4 h-4 text-white shrink-0" />
+            <span className="font-semibold tracking-wide">Menu</span>
           </button>
         </div>
       </nav>
@@ -2933,7 +2945,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
             onClick={() => setMenuDrawerOpen(false)}
           />
 
-          <div className="fixed inset-y-0 right-0 max-w-full flex pl-8 sm:pl-10 z-50">
+          <div className="fixed inset-y-0 right-0 max-w-full flex pl-4 sm:pl-10 z-50">
             <div className="w-full max-w-sm sm:max-w-md bg-white shadow-2xl flex flex-col justify-between border-l border-[#e2e8f0] animate-in slide-in-from-right duration-300">
               
               {/* Drawer Header */}

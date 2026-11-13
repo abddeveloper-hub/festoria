@@ -171,16 +171,111 @@ export async function saveFestToFirestore(fest: Fest): Promise<void> {
 }
 
 export async function deleteFestFromFirestore(festId: string): Promise<void> {
-  const fests = StorageService.getFests().filter((f) => f.id !== festId);
-  StorageService.saveFests(fests);
+  await deleteFestCascading(festId);
+}
 
+/**
+ * Permanently deletes a festival and ALL cascading data linked to it across Firestore & LocalStorage.
+ * Deletes:
+ * - Fest document: /fests/{festId}
+ * - Public Page CMS data: /fest_public_pages/{festId} & draft
+ * - Settings: /fest_settings/{festId}
+ * - Teams: /teams (all matching festId)
+ * - Participants: /participants (all matching festId)
+ * - Programmes: /programmes (all matching festId)
+ * - Scores: /scores (all matching festId)
+ * - Results: /results (all matching festId)
+ * - Schedule: /schedule (all matching festId)
+ * - Judges: /judges (all matching festId)
+ * - Complaints: /complaints (all matching festId)
+ * - Team Entries: /team_programme_entries (all matching festId)
+ * - Milestones: /milestones (all matching festId)
+ * - Invitations: /fest_invitations & /team_leader_invitations (all matching festId)
+ */
+export async function deleteFestCascading(
+  festId: string
+): Promise<{ success: boolean; deletedCounts: Record<string, number> }> {
+  const counts: Record<string, number> = {};
+
+  // 1. Purge from persistent browser storage first
+  try {
+    StorageService.saveFests(StorageService.getFests().filter((f) => f.id !== festId));
+    StorageService.saveTeams(StorageService.getTeams().filter((t) => t.festId !== festId));
+    StorageService.saveParticipants(StorageService.getParticipants().filter((p) => p.festId !== festId));
+    StorageService.saveProgrammes(StorageService.getProgrammes().filter((pr) => pr.festId !== festId));
+    StorageService.saveScoreSubmissions(StorageService.getScoreSubmissions().filter((s: ScoreSubmission) => s.festId !== festId));
+    StorageService.saveApprovedResults(StorageService.getApprovedResults().filter((r: ApprovedResult) => r.festId !== festId));
+    StorageService.saveScheduleSlots(StorageService.getScheduleSlots().filter((sc: any) => !sc.festId || sc.festId !== festId));
+    StorageService.saveJudges(StorageService.getJudges().filter((j: any) => !j.festId || j.festId !== festId));
+    StorageService.saveComplaints(StorageService.getComplaints().filter((c) => c.festId !== festId));
+    StorageService.saveTeamProgrammeEntries(StorageService.getTeamProgrammeEntries().filter((e) => e.festId !== festId));
+    StorageService.saveMilestones(StorageService.getMilestones().filter((m) => m.festId !== festId));
+
+    // Clear active fest if targeting the deleted one
+    const activeFest = localStorage.getItem('festflow_active_fest');
+    if (activeFest === festId) {
+      const remaining = StorageService.getFests();
+      if (remaining.length > 0) {
+        localStorage.setItem('festflow_active_fest', remaining[0].id);
+      } else {
+        localStorage.removeItem('festflow_active_fest');
+      }
+    }
+  } catch (storageErr) {
+    console.warn('[Firestore] LocalStorage cascading cleanup notice:', storageErr);
+  }
+
+  // 2. Cascading deletion across Firestore collections
   if (isFirebaseConfigured && db) {
     try {
-      await deleteDoc(doc(db, 'fests', festId));
-    } catch (e) {
-      console.warn('[Firestore] deleteFestFromFirestore error:', e);
+      // Helper to query and delete all docs in a collection matching festId
+      const deleteCollectionByFest = async (collName: string, idField: string = 'festId') => {
+        try {
+          const q = query(collection(db!, collName), where(idField, '==', festId));
+          const snap = await getDocs(q);
+          counts[collName] = snap.size;
+          const deletes = snap.docs.map((d) => deleteDoc(d.ref).catch(() => {}));
+          await Promise.all(deletes);
+        } catch (err) {
+          console.warn(`[Firestore] Cascading delete error in ${collName}:`, err);
+        }
+      };
+
+      // Direct doc deletions
+      await Promise.all([
+        deleteDoc(doc(db, 'fests', festId)).catch(() => {}),
+        deleteDoc(doc(db, 'fest_public_pages', festId)).catch(() => {}),
+        deleteDoc(doc(db, 'fest_public_pages', `${festId}_draft`)).catch(() => {}),
+        deleteDoc(doc(db, 'fest_settings', festId)).catch(() => {})
+      ]);
+
+      // Query-based cascading deletes
+      await Promise.all([
+        deleteCollectionByFest('teams'),
+        deleteCollectionByFest('participants'),
+        deleteCollectionByFest('programmes'),
+        deleteCollectionByFest('scores'),
+        deleteCollectionByFest('results'),
+        deleteCollectionByFest('schedule'),
+        deleteCollectionByFest('judges'),
+        deleteCollectionByFest('complaints'),
+        deleteCollectionByFest('team_programme_entries'),
+        deleteCollectionByFest('milestones'),
+        deleteCollectionByFest('fest_invitations'),
+        deleteCollectionByFest('team_leader_invitations'),
+        deleteCollectionByFest('fest_memberships')
+      ]);
+    } catch (fsErr) {
+      console.warn('[Firestore] Cascading delete Firestore notice:', fsErr);
     }
   }
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('festoria_fest_deleted', { detail: { festId } }));
+    window.dispatchEvent(new CustomEvent('festoria_participants_changed', { detail: { festId } }));
+  }
+
+  return { success: true, deletedCounts: counts };
 }
 
 // ==========================================

@@ -56,6 +56,7 @@ import {
   fetchFests,
   saveFestToFirestore,
   deleteFestFromFirestore,
+  deleteFestCascading,
   fetchTeams,
   fetchParticipants,
   fetchProgrammes,
@@ -222,6 +223,8 @@ interface FestContextType {
   activityLogs: ActivityLog[];
   announcements: Announcement[];
   gallery: GalleryItem[];
+  setParticipants: React.Dispatch<React.SetStateAction<Participant[]>>;
+  setUsers: React.Dispatch<React.SetStateAction<User[]>>;
 
   // Platform-Level Collections (Super Admin)
   fests: Fest[];
@@ -322,6 +325,7 @@ interface FestContextType {
   suspendFest: (festId: string, reason: string) => void;
   reactivateFest: (festId: string) => void;
   archiveFest: (festId: string) => void;
+  deleteFestComplete: (festId: string) => Promise<boolean>;
   updateFestMetadata: (festId: string, updates: Partial<Fest>) => void;
   reassignFestAdmin: (festId: string, newAdminId: string, newAdminName: string, newAdminEmail: string) => void;
   updateMilestoneStatus: (milestoneId: string, completed: boolean) => void;
@@ -738,6 +742,33 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
         }
       }
     } catch {}
+  }, []);
+
+  // Real-time synchronization across portals when registrations or account updates occur
+  useEffect(() => {
+    const handleSyncStorage = () => {
+      try {
+        const currentStoredParticipants = StorageService.getParticipants();
+        if (Array.isArray(currentStoredParticipants)) {
+          setParticipants(currentStoredParticipants);
+        }
+        const currentStoredUsers = StorageService.getUsers();
+        if (Array.isArray(currentStoredUsers)) {
+          setUsers(currentStoredUsers);
+        }
+      } catch (err) {
+        console.warn('[FestContext] Cross-portal sync error:', err);
+      }
+    };
+
+    window.addEventListener('festoria_participants_changed', handleSyncStorage);
+    window.addEventListener('festoria_users_changed', handleSyncStorage);
+    window.addEventListener('storage', handleSyncStorage);
+    return () => {
+      window.removeEventListener('festoria_participants_changed', handleSyncStorage);
+      window.removeEventListener('festoria_users_changed', handleSyncStorage);
+      window.removeEventListener('storage', handleSyncStorage);
+    };
   }, []);
 
   // Deduplicate fests on mount and clean up duplicate fest entries
@@ -2036,6 +2067,60 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     addToast('info', 'Fest Archived', `${target.name} moved to archive.`);
   };
 
+  const deleteFestComplete = async (festId: string): Promise<boolean> => {
+    if (!hasPermission(['super_admin'])) {
+      addToast('error', 'Permission Denied', 'Only authorized Platform Super Admins can permanently delete a festival.');
+      return false;
+    }
+    const target = fests.find((f) => f.id === festId);
+    const targetName = target?.name || festId;
+
+    try {
+      // 1. Cascading deletion across Firestore & StorageService
+      await deleteFestCascading(festId);
+
+      // 2. Clear state in FestContext immediately
+      setFests((prev) => prev.filter((f) => f.id !== festId));
+      setTeams((prev) => prev.filter((t) => t.festId !== festId));
+      setParticipants((prev) => prev.filter((p) => p.festId !== festId));
+      setProgrammes((prev) => prev.filter((p) => p.festId !== festId));
+      setScores((prev) => prev.filter((s) => s.festId !== festId));
+      setResults((prev) => prev.filter((r) => r.festId !== festId));
+      setScheduleSlots((prev) => prev.filter((s) => !s.festId || s.festId !== festId));
+      setJudges((prev) => prev.filter((j) => !j.festId || j.festId !== festId));
+      setComplaints((prev) => prev.filter((c) => c.festId !== festId));
+      setMilestones((prev) => prev.filter((m) => m.festId !== festId));
+      setTeamProgrammeEntries((prev) => prev.filter((e) => e.festId !== festId));
+
+      // 3. Fallback active fest selection
+      if (activeFestId === festId) {
+        const remaining = fests.filter((f) => f.id !== festId);
+        setActiveFestId(remaining[0]?.id || '');
+      }
+
+      // 4. Audit Log
+      logPlatformAudit(
+        'DELETE_FEST',
+        'fest',
+        festId,
+        `Permanently deleted festival "${targetName}" (${festId}) and all linked teams, participants, programmes, scores, and portals.`,
+        target?.status || 'active',
+        'deleted'
+      );
+
+      addToast(
+        'success',
+        'Festival Deleted',
+        `"${targetName}" and all associated competition data have been permanently removed.`
+      );
+      return true;
+    } catch (err: any) {
+      console.error('[FestContext] deleteFestComplete error:', err);
+      addToast('error', 'Deletion Error', err.message || 'Failed to delete festival.');
+      return false;
+    }
+  };
+
   const updateFestMetadata = (festId: string, updates: Partial<Fest>) => {
     setFests((prev) =>
       prev.map((f) => {
@@ -2144,6 +2229,24 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       url.searchParams.set('portal', portal);
       if (targetFestId) url.searchParams.set('fest', targetFestId);
       window.history.pushState({}, '', url.toString());
+
+      // Refresh participants and users from persistent storage / Firestore when accessing admin
+      if (portal === 'fest_admin') {
+        const stored = StorageService.getParticipants();
+        if (Array.isArray(stored) && stored.length > 0) {
+          setParticipants(stored);
+        }
+        if (isFirebaseConfigured) {
+          fetchParticipants(targetFestId || activeFestId)
+            .then((pts) => {
+              if (pts && pts.length > 0) {
+                setParticipants(pts);
+                StorageService.saveParticipants(pts);
+              }
+            })
+            .catch(() => {});
+        }
+      }
     } catch (e) {
       // ignore
     }
@@ -3602,6 +3705,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
         settings,
         teams,
         participants,
+        setParticipants,
         judges,
         programmes,
         categories,
@@ -3610,6 +3714,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
         results,
         scheduleSlots,
         users,
+        setUsers,
         activityLogs,
         announcements,
         gallery,
@@ -3667,6 +3772,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
         suspendFest,
         reactivateFest,
         archiveFest,
+        deleteFestComplete,
         updateFestMetadata,
         reassignFestAdmin,
         updateMilestoneStatus,

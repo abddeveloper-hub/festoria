@@ -230,12 +230,24 @@ export const StorageService = {
   saveScoreSubmissions(scores: ScoreSubmission[]): void {
     setStorageItem(STORAGE_KEYS.SCORES, scores);
   },
+  getScores(): ScoreSubmission[] {
+    return this.getScoreSubmissions();
+  },
+  saveScores(scores: ScoreSubmission[]): void {
+    this.saveScoreSubmissions(scores);
+  },
 
   getApprovedResults(): ApprovedResult[] {
     return getStorageItem(STORAGE_KEYS.RESULTS, []);
   },
   saveApprovedResults(results: ApprovedResult[]): void {
     setStorageItem(STORAGE_KEYS.RESULTS, results);
+  },
+  getResults(): ApprovedResult[] {
+    return this.getApprovedResults();
+  },
+  saveResults(results: ApprovedResult[]): void {
+    this.saveApprovedResults(results);
   },
 
   getScheduleSlots(): ScheduleSlot[] {

@@ -49,6 +49,7 @@ export interface RegistrationResult {
   userId?: string;
   participantId?: string;
   user?: User;
+  participant?: Participant;
 }
 
 export interface PasswordResetResult {
