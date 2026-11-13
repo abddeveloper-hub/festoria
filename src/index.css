@@ -98,7 +98,53 @@ textarea {
   width: 100%;
 }
 
-/* 8. Smooth horizontal marquee ticker */
+/* 8. Smooth horizontal marquee ticker & Festie animations */
+@keyframes orb-drift-1 {
+  0%, 100% { transform: translate(0px, 0px) scale(1); }
+  50% { transform: translate(35px, 25px) scale(1.1); }
+}
+@keyframes orb-drift-2 {
+  0%, 100% { transform: translate(0px, 0px) scale(1.08); }
+  50% { transform: translate(-30px, -20px) scale(0.95); }
+}
+@keyframes orb-drift-3 {
+  0%, 100% { transform: translate(0px, 0px) scale(0.9); }
+  50% { transform: translate(25px, -30px) scale(1.15); }
+}
+.animate-orb-1 {
+  animation: orb-drift-1 14s ease-in-out infinite alternate;
+  will-change: transform;
+}
+.animate-orb-2 {
+  animation: orb-drift-2 18s ease-in-out infinite alternate;
+  will-change: transform;
+}
+.animate-orb-3 {
+  animation: orb-drift-3 16s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+/* Card sheen shine on hover */
+.sheen-effect {
+  position: relative;
+  overflow: hidden;
+}
+.sheen-effect::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(60deg, transparent 35%, rgba(255,255,255,0.4) 50%, transparent 65%);
+  transform: translateX(-100%) rotate(25deg);
+  transition: transform 0.75s ease-out;
+  pointer-events: none;
+}
+.sheen-effect:hover::after {
+  transform: translateX(100%) rotate(25deg);
+}
+
 @keyframes marquee {
   0% { transform: translateX(0%); }
   100% { transform: translateX(-50%); }
@@ -107,12 +153,13 @@ textarea {
 .animate-marquee {
   display: flex;
   width: max-content;
-  animation: marquee 35s linear infinite;
+  animation: marquee 24s linear infinite;
 }
 
 .animate-marquee:hover {
   animation-play-state: paused;
 }
+
 
 @media print {
   .no-print {

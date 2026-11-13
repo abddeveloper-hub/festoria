@@ -6,30 +6,34 @@ import { Role } from '../../types';
 import { getAppUrl, navigateTo } from '../../utils/navigation';
 import { FESTORIA_LOGO, handleLogoError } from '../../utils/logo';
 import {
-  Sparkles,
-  Layers,
+  Zap,
+  ArrowRight,
   ShieldCheck,
+  CheckCircle2,
   Calendar,
   Clock,
   Award,
-  ChevronRight,
-  ArrowRight,
-  CheckCircle2,
-  Lock,
-  Users,
-  Globe,
-  AlertTriangle,
-  Scale,
-  Compass,
-  ExternalLink,
+  Star,
+  Layers,
   Activity,
+  SlidersHorizontal,
+  BarChart3,
+  Globe,
+  Users,
+  FileCheck,
+  Megaphone,
+  FileText,
+  Sparkles,
+  Phone,
+  Mail,
+  ChevronDown,
+  Lock,
+  ExternalLink,
   Menu,
   X,
-  Mail,
-  Phone,
-  Trophy,
-  Zap,
-  Check
+  Compass,
+  Upload,
+  Play
 } from 'lucide-react';
 
 export const FestoriaHomePage: React.FC = () => {
@@ -41,9 +45,6 @@ export const FestoriaHomePage: React.FC = () => {
   const [createFestModalOpen, setCreateFestModalOpen] = useState(false);
   const [createFestInitialTab, setCreateFestInitialTab] = useState<'apply' | 'track'>('apply');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  // Active feature tab in the split showcase section
-  const [activeFeatureTab, setActiveFeatureTab] = useState<'candidates' | 'schedule' | 'judging'>('candidates');
 
   // Respond to URL action parameters (e.g. ?action=register)
   useEffect(() => {
@@ -80,123 +81,106 @@ export const FestoriaHomePage: React.FC = () => {
     setCreateFestModalOpen(true);
   };
 
-  // Ticker items for infinite horizontal marquee
-  const tickerPills = [
-    'Digital Judging',
-    'Live Leaderboard',
-    'Bulk Candidate Entry',
-    'Auto Stage Schedule',
-    'Certificate Verification',
-    'QR Contestant Passes',
-    '3D Stepped Championship Podium',
-    'House Standings',
-    'Chest Number Search',
-    'Grievance Appeals',
-    'Public Fest Portals',
-    'Result Publishing',
-    'ID Card Generator',
-    'Poster Generator',
-    'Team Manager Access'
-  ];
-
   return (
-    <div className="min-h-screen min-h-dvh bg-[#f84454] text-[#0f172a] flex flex-col font-display selection:bg-[#0f172a] selection:text-white relative overflow-x-hidden">
-      {/* Subtle festive wave texture watermark */}
-      <div
-        className="absolute inset-0 pointer-events-none opacity-[0.08]"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='120' height='30' viewBox='0 0 120 30' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 15 Q30 0 60 15 T120 15' fill='none' stroke='%23ffffff' stroke-width='2'/%3E%3C/svg%3E")`,
-          backgroundSize: '120px 30px'
-        }}
-      />
+    <div className="bg-slate-50 text-slate-900 font-sans antialiased overflow-x-hidden selection:bg-emerald-500 selection:text-white pb-32 relative min-h-screen">
+      {/* Ambient Animated Background Elements (Tech Emerald & Slate) */}
+      <div aria-hidden="true" className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
+        <div className="animate-orb-1 absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-96 bg-gradient-to-tr from-emerald-200/50 via-teal-200/40 to-emerald-100/30 rounded-full blur-3xl"></div>
+        <div className="animate-orb-2 absolute top-1/3 -right-24 w-80 h-80 bg-gradient-to-br from-teal-200/35 via-cyan-100/30 to-slate-200/40 rounded-full blur-3xl"></div>
+        <div className="animate-orb-3 absolute top-2/3 -left-20 w-88 h-88 bg-gradient-to-tr from-emerald-100/40 via-emerald-200/30 to-indigo-100/25 rounded-full blur-3xl"></div>
+      </div>
 
       {/* ==================================================================== */}
-      {/* 1. TOP NAVBAR — CLEAN FESTIVAL HEADER                                */}
+      {/* 1. HEADER                                                            */}
       {/* ==================================================================== */}
-      <nav className="sticky top-0 z-50 bg-[#f84454]/95 backdrop-blur-md border-b border-white/15 px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-xs">
-        <div className="flex items-center gap-3">
-          {/* Festoria Monogram Logo */}
-          <div className="w-10 h-10 rounded-2xl bg-white p-1 shadow-sm flex items-center justify-center">
-            <img
-              src={FESTORIA_LOGO}
-              alt="Festoria Logo"
-              onError={handleLogoError}
-              className="w-full h-full object-contain rounded-xl"
-            />
+      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/80 transition-all duration-300">
+        <div className="px-5 h-16 flex items-center justify-between max-w-5xl mx-auto">
+          {/* Brand Logo with micro-interaction */}
+          <div className="flex items-center gap-3">
+            <a aria-label="Festoria Home" className="group flex items-center gap-2.5" href="#">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-700 via-emerald-500 to-teal-400 flex items-center justify-center shadow-[0_8px_20px_-3px_rgba(5,150,105,0.25)] ring-1 ring-emerald-400/40 group-active:scale-95 group-hover:rotate-6 transition-all duration-200 p-1 bg-white">
+                <img
+                  src={FESTORIA_LOGO}
+                  alt="Festoria Logo"
+                  onError={handleLogoError}
+                  className="w-full h-full object-contain rounded-xl"
+                />
+              </div>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-700 bg-clip-text text-transparent font-display">
+                    Festoria
+                  </span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200/60 uppercase tracking-wide">
+                    OS
+                  </span>
+                </div>
+              </div>
+            </a>
           </div>
+
+          {/* Desktop Navigation Links */}
+          <nav className="hidden md:flex items-center gap-6 text-xs font-bold text-slate-600">
+            <a href="#features" className="hover:text-emerald-600 transition-colors py-2">
+              Features
+            </a>
+            <a href="#fest-directory" className="hover:text-emerald-600 transition-colors py-2">
+              Festivals
+            </a>
+            <a href="#testimonials" className="hover:text-emerald-600 transition-colors py-2">
+              Stories
+            </a>
+            <a href="#helpdesk" className="hover:text-emerald-600 transition-colors py-2">
+              Helpdesk
+            </a>
+          </nav>
+
+          {/* Quick Action Navigation */}
           <div className="flex items-center gap-2">
-            <span className="text-xl sm:text-2xl font-black tracking-tight text-white leading-tight">
-              FESTORIA
-            </span>
-            <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-white/20 text-white border border-white/30">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#ffe066] animate-pulse" />
-              Fest OS
-            </span>
+            <button
+              type="button"
+              onClick={() => openCreateFest('track')}
+              className="hidden lg:inline-flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 active:scale-95 transition-all duration-150"
+            >
+              <Compass className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Track</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => openAuth('auto')}
+              className="text-xs font-semibold px-3 py-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 active:scale-95 transition-all duration-150"
+            >
+              Sign In
+            </button>
+
+            <button
+              type="button"
+              onClick={() => openCreateFest('apply')}
+              className="group text-xs font-bold px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-[0_8px_20px_-3px_rgba(5,150,105,0.25)] hover:shadow-[0_10px_25px_-4px_rgba(16,185,129,0.35)] active:scale-95 transition-all duration-200 flex items-center gap-1 min-h-[38px]"
+            >
+              <span>Start Trial</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform duration-150" />
+            </button>
+
+            {/* Mobile Hamburger Button */}
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden min-w-[40px] min-h-[40px] flex items-center justify-center p-2 rounded-xl text-slate-700 hover:bg-slate-100 transition-colors"
+              aria-label="Toggle navigation menu"
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
           </div>
         </div>
+      </header>
 
-        {/* Center Navigation Links */}
-        <div className="hidden lg:flex items-center gap-8 text-sm font-bold text-white/90">
-          <a href="#features" className="hover:text-amber-200 transition-colors py-2">
-            Features
-          </a>
-          <a href="#fest-showcase" className="hover:text-amber-200 transition-colors py-2">
-            Ecosystem
-          </a>
-          <a href="#fest-directory" className="hover:text-amber-200 transition-colors py-2">
-            Festivals
-          </a>
-          <a href="#helpdesk" className="hover:text-amber-200 transition-colors py-2">
-            Official Helpdesk
-          </a>
-        </div>
-
-        {/* Right Action Controls */}
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => openCreateFest('track')}
-            className="hidden md:inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white hover:text-amber-200 transition-colors"
-          >
-            <Compass className="w-4 h-4 text-amber-200" />
-            <span>Track Application</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => openAuth('auto')}
-            className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white hover:text-amber-200 transition-colors"
-          >
-            <span>Sign In</span>
-          </button>
-
-          {/* Clean White Rounded-Full Pill CTA Button */}
-          <button
-            type="button"
-            onClick={() => openCreateFest('apply')}
-            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-white text-[#f84454] text-xs sm:text-sm font-black shadow-md hover:bg-amber-100 hover:scale-105 active:scale-95 transition-all min-h-[44px]"
-          >
-            <Sparkles className="w-4 h-4 text-[#f84454]" />
-            <span>Start Free Trial</span>
-          </button>
-
-          {/* Mobile Menu Button */}
-          <button
-            type="button"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="lg:hidden min-w-[44px] min-h-[44px] flex items-center justify-center p-2 rounded-xl text-white hover:bg-white/10 transition-colors"
-            aria-label="Toggle navigation menu"
-          >
-            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
-        </div>
-      </nav>
-
-      {/* Mobile Drawer Menu */}
+      {/* Mobile Drawer Navigation */}
       {mobileMenuOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div className="fixed inset-0 z-50 md:hidden">
           <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
             onClick={() => setMobileMenuOpen(false)}
           />
           <div className="fixed top-0 right-0 bottom-0 w-full max-w-xs bg-white shadow-2xl p-6 flex flex-col justify-between overflow-y-auto">
@@ -209,7 +193,7 @@ export const FestoriaHomePage: React.FC = () => {
                     onError={handleLogoError}
                     className="w-8 h-8 rounded-lg object-contain bg-slate-100"
                   />
-                  <span className="font-black text-[#0f172a] text-lg">Festoria</span>
+                  <span className="font-extrabold text-slate-900 text-base font-display">Festoria OS</span>
                 </div>
                 <button
                   type="button"
@@ -225,28 +209,28 @@ export const FestoriaHomePage: React.FC = () => {
                 <a
                   href="#features"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="px-4 py-2.5 rounded-xl hover:bg-rose-50 hover:text-[#f84454]"
+                  className="px-4 py-2.5 rounded-xl hover:bg-emerald-50 hover:text-emerald-700"
                 >
-                  Features & Capabilities
-                </a>
-                <a
-                  href="#fest-showcase"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="px-4 py-2.5 rounded-xl hover:bg-rose-50 hover:text-[#f84454]"
-                >
-                  Active Ecosystem
+                  Core Features
                 </a>
                 <a
                   href="#fest-directory"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="px-4 py-2.5 rounded-xl hover:bg-rose-50 hover:text-[#f84454]"
+                  className="px-4 py-2.5 rounded-xl hover:bg-emerald-50 hover:text-emerald-700"
                 >
-                  Explore Festivals
+                  Active Festivals
+                </a>
+                <a
+                  href="#testimonials"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="px-4 py-2.5 rounded-xl hover:bg-emerald-50 hover:text-emerald-700"
+                >
+                  Coordinator Stories
                 </a>
                 <a
                   href="#helpdesk"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="px-4 py-2.5 rounded-xl hover:bg-rose-50 hover:text-[#f84454]"
+                  className="px-4 py-2.5 rounded-xl hover:bg-emerald-50 hover:text-emerald-700"
                 >
                   Official Helpdesk
                 </a>
@@ -259,7 +243,7 @@ export const FestoriaHomePage: React.FC = () => {
                   }}
                   className="text-left px-4 py-2.5 rounded-xl hover:bg-slate-50 flex items-center gap-2"
                 >
-                  <Compass className="w-4 h-4 text-[#f84454]" />
+                  <Compass className="w-4 h-4 text-emerald-600" />
                   <span>Track Application</span>
                 </button>
 
@@ -281,9 +265,9 @@ export const FestoriaHomePage: React.FC = () => {
                     setMobileMenuOpen(false);
                     openCreateFest('apply');
                   }}
-                  className="w-full text-center px-6 py-3 rounded-full bg-[#f84454] text-white font-black shadow-md mt-4"
+                  className="w-full text-center px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold shadow-md mt-4"
                 >
-                  Create New Fest
+                  Start Free Trial
                 </button>
               </div>
             </div>
@@ -303,464 +287,789 @@ export const FestoriaHomePage: React.FC = () => {
       )}
 
       {/* ==================================================================== */}
-      {/* 2. HERO SECTION — INSPIRATION LAYOUT: MAKE YOUR FEST ALIVE           */}
+      {/* 2. HERO SECTION                                                      */}
       {/* ==================================================================== */}
-      <section className="relative pt-16 sm:pt-24 pb-16 px-4 sm:px-6 overflow-hidden">
-        <div className="max-w-5xl mx-auto text-center space-y-6 sm:space-y-8 relative z-10">
-          {/* Main Impact Headline */}
-          <h1 className="text-5xl sm:text-7xl md:text-8xl lg:text-[7.5rem] font-black uppercase tracking-[-0.035em] leading-[0.92] select-none">
-            <span className="text-[#0f172a] block sm:inline sm:mr-4">MAKE YOUR</span>
-            <span className="text-[#ffe066] block sm:inline">FEST</span>
-            <span className="text-white block mt-1 sm:mt-2">ALIVE</span>
-          </h1>
+      <section className="relative pt-8 pb-6 px-5 max-w-lg md:max-w-2xl lg:max-w-4xl mx-auto text-center sm:text-left">
+        {/* Live Status Badges Stack */}
+        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-4">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/90 backdrop-blur-sm border border-emerald-200/80 shadow-xs transition-transform hover:scale-[1.02]">
+            <span className="flex h-2 w-2 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span className="text-[11px] font-bold tracking-wide text-emerald-900">Next-Gen Festival OS</span>
+          </div>
+          <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-900/90 backdrop-blur-sm text-slate-200 text-[10px] font-medium shadow-xs">
+            <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+            <span>Trusted by 1200+ fest coordinators</span>
+          </div>
+        </div>
 
-          {/* Subtitle */}
-          <p className="text-sm sm:text-base md:text-lg text-white/95 max-w-3xl mx-auto font-medium leading-relaxed drop-shadow-xs">
-            Trusted by 1200+ fest coordinators and deaneries to run the big day without chaos.
-            From registration to results, ID cards, congratulation posters, and certificates — everything on one desk, built for the coordinators who make fests alive.
-          </p>
+        {/* Hero Title & Pitch */}
+        <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900 leading-[1.15] mb-3 font-display">
+          Festivals Managed <br />
+          <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent">
+            Flawlessly & Faster.
+          </span>
+        </h1>
+        <p className="text-slate-600 text-xs sm:text-sm md:text-base leading-relaxed mb-6 font-normal max-w-xl">
+          The gold standard for high-energy arts fests, campus tournaments, and inter-college championships. Real-time scores, auto-clash schedules, and instant public micro-portals.
+        </p>
 
-          {/* Clean Pill Action Buttons */}
-          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 pt-2">
+        {/* Call to Actions with dynamic micro-interactions */}
+        <div className="flex flex-col sm:flex-row gap-2.5 mb-7 max-w-md">
+          <button
+            type="button"
+            onClick={() => openCreateFest('apply')}
+            className="group w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-sm font-bold shadow-[0_10px_25px_-4px_rgba(16,185,129,0.35)] active:scale-[0.98] transition-all duration-200 min-h-[48px]"
+          >
+            <span>Start 14-Day Free Trial</span>
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-200" />
+          </button>
+          <a
+            href="#features"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-white/90 backdrop-blur-md border border-slate-200/90 text-slate-700 text-xs font-semibold shadow-xs hover:bg-slate-50 hover:border-slate-300 active:scale-[0.98] transition-all duration-150 min-h-[48px]"
+          >
+            <Play className="w-4 h-4 text-slate-500" />
+            <span>Explore Live Features & Demo</span>
+          </a>
+        </div>
+
+        {/* Live Fest Metrics Ribbon */}
+        <div className="grid grid-cols-3 gap-2 bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-2xl p-3.5 shadow-sm text-center divide-x divide-slate-100 max-w-lg">
+          <div className="pr-1">
+            <p className="text-lg sm:text-xl font-extrabold text-slate-900 font-display">50k+</p>
+            <p className="text-[9px] uppercase font-bold text-slate-400 tracking-wider mt-0.5">Entries Logged</p>
+          </div>
+          <div className="px-1">
+            <p className="text-lg sm:text-xl font-extrabold text-emerald-600 font-display flex items-center justify-center gap-0.5">
+              <span>0.2s</span>
+              <Zap className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
+            </p>
+            <p className="text-[9px] uppercase font-bold text-emerald-700 tracking-wider mt-0.5">Score Sync</p>
+          </div>
+          <div className="pl-1">
+            <p className="text-lg sm:text-xl font-extrabold text-slate-900 font-display">100%</p>
+            <p className="text-[9px] uppercase font-bold text-slate-400 tracking-wider mt-0.5">Clash-Free</p>
+          </div>
+        </div>
+      </section>
+
+      {/* ==================================================================== */}
+      {/* 3. INTERACTIVE MARQUEE / CORE MODULES SECTION                        */}
+      {/* ==================================================================== */}
+      <section className="py-3.5 mb-3 border-y border-slate-200/70 bg-white/60 backdrop-blur-sm overflow-hidden" data-purpose="marquee-modules">
+        <div className="px-5 mb-2.5 flex items-center justify-between max-w-5xl mx-auto">
+          <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Core Engine Modules
+          </span>
+          <span className="text-[10px] text-emerald-700 font-semibold flex items-center gap-0.5">
+            Tap tags to explore
+          </span>
+        </div>
+
+        {/* Infinite horizontal marquee strip with micro-interactive tag chips */}
+        <div className="overflow-x-auto hide-scrollbar px-4">
+          <div className="animate-marquee flex gap-2.5 py-1">
             <button
               type="button"
               onClick={() => openCreateFest('apply')}
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-[#0f172a] text-white text-sm font-black shadow-xl hover:bg-black hover:scale-105 active:scale-95 transition-all min-h-[48px]"
+              className="whitespace-nowrap px-4 py-1.5 rounded-full text-xs font-bold bg-slate-900 text-white shadow-xs flex items-center gap-1.5 transition-transform active:scale-95"
             >
-              <span>Create Your Fest</span>
-              <ArrowRight className="w-4 h-4 text-amber-300" />
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+              <span>Live Leaderboard</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => openCreateFest('apply')}
+              className="whitespace-nowrap px-4 py-1.5 rounded-full text-xs font-semibold bg-white text-slate-700 border border-slate-200 hover:border-emerald-400 shadow-xs active:scale-95 transition-all flex items-center gap-1"
+            >
+              <Upload className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Bulk Entry</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => openCreateFest('apply')}
+              className="whitespace-nowrap px-4 py-1.5 rounded-full text-xs font-semibold bg-white text-slate-700 border border-slate-200 hover:border-emerald-400 shadow-xs active:scale-95 transition-all flex items-center gap-1"
+            >
+              <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Auto Scheduling</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => openCreateFest('apply')}
+              className="whitespace-nowrap px-4 py-1.5 rounded-full text-xs font-semibold bg-white text-slate-700 border border-slate-200 hover:border-emerald-400 shadow-xs active:scale-95 transition-all flex items-center gap-1"
+            >
+              <Award className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Team Manager Access</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => openCreateFest('apply')}
+              className="whitespace-nowrap px-4 py-1.5 rounded-full text-xs font-semibold bg-white text-slate-700 border border-slate-200 hover:border-emerald-400 shadow-xs active:scale-95 transition-all flex items-center gap-1"
+            >
+              <FileCheck className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Judge Dashboard</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => openCreateFest('apply')}
+              className="whitespace-nowrap px-4 py-1.5 rounded-full text-xs font-semibold bg-white text-slate-700 border border-slate-200 hover:border-emerald-400 shadow-xs active:scale-95 transition-all flex items-center gap-1"
+            >
+              <Layers className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Multi-Fest Dashboard</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => openCreateFest('apply')}
+              className="whitespace-nowrap px-4 py-1.5 rounded-full text-xs font-semibold bg-white text-slate-700 border border-slate-200 hover:border-emerald-400 shadow-xs active:scale-95 transition-all flex items-center gap-1"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Clash-Free Timetable</span>
             </button>
 
-            <a
-              href="#fest-directory"
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-white text-[#0f172a] text-sm font-black shadow-xl hover:bg-amber-100 hover:scale-105 active:scale-95 transition-all min-h-[48px]"
+            {/* Repeating set for smooth seamless continuous marquee */}
+            <button
+              type="button"
+              onClick={() => openCreateFest('apply')}
+              className="whitespace-nowrap px-4 py-1.5 rounded-full text-xs font-bold bg-slate-900 text-white shadow-xs flex items-center gap-1.5 transition-transform active:scale-95"
             >
-              <Globe className="w-4 h-4 text-[#f84454]" />
-              <span>Explore Active Festivals</span>
-            </a>
-          </div>
-
-          {/* Quick status trust bar */}
-          <div className="pt-2 flex flex-wrap items-center justify-center gap-4 text-xs font-bold text-white/90">
-            <span className="inline-flex items-center gap-1.5">
-              <Check className="w-4 h-4 text-[#ffe066]" /> Conflict-Free Automated Slotting
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <Check className="w-4 h-4 text-[#ffe066]" /> Tamper-Proof Digital Judging
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <Check className="w-4 h-4 text-[#ffe066]" /> Instant Public Live Portals
-            </span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+              <span>Live Leaderboard</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => openCreateFest('apply')}
+              className="whitespace-nowrap px-4 py-1.5 rounded-full text-xs font-semibold bg-white text-slate-700 border border-slate-200 hover:border-emerald-400 shadow-xs active:scale-95 transition-all flex items-center gap-1"
+            >
+              <Upload className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Bulk Entry</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => openCreateFest('apply')}
+              className="whitespace-nowrap px-4 py-1.5 rounded-full text-xs font-semibold bg-white text-slate-700 border border-slate-200 hover:border-emerald-400 shadow-xs active:scale-95 transition-all flex items-center gap-1"
+            >
+              <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Auto Scheduling</span>
+            </button>
           </div>
         </div>
       </section>
 
       {/* ==================================================================== */}
-      {/* 3. CURVED WHITE BANNER — CLIENT FESTS SHOWCASE (INSPIRATION IMAGE 2) */}
+      {/* 4. FEATURE GRID SECTION (12 FEATURE CARDS WITH SHEEN EFFECT)         */}
       {/* ==================================================================== */}
-      <section id="fest-showcase" className="px-4 sm:px-8 max-w-6xl mx-auto -mb-6 relative z-20">
-        <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-100 space-y-4">
-          <div className="text-center">
-            <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">
-              Trusted by Campus Arts, Cultural & Sports Festivals
-            </span>
+      <section className="px-5 py-8 max-w-5xl mx-auto" data-purpose="festie-features-grid" id="features">
+        <div className="mb-6">
+          <div className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-emerald-600 mb-1">
+            <Activity className="w-3.5 h-3.5" />
+            <span>Built For High Pressure</span>
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-snug font-display">
+            Everything you need to pull off perfection.
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+            Engineered for seamless campus arts, debates, dances & athletic championships.
+          </p>
+        </div>
+
+        {/* Feature Cards: Responsive Grid (2-cols on mobile, 3-cols on md, 4-cols on lg) */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+          {/* Card 1: Bulk Entry */}
+          <div className="group sheen-effect p-4 rounded-2xl bg-white border border-slate-200/90 shadow-xs flex flex-col justify-between hover:border-emerald-400 hover:shadow-[0_14px_28px_-6px_rgba(15,23,42,0.08)] hover:-translate-y-1 transition-all duration-200">
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 flex items-center justify-center mb-3 group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-200">
+              <Upload className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-900 text-xs sm:text-sm leading-snug group-hover:text-emerald-700 transition-colors">
+                Bulk Entry, Skip Hurry
+              </h3>
+              <p className="text-[11px] text-slate-500 mt-1 leading-normal">
+                Import hundreds of student & team entries via sheets instantly.
+              </p>
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 items-center justify-center text-center">
-            {/* Fest 1: Al Murafaqa */}
-            <a
-              href="?fest=al-murafaqa-2026"
-              className="p-3 rounded-2xl bg-slate-50 hover:bg-rose-50 hover:border-rose-200 border border-slate-200/80 transition-all group"
-            >
-              <div className="text-xs font-mono font-bold text-[#f84454]">وفاق</div>
-              <div className="text-sm font-black text-slate-900 group-hover:text-[#f84454] transition-colors truncate">
-                Al Murafaqa
+          {/* Card 2: Customizability */}
+          <div className="group sheen-effect p-4 rounded-2xl bg-white border border-slate-200/90 shadow-xs flex flex-col justify-between hover:border-emerald-400 hover:shadow-[0_14px_28px_-6px_rgba(15,23,42,0.08)] hover:-translate-y-1 transition-all duration-200">
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 flex items-center justify-center mb-3 group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-200">
+              <SlidersHorizontal className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-900 text-xs sm:text-sm leading-snug group-hover:text-emerald-700 transition-colors">
+                Build Festival Your Way
+              </h3>
+              <p className="text-[11px] text-slate-500 mt-1 leading-normal">
+                Fully customizable categories, stage limits, and point structures.
+              </p>
+            </div>
+          </div>
+
+          {/* Card 3: Smart Validation */}
+          <div className="group sheen-effect p-4 rounded-2xl bg-white border border-slate-200/90 shadow-xs flex flex-col justify-between hover:border-emerald-400 hover:shadow-[0_14px_28px_-6px_rgba(15,23,42,0.08)] hover:-translate-y-1 transition-all duration-200">
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 flex items-center justify-center mb-3 group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-200">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-900 text-xs sm:text-sm leading-snug group-hover:text-emerald-700 transition-colors">
+                Make Entry Effortless
+              </h3>
+              <p className="text-[11px] text-slate-500 mt-1 leading-normal">
+                Smart validation stops duplicate candidate registrations.
+              </p>
+            </div>
+          </div>
+
+          {/* Card 4: Clash Free Schedule */}
+          <div className="group sheen-effect p-4 rounded-2xl bg-white border border-slate-200/90 shadow-xs flex flex-col justify-between hover:border-emerald-400 hover:shadow-[0_14px_28px_-6px_rgba(15,23,42,0.08)] hover:-translate-y-1 transition-all duration-200">
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 flex items-center justify-center mb-3 group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-200">
+              <Clock className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-900 text-xs sm:text-sm leading-snug group-hover:text-emerald-700 transition-colors">
+                Plan With Confidence
+              </h3>
+              <p className="text-[11px] text-slate-500 mt-1 leading-normal">
+                Intelligent timeline scheduling resolves stage & participant clashes.
+              </p>
+            </div>
+          </div>
+
+          {/* Card 5: Digital Judging */}
+          <div className="group sheen-effect p-4 rounded-2xl bg-white border border-slate-200/90 shadow-xs flex flex-col justify-between hover:border-emerald-400 hover:shadow-[0_14px_28px_-6px_rgba(15,23,42,0.08)] hover:-translate-y-1 transition-all duration-200">
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 flex items-center justify-center mb-3 group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-200">
+              <Zap className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-900 text-xs sm:text-sm leading-snug group-hover:text-emerald-700 transition-colors">
+                Smarter Fast Judging
+              </h3>
+              <p className="text-[11px] text-slate-500 mt-1 leading-normal">
+                Digital marking sheets secure zero calculation mistakes.
+              </p>
+            </div>
+          </div>
+
+          {/* Card 6: Publish Results */}
+          <div className="group sheen-effect p-4 rounded-2xl bg-white border border-slate-200/90 shadow-xs flex flex-col justify-between hover:border-emerald-400 hover:shadow-[0_14px_28px_-6px_rgba(15,23,42,0.08)] hover:-translate-y-1 transition-all duration-200">
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 flex items-center justify-center mb-3 group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-200">
+              <BarChart3 className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-900 text-xs sm:text-sm leading-snug group-hover:text-emerald-700 transition-colors">
+                Instant Public Results
+              </h3>
+              <p className="text-[11px] text-slate-500 mt-1 leading-normal">
+                Single-click official publish to live public screens & web.
+              </p>
+            </div>
+          </div>
+
+          {/* Card 7: Live Web Portal */}
+          <div className="group sheen-effect p-4 rounded-2xl bg-white border border-slate-200/90 shadow-xs flex flex-col justify-between hover:border-teal-400 hover:shadow-[0_14px_28px_-6px_rgba(15,23,42,0.08)] hover:-translate-y-1 transition-all duration-200">
+            <div className="w-9 h-9 rounded-xl bg-teal-50 border border-teal-100 text-teal-700 flex items-center justify-center mb-3 group-hover:scale-110 group-hover:bg-teal-600 group-hover:text-white transition-all duration-200">
+              <Globe className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-900 text-xs sm:text-sm leading-snug group-hover:text-teal-700 transition-colors">
+                Launch Fest Online
+              </h3>
+              <p className="text-[11px] text-slate-500 mt-1 leading-normal">
+                Ready-to-share public micro-portal updated in real-time.
+              </p>
+            </div>
+          </div>
+
+          {/* Card 8: Role Permissions */}
+          <div className="group sheen-effect p-4 rounded-2xl bg-white border border-slate-200/90 shadow-xs flex flex-col justify-between hover:border-teal-400 hover:shadow-[0_14px_28px_-6px_rgba(15,23,42,0.08)] hover:-translate-y-1 transition-all duration-200">
+            <div className="w-9 h-9 rounded-xl bg-teal-50 border border-teal-100 text-teal-700 flex items-center justify-center mb-3 group-hover:scale-110 group-hover:bg-teal-600 group-hover:text-white transition-all duration-200">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-900 text-xs sm:text-sm leading-snug group-hover:text-teal-700 transition-colors">
+                Empower Teams
+              </h3>
+              <p className="text-[11px] text-slate-500 mt-1 leading-normal">
+                Assign role permissions for volunteers, committee, & judges.
+              </p>
+            </div>
+          </div>
+
+          {/* Card 9: Judge Scoring Tools */}
+          <div className="group sheen-effect p-4 rounded-2xl bg-white border border-slate-200/90 shadow-xs flex flex-col justify-between hover:border-teal-400 hover:shadow-[0_14px_28px_-6px_rgba(15,23,42,0.08)] hover:-translate-y-1 transition-all duration-200">
+            <div className="w-9 h-9 rounded-xl bg-teal-50 border border-teal-100 text-teal-700 flex items-center justify-center mb-3 group-hover:scale-110 group-hover:bg-teal-600 group-hover:text-white transition-all duration-200">
+              <FileCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-900 text-xs sm:text-sm leading-snug group-hover:text-teal-700 transition-colors">
+                Score Confidently
+              </h3>
+              <p className="text-[11px] text-slate-500 mt-1 leading-normal">
+                Simple, intuitive numerical scoring forms tailored to each item.
+              </p>
+            </div>
+          </div>
+
+          {/* Card 10: Broadcast */}
+          <div className="group sheen-effect p-4 rounded-2xl bg-white border border-slate-200/90 shadow-xs flex flex-col justify-between hover:border-teal-400 hover:shadow-[0_14px_28px_-6px_rgba(15,23,42,0.08)] hover:-translate-y-1 transition-all duration-200">
+            <div className="w-9 h-9 rounded-xl bg-teal-50 border border-teal-100 text-teal-700 flex items-center justify-center mb-3 group-hover:scale-110 group-hover:bg-teal-600 group-hover:text-white transition-all duration-200">
+              <Megaphone className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-900 text-xs sm:text-sm leading-snug group-hover:text-teal-700 transition-colors">
+                Direct Broadcast
+              </h3>
+              <p className="text-[11px] text-slate-500 mt-1 leading-normal">
+                Direct broadcast to social channels, campus reps, and press rooms.
+              </p>
+            </div>
+          </div>
+
+          {/* Card 11: Real-time Glance */}
+          <div className="group sheen-effect p-4 rounded-2xl bg-white border border-slate-200/90 shadow-xs flex flex-col justify-between hover:border-emerald-400 hover:shadow-[0_14px_28px_-6px_rgba(15,23,42,0.08)] hover:-translate-y-1 transition-all duration-200">
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 flex items-center justify-center mb-3 group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-200">
+              <Activity className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-900 text-xs sm:text-sm leading-snug group-hover:text-emerald-700 transition-colors">
+                Live Fest Glance
+              </h3>
+              <p className="text-[11px] text-slate-500 mt-1 leading-normal">
+                Live stage delays, points tally, and pending judgment overview.
+              </p>
+            </div>
+          </div>
+
+          {/* Card 12: Automated Printouts */}
+          <div className="group sheen-effect p-4 rounded-2xl bg-white border border-slate-200/90 shadow-xs flex flex-col justify-between hover:border-emerald-400 hover:shadow-[0_14px_28px_-6px_rgba(15,23,42,0.08)] hover:-translate-y-1 transition-all duration-200">
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 flex items-center justify-center mb-3 group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-200">
+              <FileText className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-900 text-xs sm:text-sm leading-snug group-hover:text-emerald-700 transition-colors">
+                Forms Ready to Go
+              </h3>
+              <p className="text-[11px] text-slate-500 mt-1 leading-normal">
+                Generate automated certificates, tabulation printouts & chest IDs.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ==================================================================== */}
+      {/* 5. INTERACTIVE LIVE PREVIEW CARD (VISUAL HOOK)                       */}
+      {/* ==================================================================== */}
+      <section className="px-5 py-6 max-w-lg md:max-w-xl mx-auto">
+        <div className="rounded-2xl bg-gradient-to-b from-white to-slate-50 border border-slate-200/90 p-4 shadow-sm">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <span className="flex h-2.5 w-2.5 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+              </span>
+              <span className="text-xs font-bold text-slate-900">Stage 01 • Main Arena Live</span>
+            </div>
+            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+              Running On Time
+            </span>
+          </div>
+          <div className="pt-3 space-y-2">
+            <div className="flex items-center justify-between text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+              <div className="flex items-center gap-2">
+                <span className="w-5 h-5 rounded-md bg-emerald-600 text-white font-bold text-[10px] flex items-center justify-center">
+                  01
+                </span>
+                <span className="font-semibold text-slate-800">Classical Dance Solo</span>
               </div>
-              <span className="text-[10px] text-slate-500">Muyisunnha 2026</span>
-            </a>
-
-            {/* Fest 2: Matrix */}
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
-              <div className="text-xs font-mono font-bold text-indigo-600">MATRIX</div>
-              <div className="text-sm font-black text-slate-900 truncate">DH Arts Fest</div>
-              <span className="text-[10px] text-slate-500">Campus 2025</span>
+              <span className="font-mono text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
+                98.4 pts
+              </span>
             </div>
-
-            {/* Fest 3: Sulook */}
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
-              <div className="text-xs font-mono font-bold text-amber-500">SULOOK</div>
-              <div className="text-sm font-black text-slate-900 truncate">Shams Arts Fest</div>
-              <span className="text-[10px] text-slate-500">Edition 2025</span>
-            </div>
-
-            {/* Fest 4: Alwanique */}
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
-              <div className="text-xs font-mono font-bold text-emerald-600">ALWANIQUE</div>
-              <div className="text-sm font-black text-slate-900 truncate">Darunnoor Fest</div>
-              <span className="text-[10px] text-slate-500">Sports & Arts</span>
-            </div>
-
-            {/* Fest 5: Festoria Core */}
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 col-span-2 sm:col-span-1">
-              <div className="text-xs font-mono font-bold text-[#f84454]">FESTORIA</div>
-              <div className="text-sm font-black text-slate-900 truncate">Collegiate OS</div>
-              <span className="text-[10px] text-slate-500">Multi-Fest Hub</span>
+            <div className="flex items-center justify-between text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+              <div className="flex items-center gap-2">
+                <span className="w-5 h-5 rounded-md bg-slate-200 text-slate-700 font-bold text-[10px] flex items-center justify-center">
+                  02
+                </span>
+                <span className="font-semibold text-slate-700">Western Group Vocal</span>
+              </div>
+              <span className="font-mono text-[11px] font-bold text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200">
+                Judging...
+              </span>
             </div>
           </div>
         </div>
       </section>
 
       {/* ==================================================================== */}
-      {/* 4. SPLIT FEATURE SHOWCASE — BULK ENTRY, SKIP THE HURRY (IMAGE 2)      */}
+      {/* 6. TESTIMONIAL SECTION (COORDINATOR STORIES)                         */}
       {/* ==================================================================== */}
-      <section id="features" className="py-24 px-4 sm:px-8 max-w-6xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-          {/* Left Column: Headline, copy, and clean white pill button */}
-          <div className="lg:col-span-5 space-y-6 text-white text-left">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white text-xs font-bold uppercase tracking-wider">
-              <Users className="w-3.5 h-3.5" />
-              <span>Candidate Management</span>
-            </div>
+      <section id="testimonials" className="mt-4 pt-12 pb-10 px-5 bg-gradient-to-b from-white via-slate-50 to-white border-t border-slate-200/80 rounded-t-[32px] max-w-4xl mx-auto">
+        <div className="text-center max-w-sm mx-auto mb-6">
+          <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-600">Fest Coordinator Stories</span>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-snug mt-1 font-display">
+            It’s not about <br />
+            <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent">
+              Saving time. It's about zero errors.
+            </span>
+          </h2>
+          <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+            Festoria is the new standard for high-energy event management across major educational institutions.
+          </p>
+        </div>
 
-            <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight leading-[1.08]">
-              Bulk Entry, Skip the Hurry
-            </h2>
-
-            <p className="text-sm sm:text-base text-white/90 leading-relaxed font-normal">
-              Upload participant details in bulk and get your candidates organized in minutes—not hours. Bulk Entry removes repetitive data entry, reduces mistakes, and helps your team prepare large participant lists faster.
-            </p>
-
-            <div className="pt-2">
+        {/* Testimonial Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 max-w-2xl mx-auto">
+          {/* Review 1: Rafeeq Hudawi */}
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between">
+            <div>
+              <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                “Festoria transformed how we organize our All Kerala Inter College Arts Fest. The public portal was absolutely beautiful and attendees loved the real-time updates.”
+              </p>
               <button
                 type="button"
                 onClick={() => openCreateFest('apply')}
-                className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-white text-[#f84454] font-black text-sm shadow-xl hover:bg-amber-100 hover:scale-105 active:scale-95 transition-all min-h-[48px]"
+                className="inline-flex items-center gap-1 mt-2.5 text-[11px] font-bold text-emerald-600 hover:text-emerald-700 group"
               >
-                <span>Create my fest</span>
-                <ArrowRight className="w-4 h-4" />
+                <span>Read full case study</span>
+                <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
               </button>
+            </div>
+            <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 font-bold text-xs flex items-center justify-center ring-2 ring-emerald-500/20">
+                  RH
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-900 leading-tight">Rafeeq Hudawi</p>
+                  <p className="text-[10px] text-slate-400">Arts Convener • Aug 2024</p>
+                </div>
+              </div>
+              {/* 5-Star Indicator */}
+              <div aria-label="5 stars" className="flex text-amber-400 gap-0.5">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                ))}
+              </div>
             </div>
           </div>
 
-          {/* Right Column: Cascading grid of translucent glass cards */}
-          <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-            {/* Tile 1 */}
-            <div className="p-5 rounded-3xl bg-white/15 backdrop-blur-md border border-white/25 text-white space-y-3 hover:bg-white/25 hover:-translate-y-1 transition-all">
-              <Globe className="w-6 h-6 text-white" />
-              <h3 className="font-bold text-sm leading-snug">Launch Your Festival Online</h3>
-              <p className="text-xs text-white/80 leading-relaxed">Dedicated public portal partition for contestants and audience.</p>
+          {/* Review 2: Shakir Mubarak Kaippuram */}
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between">
+            <div>
+              <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                “The analytics and participant handling features are incredible. We boosted team engagement by 60% and cut tabulation time by half.”
+              </p>
+              <button
+                type="button"
+                onClick={() => openCreateFest('apply')}
+                className="inline-flex items-center gap-1 mt-2.5 text-[11px] font-bold text-emerald-600 hover:text-emerald-700 group"
+              >
+                <span>Read full case study</span>
+                <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+              </button>
             </div>
-
-            {/* Tile 2 */}
-            <div className="p-5 rounded-3xl bg-white/15 backdrop-blur-md border border-white/25 text-white space-y-3 hover:bg-white/25 hover:-translate-y-1 transition-all">
-              <Activity className="w-6 h-6 text-white" />
-              <h3 className="font-bold text-sm leading-snug">See What's Happening at a Glance</h3>
-              <p className="text-xs text-white/80 leading-relaxed">Real-time run-of-show cues and multi-stage status monitoring.</p>
-            </div>
-
-            {/* Tile 3 */}
-            <div className="p-5 rounded-3xl bg-white/15 backdrop-blur-md border border-white/25 text-white space-y-3 hover:bg-white/25 hover:-translate-y-1 transition-all">
-              <Scale className="w-6 h-6 text-white" />
-              <h3 className="font-bold text-sm leading-snug">Give Judges the Tools to Score With Confidence</h3>
-              <p className="text-xs text-white/80 leading-relaxed">Multi-criteria weightages and digital quorum ratifications.</p>
-            </div>
-
-            {/* Tile 4 */}
-            <div className="p-5 rounded-3xl bg-white/15 backdrop-blur-md border border-white/25 text-white space-y-3 hover:bg-white/25 hover:-translate-y-1 transition-all">
-              <Clock className="w-6 h-6 text-white" />
-              <h3 className="font-bold text-sm leading-snug">Conflict-Free Stage Schedules</h3>
-              <p className="text-xs text-white/80 leading-relaxed">Automatic overlap detection across concurrent auditoriums.</p>
-            </div>
-
-            {/* Tile 5 */}
-            <div className="p-5 rounded-3xl bg-white/15 backdrop-blur-md border border-white/25 text-white space-y-3 hover:bg-white/25 hover:-translate-y-1 transition-all">
-              <Award className="w-6 h-6 text-white" />
-              <h3 className="font-bold text-sm leading-snug">Give Every Achievement a Lasting Memory</h3>
-              <p className="text-xs text-white/80 leading-relaxed">Digital verified medals and instant congratulation certificates.</p>
-            </div>
-
-            {/* Tile 6 */}
-            <div className="p-5 rounded-3xl bg-white/15 backdrop-blur-md border border-white/25 text-white space-y-3 hover:bg-white/25 hover:-translate-y-1 transition-all">
-              <Trophy className="w-6 h-6 text-white" />
-              <h3 className="font-bold text-sm leading-snug">3D Stepped Championship Podium</h3>
-              <p className="text-xs text-white/80 leading-relaxed">Gold, Silver, Bronze house rankings with dynamic point tallies.</p>
-            </div>
-
-            {/* Tile 7 */}
-            <div className="p-5 rounded-3xl bg-white/15 backdrop-blur-md border border-white/25 text-white space-y-3 hover:bg-white/25 hover:-translate-y-1 transition-all">
-              <Sparkles className="w-6 h-6 text-white" />
-              <h3 className="font-bold text-sm leading-snug">Celebrate Every Festival Moment</h3>
-              <p className="text-xs text-white/80 leading-relaxed">Instant live leaderboard updates and winner notifications.</p>
-            </div>
-
-            {/* Tile 8 */}
-            <div className="p-5 rounded-3xl bg-white/15 backdrop-blur-md border border-white/25 text-white space-y-3 hover:bg-white/25 hover:-translate-y-1 transition-all">
-              <Layers className="w-6 h-6 text-white" />
-              <h3 className="font-bold text-sm leading-snug">Build Your Festival Your Way</h3>
-              <p className="text-xs text-white/80 leading-relaxed">Custom categories, individual codes, and flexible stage rules.</p>
-            </div>
-
-            {/* Tile 9 */}
-            <div className="p-5 rounded-3xl bg-white/15 backdrop-blur-md border border-white/25 text-white space-y-3 hover:bg-white/25 hover:-translate-y-1 transition-all">
-              <CheckCircle2 className="w-6 h-6 text-white" />
-              <h3 className="font-bold text-sm leading-snug">Make Every Participant Feel Official</h3>
-              <p className="text-xs text-white/80 leading-relaxed">Individual chest number lookups, passes, and schedule drawers.</p>
+            <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-slate-900 text-white font-bold text-xs flex items-center justify-center ring-2 ring-slate-800">
+                  SM
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-900 leading-tight">Shakir Mubarak Kaippuram</p>
+                  <p className="text-[10px] text-slate-400">University Coordinator • Aug 2024</p>
+                </div>
+              </div>
+              {/* 5-Star Indicator */}
+              <div aria-label="5 stars" className="flex text-amber-400 gap-0.5">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                ))}
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* ==================================================================== */}
-      {/* 5. INFINITE TICKER STRIP — PILL BADGES (MATCHING IMAGE 2 BOTTOM)     */}
+      {/* 7. ACTIVE INSTITUTIONAL FESTIVALS DIRECTORY                          */}
       {/* ==================================================================== */}
-      <div className="py-6 overflow-hidden bg-black/10 border-y border-white/10 select-none">
-        <div className="animate-marquee flex items-center gap-3 whitespace-nowrap">
-          {tickerPills.concat(tickerPills).map((pill, idx) => (
-            <span
-              key={idx}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-[#f84454] text-xs font-black shadow-md hover:scale-105 transition-transform"
+      <section id="fest-directory" className="py-12 px-5 max-w-5xl mx-auto">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-200 pb-5 mb-6">
+          <div>
+            <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-600 block">Ecosystem</span>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-display">Active Campus Festivals</h2>
+            <p className="text-xs text-slate-500 mt-1">Explore dedicated public portals featuring real-time timetables and leaderboards.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => openCreateFest('apply')}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-xs hover:bg-emerald-700 transition-colors self-start sm:self-auto"
+          >
+            <span>Organise Your Fest</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {fests.map((fest) => (
+            <div
+              key={fest.id}
+              className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs hover:border-emerald-400 hover:shadow-md transition-all flex flex-col justify-between space-y-4"
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-[#f84454]" />
-              {pill}
-            </span>
+              <div>
+                <div className="flex items-center justify-between text-xs text-slate-500 mb-2 font-mono">
+                  <span className="bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-full font-bold">
+                    {fest.id}
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-emerald-700 font-bold uppercase text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    {fest.status}
+                  </span>
+                </div>
+                <h3 className="text-base font-bold text-slate-900">{fest.name}</h3>
+                <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+                  {fest.tagline || 'Official collegiate festival portal.'}
+                </p>
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-3 font-mono">
+                  <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>{fest.startDate} to {fest.endDate}</span>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                <a
+                  href={getAppUrl(`?fest=${fest.id}`)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setActiveFestId(fest.id);
+                    navigateTo(`?fest=${fest.id}`);
+                  }}
+                  className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 hover:text-emerald-700 transition-colors"
+                >
+                  <span>Visit Portal</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveFestId(fest.id);
+                    openAuth('participant');
+                  }}
+                  className="text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors"
+                >
+                  Sign In
+                </button>
+              </div>
+            </div>
           ))}
         </div>
-      </div>
+      </section>
 
       {/* ==================================================================== */}
-      {/* 6. FESTIVAL DIRECTORY — DIRECT PORTALS TO CAMPUS FESTS               */}
+      {/* 8. INTERACTIVE FAQ ACCORDION                                         */}
       {/* ==================================================================== */}
-      <section id="fest-directory" className="py-24 px-4 sm:px-8 bg-white text-[#0f172a]">
-        <div className="max-w-6xl mx-auto space-y-10">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-200 pb-6">
-            <div>
-              <span className="text-xs font-black text-[#f84454] uppercase tracking-widest px-3.5 py-1 rounded-full bg-rose-50 border border-rose-200">
-                Live Festivals
-              </span>
-              <h2 className="text-3xl sm:text-4xl font-black text-[#0f172a] mt-2 tracking-tight">
-                Active Campus Festivals
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-600 mt-1">
-                Explore dedicated public portals featuring real-time timetables, student search, and leaderboards.
-              </p>
+      <section className="px-5 py-8 max-w-lg mx-auto" data-purpose="faq-accordion">
+        <div className="text-center mb-5">
+          <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-600">Got Questions?</span>
+          <h3 className="text-xl font-bold text-slate-900 mt-1 font-display">Frequently Asked</h3>
+        </div>
+        <div className="space-y-2.5">
+          {/* FAQ 1 */}
+          <details className="group bg-white rounded-2xl border border-slate-200/90 shadow-xs p-3.5 transition-all">
+            <summary className="flex items-center justify-between cursor-pointer list-none font-bold text-xs text-slate-800">
+              <span>Can we run offline during poor network?</span>
+              <ChevronDown className="w-4 h-4 text-slate-400 group-open:rotate-180 transition-transform" />
+            </summary>
+            <p className="mt-2.5 text-[11px] text-slate-500 leading-relaxed border-t border-slate-100 pt-2.5">
+              Yes! Festoria caches scoring forms locally on mobile devices. When connection drops, judges continue marking and data auto-syncs the moment WiFi or LTE reconnects.
+            </p>
+          </details>
+
+          {/* FAQ 2 */}
+          <details className="group bg-white rounded-2xl border border-slate-200/90 shadow-xs p-3.5 transition-all">
+            <summary className="flex items-center justify-between cursor-pointer list-none font-bold text-xs text-slate-800">
+              <span>How does clash prevention work?</span>
+              <ChevronDown className="w-4 h-4 text-slate-400 group-open:rotate-180 transition-transform" />
+            </summary>
+            <p className="mt-2.5 text-[11px] text-slate-500 leading-relaxed border-t border-slate-100 pt-2.5">
+              Our scheduling engine checks student candidate IDs against event timetables and stages in real-time, instantly warning you if a student is slotted for two overlapping stages.
+            </p>
+          </details>
+        </div>
+      </section>
+
+      {/* ==================================================================== */}
+      {/* 9. OFFICIAL PLATFORM HELPDESK & SUPPORT                              */}
+      {/* ==================================================================== */}
+      <section id="helpdesk" className="py-12 px-5 max-w-4xl mx-auto border-t border-slate-200">
+        <div className="text-center space-y-2 mb-8">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold uppercase tracking-wider">
+            <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Official Help & Support</span>
+          </span>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-display">
+            Festoria Official Platform Helpdesk
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto leading-relaxed">
+            Need assistance with festival onboarding, application tracking, or technical support? Connect directly with our platform coordinators.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Phone Helpdesk */}
+          <a
+            href="tel:9844691633"
+            className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-emerald-400 hover:shadow-md transition-all group flex flex-col justify-between"
+          >
+            <div className="space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+                <Phone className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Voice Helpline</span>
+                <h3 className="font-bold text-sm text-slate-900 mt-0.5">Phone Helpline</h3>
+                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                  Direct phone consultation for coordinators, principals, and festival organizers.
+                </p>
+              </div>
             </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+              <span className="font-mono font-bold text-xs text-slate-900">9844691633</span>
+              <span className="text-xs font-bold text-emerald-600 flex items-center gap-1 group-hover:underline">
+                Call Now <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+              </span>
+            </div>
+          </a>
 
+          {/* Email Helpdesk */}
+          <a
+            href="mailto:abdwahidbc@gmail.com"
+            className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-indigo-400 hover:shadow-md transition-all group flex flex-col justify-between"
+          >
+            <div className="space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+                <Mail className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">Official Inquiries</span>
+                <h3 className="font-bold text-sm text-slate-900 mt-0.5">Official Support Email</h3>
+                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                  Detailed queries, festival provisioning requests, and administrative support.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+              <span className="font-mono font-bold text-[11px] text-slate-900 truncate max-w-[140px]">
+                abdwahidbc@gmail.com
+              </span>
+              <span className="text-xs font-bold text-indigo-600 flex items-center gap-1 shrink-0 group-hover:underline">
+                Email Desk <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+              </span>
+            </div>
+          </a>
+
+          {/* Instagram Desk */}
+          <a
+            href="https://instagram.com/abd_l_wahid_"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-pink-400 hover:shadow-md transition-all group flex flex-col justify-between"
+          >
+            <div className="space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-pink-50 text-pink-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                  <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                  <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                </svg>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-pink-600">Social Channel</span>
+                <h3 className="font-bold text-sm text-slate-900 mt-0.5">Official Instagram</h3>
+                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                  Official updates, fest highlights, showcase stories, and direct messages.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+              <span className="font-mono font-bold text-xs text-slate-900">@abd_l_wahid_</span>
+              <span className="text-xs font-bold text-pink-600 flex items-center gap-1 group-hover:underline">
+                Connect <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+              </span>
+            </div>
+          </a>
+        </div>
+      </section>
+
+      {/* ==================================================================== */}
+      {/* 10. CALL TO ACTION BOTTOM BANNER                                     */}
+      {/* ==================================================================== */}
+      <section className="px-5 mt-4 mb-8 max-w-lg md:max-w-xl mx-auto" id="trial">
+        <div className="rounded-3xl p-6 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white relative overflow-hidden shadow-2xl ring-1 ring-emerald-500/30">
+          <div className="absolute -right-8 -bottom-8 w-48 h-48 bg-emerald-500/25 rounded-full blur-3xl pointer-events-none"></div>
+          <div className="relative z-10 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 mx-auto flex items-center justify-center mb-3 shadow-[0_10px_25px_-4px_rgba(16,185,129,0.35)]">
+              <Sparkles className="w-6 h-6 text-white" />
+            </div>
+            <h3 className="text-xl font-extrabold tracking-tight mb-2 font-display">Ready to Upgrade Your Festival?</h3>
+            <p className="text-xs text-emerald-100/80 mb-5 leading-relaxed">
+              Create your festival workspace in under 2 minutes. Free trial with complete feature access and priority onboarding.
+            </p>
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-2.5 justify-center">
+              <button
+                type="button"
+                onClick={() => openCreateFest('apply')}
+                className="group py-3.5 px-6 rounded-xl bg-gradient-to-r from-emerald-500 via-emerald-400 to-teal-400 text-slate-950 font-bold text-xs tracking-wide shadow-lg shadow-emerald-500/30 active:scale-95 transition-all duration-200 flex items-center justify-center gap-1.5"
+              >
+                <span>Start Free Trial Today</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </button>
+              <a
+                href="#helpdesk"
+                className="py-3 px-5 rounded-xl bg-white/10 hover:bg-white/15 text-white border border-white/20 font-semibold text-xs active:scale-95 transition-all flex items-center justify-center gap-1"
+              >
+                <Phone className="w-4 h-4" />
+                <span>Talk to Fest Specialist</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ==================================================================== */}
+      {/* 11. MOBILE DOCK NAVIGATION (STICKY BOTTOM BAR)                       */}
+      {/* ==================================================================== */}
+      <nav className="fixed bottom-0 inset-x-0 bg-white/90 backdrop-blur-xl border-t border-slate-200/80 px-4 py-2.5 z-40" data-purpose="bottom-sticky-bar">
+        <div className="max-w-xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 border border-emerald-200/80 shadow-xs">
+              <Zap className="w-5 h-5 text-emerald-600" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <p className="text-xs font-bold text-slate-900 leading-tight">Festoria 2026 Edition</p>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              </div>
+              <p className="text-[10px] text-slate-500 font-medium">Trusted by 100+ colleges</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => openCreateFest('apply')}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#f84454] text-white text-xs font-black hover:bg-rose-600 transition-all shadow-md shrink-0"
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs shadow-xs active:scale-95 transition-all duration-150 flex items-center gap-1"
             >
-              <span>Organise Your Fest</span>
+              <span>Try Free</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {fests.map((fest) => (
-              <div
-                key={fest.id}
-                className="p-7 rounded-3xl bg-slate-50 border border-slate-200 hover:border-rose-300 hover:shadow-xl transition-all flex flex-col justify-between space-y-5 group"
-              >
-                <div>
-                  <div className="flex items-center justify-between text-xs text-slate-500 mb-3 font-mono">
-                    <span className="bg-white text-slate-800 px-3 py-1 rounded-full font-bold border border-slate-200">
-                      {fest.id}
-                    </span>
-                    <span className="inline-flex items-center gap-1.5 text-emerald-700 font-bold uppercase text-[11px] px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      {fest.status}
-                    </span>
-                  </div>
-                  <h3 className="text-xl font-black text-[#0f172a] group-hover:text-[#f84454] transition-colors">
-                    {fest.name}
-                  </h3>
-                  <p className="text-xs text-slate-600 mt-1.5 line-clamp-2 leading-relaxed">
-                    {fest.tagline || 'Official collegiate festival portal.'}
-                  </p>
-                  <div className="flex items-center gap-2 text-xs text-slate-500 mt-4 font-mono">
-                    <Calendar className="w-3.5 h-3.5 text-[#f84454]" />
-                    <span>{fest.startDate} to {fest.endDate}</span>
-                  </div>
-                </div>
-
-                <div className="pt-4 border-t border-slate-200 flex items-center justify-between">
-                  <a
-                    href={getAppUrl(`?fest=${fest.id}`)}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setActiveFestId(fest.id);
-                      navigateTo(`?fest=${fest.id}`);
-                    }}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#f84454] text-white text-xs font-bold hover:bg-rose-600 transition-all min-h-[44px]"
-                  >
-                    <span>Visit Fest Portal</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveFestId(fest.id);
-                      openAuth('participant');
-                    }}
-                    className="text-xs font-bold text-slate-600 hover:text-[#0f172a] transition-colors"
-                  >
-                    Sign In
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
-      </section>
+      </nav>
 
-      {/* ==================================================================== */}
-      {/* 7. OFFICIAL PLATFORM HELPDESK & SUPPORT                              */}
-      {/* ==================================================================== */}
-      <section id="helpdesk" className="py-24 px-4 sm:px-8 bg-slate-50 border-t border-slate-200 text-[#0f172a]">
-        <div className="max-w-5xl mx-auto space-y-12">
-          <div className="text-center space-y-3">
-            <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-rose-100 text-[#f84454] text-xs font-black uppercase tracking-wider">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Official Help & Support</span>
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-black text-[#0f172a] tracking-tight">
-              Festoria Official Platform Helpdesk
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-600 max-w-xl mx-auto leading-relaxed">
-              Need assistance with festival onboarding, application tracking, or technical support? Connect directly with our platform coordinators.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Phone Helpdesk */}
-            <a
-              href="tel:9844691633"
-              className="p-7 rounded-3xl bg-white border border-slate-200 hover:border-emerald-300 hover:shadow-xl transition-all group flex flex-col justify-between"
-            >
-              <div className="space-y-4">
-                <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-105 transition-transform">
-                  <Phone className="w-7 h-7" />
-                </div>
-                <div>
-                  <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600">Voice Helpline</span>
-                  <h3 className="font-black text-lg text-[#0f172a] mt-0.5">Phone Helpline</h3>
-                  <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
-                    Direct phone consultation for coordinators, principals, and festival organizers.
-                  </p>
-                </div>
-              </div>
-              <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
-                <span className="font-mono font-black text-sm text-[#0f172a]">9844691633</span>
-                <span className="text-xs font-bold text-emerald-600 flex items-center gap-1 group-hover:underline">
-                  Call Now <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                </span>
-              </div>
-            </a>
-
-            {/* Email Helpdesk */}
-            <a
-              href="mailto:abdwahidbc@gmail.com"
-              className="p-7 rounded-3xl bg-white border border-slate-200 hover:border-indigo-300 hover:shadow-xl transition-all group flex flex-col justify-between"
-            >
-              <div className="space-y-4">
-                <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-105 transition-transform">
-                  <Mail className="w-7 h-7" />
-                </div>
-                <div>
-                  <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600">Official Inquiries</span>
-                  <h3 className="font-black text-lg text-[#0f172a] mt-0.5">Official Support Email</h3>
-                  <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
-                    Detailed queries, festival provisioning requests, and administrative support.
-                  </p>
-                </div>
-              </div>
-              <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
-                <span className="font-mono font-black text-xs text-[#0f172a] truncate max-w-[150px]">
-                  abdwahidbc@gmail.com
-                </span>
-                <span className="text-xs font-bold text-indigo-600 flex items-center gap-1 shrink-0 group-hover:underline">
-                  Email Desk <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                </span>
-              </div>
-            </a>
-
-            {/* Instagram Desk */}
-            <a
-              href="https://instagram.com/abd_l_wahid_"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-7 rounded-3xl bg-white border border-slate-200 hover:border-pink-300 hover:shadow-xl transition-all group flex flex-col justify-between"
-            >
-              <div className="space-y-4">
-                <div className="w-14 h-14 rounded-2xl bg-pink-50 text-pink-600 flex items-center justify-center group-hover:scale-105 transition-transform">
-                  <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-                    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-                    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
-                  </svg>
-                </div>
-                <div>
-                  <span className="text-[10px] font-black uppercase tracking-wider text-pink-600">Social Channel</span>
-                  <h3 className="font-black text-lg text-[#0f172a] mt-0.5">Official Instagram</h3>
-                  <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
-                    Official updates, fest highlights, showcase stories, and direct messages.
-                  </p>
-                </div>
-              </div>
-              <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
-                <span className="font-mono font-black text-sm text-[#0f172a]">@abd_l_wahid_</span>
-                <span className="text-xs font-bold text-pink-600 flex items-center gap-1 group-hover:underline">
-                  Connect <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                </span>
-              </div>
-            </a>
-          </div>
-        </div>
-      </section>
-
-      {/* ==================================================================== */}
-      {/* 8. FOOTER                                                            */}
-      {/* ==================================================================== */}
-      <footer className="border-t border-slate-200 bg-white py-10 px-4 sm:px-8 text-xs text-slate-500">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-3">
-            <img
-              src={FESTORIA_LOGO}
-              alt="Festoria Logo"
-              onError={handleLogoError}
-              className="w-8 h-8 rounded-lg object-contain bg-slate-100"
-            />
-            <div>
-              <span className="text-[#0f172a] font-black">Festoria Platform</span>
-              <span className="text-slate-400 block text-[11px]">Unified Collegiate Festival Management</span>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-xs text-slate-600 font-medium">
-            <a href="mailto:abdwahidbc@gmail.com" className="hover:text-[#f84454] transition-colors">
-              abdwahidbc@gmail.com
-            </a>
-            <a href="tel:9844691633" className="hover:text-[#f84454] transition-colors">
-              9844691633
-            </a>
-            <a href="https://instagram.com/abd_l_wahid_" target="_blank" rel="noopener noreferrer" className="hover:text-[#f84454] transition-colors">
-              @abd_l_wahid_
-            </a>
-          </div>
-
-          <div className="flex items-center gap-6 text-xs text-slate-500">
-            <button type="button" onClick={() => openCreateFest('track')} className="hover:text-[#f84454] transition-colors min-h-[44px]">
-              Track Application
-            </button>
-            <a href={getAppUrl('admin.html')} className="hover:text-[#f84454] transition-colors inline-flex items-center min-h-[44px]">
-              Fest Admin Console
-            </a>
-          </div>
-        </div>
-      </footer>
-
-      {/* Modals */}
+      {/* Unified Authentication Modal */}
       <AuthModal
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
@@ -769,6 +1078,7 @@ export const FestoriaHomePage: React.FC = () => {
         showSuperAdmin={false}
       />
 
+      {/* Create New Fest / Application Modal */}
       <CreateFestModal
         isOpen={createFestModalOpen}
         onClose={() => setCreateFestModalOpen(false)}
