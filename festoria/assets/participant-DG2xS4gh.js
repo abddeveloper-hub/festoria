@@ -1,0 +1,1 @@
+import{B as e,V as t,r as n,t as r,z as i}from"./App-BzgVuPl0.js";var a=t(e(),1),o=i(),s=n();try{localStorage.setItem(`festflow_portal`,`participant`)}catch{}(0,o.createRoot)(document.getElementById(`root`)).render((0,s.jsx)(a.StrictMode,{children:(0,s.jsx)(r,{})}));
