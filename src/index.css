@@ -98,7 +98,22 @@ textarea {
   width: 100%;
 }
 
-/* 7. Subtle print styles for reports and schedules */
+/* 8. Smooth horizontal marquee ticker */
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 35s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
 @media print {
   .no-print {
     display: none !important;
