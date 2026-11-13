@@ -1,714 +1,622 @@
 import React, { useEffect, useRef } from 'react';
+import * as THREE from 'three';
 
 interface Background3DProps {
   className?: string;
   opacity?: number;
 }
 
-// 3D Point & Edge Interfaces
-interface Point3D {
-  x: number;
-  y: number;
-  z: number;
-}
-
-interface Edge3D {
-  a: number;
-  b: number;
-}
-
-interface Shape3D {
-  id: string;
-  type: 'icosahedron' | 'cube' | 'octahedron' | 'tetrahedron' | 'rings';
-  xRel: number; // 0 to 1 relative to viewport width
-  yRel: number; // 0 to 1 relative to viewport height
-  radius: number;
-  rotX: number;
-  rotY: number;
-  rotZ: number;
-  speedX: number;
-  speedY: number;
-  speedZ: number;
-  color: string;
-  glowColor: string;
-  vertices: Point3D[];
-  edges: Edge3D[];
-  floatPhase: number;
-  floatSpeed: number;
-  floatAmp: number;
-}
-
-interface ThreadParticle {
-  t: number; // 0 to 1 progress along width
-  speed: number;
-  threadIndex: number;
-  size: number;
-  color: string;
-}
-
-interface AmbientNode3D {
-  xRel: number;
-  yRel: number;
-  z: number;
-  vx: number;
-  vy: number;
-  size: number;
-  color: string;
-}
-
 export const Background3DThreadsAndShapes: React.FC<Background3DProps> = ({
   className = 'fixed inset-0 pointer-events-none z-0',
-  opacity = 0.9
+  opacity = 0.92
 }) => {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const mountRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const container = mountRef.current;
+    if (!container) return;
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    // 1. Scene, Camera & WebGL Renderer
+    const scene = new THREE.Scene();
 
-    let animationFrameId: number;
-    let width = 0;
-    let height = 0;
-    let time = 0;
+    let width = window.innerWidth;
+    let height = window.innerHeight;
 
-    // Mouse tracking for fluid 3D parallax
+    const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 100);
+    camera.position.set(0, 0, 18);
+
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: true,
+      powerPreference: 'high-performance'
+    });
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.25;
+
+    container.appendChild(renderer.domElement);
+
+    // 2. Dynamic Studio Lights (Key, Fill, and Radiant Colored Rim Lights)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.1);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 2.2);
+    dirLight.position.set(8, 12, 10);
+    scene.add(dirLight);
+
+    const indigoLight = new THREE.PointLight(0x6366f1, 4.0, 35);
+    indigoLight.position.set(-10, 8, 6);
+    scene.add(indigoLight);
+
+    const cyanLight = new THREE.PointLight(0x06b6d4, 4.0, 35);
+    cyanLight.position.set(10, -6, 6);
+    scene.add(cyanLight);
+
+    const pinkLight = new THREE.PointLight(0xec4899, 3.2, 30);
+    pinkLight.position.set(0, 10, -4);
+    scene.add(pinkLight);
+
+    // 3. Volumetric 3D Floating Geometric Objects
+    interface FloatingMesh {
+      mesh: THREE.Object3D;
+      rotSpeedX: number;
+      rotSpeedY: number;
+      rotSpeedZ: number;
+      baseX: number;
+      baseY: number;
+      baseZ: number;
+      floatPhase: number;
+      floatSpeed: number;
+      floatAmp: number;
+    }
+
+    const floatingObjects: FloatingMesh[] = [];
+
+    // Helper: Create high-polish glossy material with transmission and iridescent luster
+    const createGlossMaterial = (color: number, roughness = 0.18, metalness = 0.65, emissive = 0x000000) => {
+      return new THREE.MeshStandardMaterial({
+        color,
+        roughness,
+        metalness,
+        emissive,
+        emissiveIntensity: 0.25,
+        transparent: true,
+        opacity: 0.88 * opacity
+      });
+    };
+
+    // Object 1: The Grand Torus Knot (Twisted 3D Chrome Ribbon) — Upper Right
+    const knotGeom = new THREE.TorusKnotGeometry(1.65, 0.42, 120, 24, 2, 3);
+    const knotMat = createGlossMaterial(0x7c3aed, 0.15, 0.75, 0x4c1d95); // Deep Violet
+    const knotMesh = new THREE.Mesh(knotGeom, knotMat);
+    knotMesh.position.set(9.5, 4.2, -2.5);
+    scene.add(knotMesh);
+
+    // Inner wireframe lattice for high-tech holographic texture
+    const knotWireMat = new THREE.MeshBasicMaterial({
+      color: 0xc4b5fd,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.18
+    });
+    const knotWireMesh = new THREE.Mesh(knotGeom, knotWireMat);
+    knotMesh.add(knotWireMesh);
+
+    floatingObjects.push({
+      mesh: knotMesh,
+      rotSpeedX: 0.005,
+      rotSpeedY: 0.008,
+      rotSpeedZ: 0.003,
+      baseX: 9.5,
+      baseY: 4.2,
+      baseZ: -2.5,
+      floatPhase: 0,
+      floatSpeed: 0.0018,
+      floatAmp: 0.6
+    });
+
+    // Object 2: Multi-Faceted Octahedron Gem (Diamond Prism) — Mid Left
+    const octaGeom = new THREE.OctahedronGeometry(1.85, 0);
+    const octaMat = createGlossMaterial(0xec4899, 0.12, 0.85, 0x9d174d); // Pink/Rose
+    const octaMesh = new THREE.Mesh(octaGeom, octaMat);
+    octaMesh.position.set(-10.2, 0.5, -1.0);
+    scene.add(octaMesh);
+
+    const octaWireMat = new THREE.MeshBasicMaterial({
+      color: 0xfbcfe8,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.25
+    });
+    octaMesh.add(new THREE.Mesh(octaGeom, octaWireMat));
+
+    floatingObjects.push({
+      mesh: octaMesh,
+      rotSpeedX: 0.007,
+      rotSpeedY: 0.006,
+      rotSpeedZ: 0.004,
+      baseX: -10.2,
+      baseY: 0.5,
+      baseZ: -1.0,
+      floatPhase: 1.5,
+      floatSpeed: 0.002,
+      floatAmp: 0.7
+    });
+
+    // Object 3: Celestial Icosahedron Crystal — Upper Left
+    const icoGeom = new THREE.IcosahedronGeometry(1.6, 0);
+    const icoMat = createGlossMaterial(0x06b6d4, 0.2, 0.7, 0x155e75); // Electric Cyan
+    const icoMesh = new THREE.Mesh(icoGeom, icoMat);
+    icoMesh.position.set(-8.5, 6.2, -3.0);
+    scene.add(icoMesh);
+
+    const icoWireMat = new THREE.MeshBasicMaterial({
+      color: 0xa5f3fc,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.22
+    });
+    icoMesh.add(new THREE.Mesh(icoGeom, icoWireMat));
+
+    floatingObjects.push({
+      mesh: icoMesh,
+      rotSpeedX: 0.006,
+      rotSpeedY: 0.005,
+      rotSpeedZ: 0.006,
+      baseX: -8.5,
+      baseY: 6.2,
+      baseZ: -3.0,
+      floatPhase: 3.0,
+      floatSpeed: 0.0016,
+      floatAmp: 0.55
+    });
+
+    // Object 4: Gyroscopic Dual Orbital Rings — Lower Left
+    const gyroGroup = new THREE.Group();
+    const ring1Geom = new THREE.TorusGeometry(1.9, 0.08, 16, 80);
+    const ring1Mat = createGlossMaterial(0x6366f1, 0.15, 0.9, 0x3730a3);
+    const ring1Mesh = new THREE.Mesh(ring1Geom, ring1Mat);
+
+    const ring2Geom = new THREE.TorusGeometry(1.4, 0.08, 16, 80);
+    const ring2Mat = createGlossMaterial(0xf59e0b, 0.15, 0.9, 0x92400e); // Amber Gold
+    const ring2Mesh = new THREE.Mesh(ring2Geom, ring2Mat);
+    ring2Mesh.rotation.x = Math.PI / 2.5;
+
+    // Central glowing energy pearl inside the gyroscope
+    const coreGeom = new THREE.SphereGeometry(0.55, 32, 32);
+    const coreMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      emissive: 0x6366f1,
+      emissiveIntensity: 0.8,
+      roughness: 0.1,
+      metalness: 0.5,
+      transparent: true,
+      opacity: 0.9
+    });
+    const coreMesh = new THREE.Mesh(coreGeom, coreMat);
+
+    gyroGroup.add(ring1Mesh);
+    gyroGroup.add(ring2Mesh);
+    gyroGroup.add(coreMesh);
+    gyroGroup.position.set(-8.8, -5.5, -2.0);
+    scene.add(gyroGroup);
+
+    floatingObjects.push({
+      mesh: gyroGroup,
+      rotSpeedX: 0.008,
+      rotSpeedY: 0.012,
+      rotSpeedZ: 0.005,
+      baseX: -8.8,
+      baseY: -5.5,
+      baseZ: -2.0,
+      floatPhase: 4.5,
+      floatSpeed: 0.0017,
+      floatAmp: 0.65
+    });
+
+    // Object 5: Dodecahedron Emerald Monolith — Lower Right
+    const dodecGeom = new THREE.DodecahedronGeometry(1.5, 0);
+    const dodecMat = createGlossMaterial(0x10b981, 0.2, 0.8, 0x064e3b); // Emerald
+    const dodecMesh = new THREE.Mesh(dodecGeom, dodecMat);
+    dodecMesh.position.set(9.0, -5.8, -2.0);
+    scene.add(dodecMesh);
+
+    const dodecWireMat = new THREE.MeshBasicMaterial({
+      color: 0x6ee7b7,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.2
+    });
+    dodecMesh.add(new THREE.Mesh(dodecGeom, dodecWireMat));
+
+    floatingObjects.push({
+      mesh: dodecMesh,
+      rotSpeedX: 0.005,
+      rotSpeedY: 0.007,
+      rotSpeedZ: 0.004,
+      baseX: 9.0,
+      baseY: -5.8,
+      baseZ: -2.0,
+      floatPhase: 2.2,
+      floatSpeed: 0.0019,
+      floatAmp: 0.6
+    });
+
+    // Object 6 & 7: Zero-G Iridescent Spheres (Mercury beads floating in depth)
+    const sphereCoords = [
+      { x: 3.5, y: 7.0, z: -4.0, r: 0.75, c: 0x8b5cf6 },
+      { x: -3.5, y: -7.5, z: -3.5, r: 0.85, c: 0xec4899 },
+      { x: 7.2, y: 1.0, z: -5.0, r: 0.55, c: 0x06b6d4 },
+      { x: -5.5, y: 2.8, z: -4.5, r: 0.6, c: 0x10b981 }
+    ];
+
+    sphereCoords.forEach((s, idx) => {
+      const sGeom = new THREE.SphereGeometry(s.r, 32, 32);
+      const sMat = createGlossMaterial(s.c, 0.1, 0.9, s.c);
+      const sMesh = new THREE.Mesh(sGeom, sMat);
+      sMesh.position.set(s.x, s.y, s.z);
+      scene.add(sMesh);
+
+      floatingObjects.push({
+        mesh: sMesh,
+        rotSpeedX: 0.004,
+        rotSpeedY: 0.005,
+        rotSpeedZ: 0.003,
+        baseX: s.x,
+        baseY: s.y,
+        baseZ: s.z,
+        floatPhase: idx * 1.3,
+        floatSpeed: 0.0022,
+        floatAmp: 0.45
+      });
+    });
+
+    // ========================================================================
+    // 4. VOLUMETRIC 3D FLOWING THREADS (TUBULAR BEZIER ENERGY RIBBONS)
+    // ========================================================================
+
+    interface DynamicThread {
+      curve: THREE.CatmullRomCurve3;
+      tubeMesh: THREE.Mesh;
+      basePoints: THREE.Vector3[];
+      speed: number;
+      frequency: number;
+      amplitude: number;
+      phase: number;
+    }
+
+    interface LightPacket {
+      mesh: THREE.Mesh;
+      trailMesh: THREE.Line;
+      threadIndex: number;
+      progress: number;
+      speed: number;
+      trailLength: number;
+    }
+
+    const threadsData: DynamicThread[] = [];
+    const lightPackets: LightPacket[] = [];
+
+    // Helper: Build 3D undulated spline curve across the viewport
+    const createThread = (
+      yBase: number,
+      zBase: number,
+      colorHex: number,
+      speed: number,
+      amp: number,
+      phase: number
+    ): DynamicThread => {
+      const basePoints: THREE.Vector3[] = [];
+      const numPoints = 12;
+      const xStart = -20;
+      const xEnd = 20;
+      const xStep = (xEnd - xStart) / (numPoints - 1);
+
+      for (let i = 0; i < numPoints; i++) {
+        const x = xStart + i * xStep;
+        const y = yBase + Math.sin(i * 0.7 + phase) * amp;
+        const z = zBase + Math.cos(i * 0.6 + phase) * (amp * 0.8);
+        basePoints.push(new THREE.Vector3(x, y, z));
+      }
+
+      const curve = new THREE.CatmullRomCurve3(basePoints);
+      curve.curveType = 'centripetal';
+
+      // Tube radius 0.09 for physical volumetric look
+      const tubeGeom = new THREE.TubeGeometry(curve, 90, 0.085, 12, false);
+      const tubeMat = new THREE.MeshStandardMaterial({
+        color: colorHex,
+        emissive: colorHex,
+        emissiveIntensity: 0.45,
+        roughness: 0.2,
+        metalness: 0.75,
+        transparent: true,
+        opacity: 0.82 * opacity
+      });
+
+      const tubeMesh = new THREE.Mesh(tubeGeom, tubeMat);
+      scene.add(tubeMesh);
+
+      return {
+        curve,
+        tubeMesh,
+        basePoints,
+        speed,
+        frequency: 0.8,
+        amplitude: amp,
+        phase
+      };
+    };
+
+    // 4 Distinct Volumetric 3D Threads flowing across the scene
+    threadsData.push(createThread(4.2, -1.5, 0x6366f1, 0.0012, 1.8, 0.0)); // Violet/Indigo Thread
+    threadsData.push(createThread(1.0, -3.0, 0x06b6d4, -0.0010, 2.2, 1.8)); // Cyan Thread
+    threadsData.push(createThread(-2.5, -1.0, 0xec4899, 0.0014, 2.0, 3.4)); // Magenta/Pink Thread
+    threadsData.push(createThread(-5.5, -2.5, 0x10b981, -0.0011, 1.9, 4.8)); // Emerald Thread
+
+    // Traveling Energy Pulses (Moving from one place to another along the 3D threads)
+    const packetColors = [0xa5b4fc, 0xf472b6, 0x67e8f9, 0x6ee7b7, 0xfde047, 0xc084fc];
+
+    for (let p = 0; p < 8; p++) {
+      const threadIdx = p % threadsData.length;
+      const color = packetColors[p % packetColors.length];
+
+      // Radiant energy orb head
+      const orbGeom = new THREE.SphereGeometry(0.24, 16, 16);
+      const orbMat = new THREE.MeshBasicMaterial({
+        color: 0xffffff
+      });
+      const orbMesh = new THREE.Mesh(orbGeom, orbMat);
+
+      // Outer glowing halo
+      const glowOrbGeom = new THREE.SphereGeometry(0.48, 16, 16);
+      const glowOrbMat = new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0.65
+      });
+      orbMesh.add(new THREE.Mesh(glowOrbGeom, glowOrbMat));
+
+      // Trailing laser light streak
+      const trailPoints: THREE.Vector3[] = [];
+      const trailCount = 14;
+      for (let j = 0; j < trailCount; j++) {
+        trailPoints.push(new THREE.Vector3(0, 0, 0));
+      }
+      const trailGeom = new THREE.BufferGeometry().setFromPoints(trailPoints);
+      const trailMat = new THREE.LineBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0.75,
+        linewidth: 2
+      });
+      const trailMesh = new THREE.Line(trailGeom, trailMat);
+      scene.add(trailMesh);
+
+      scene.add(orbMesh);
+
+      lightPackets.push({
+        mesh: orbMesh,
+        trailMesh,
+        threadIndex: threadIdx,
+        progress: (p * 0.125) % 1.0,
+        speed: 0.0018 + (p % 3) * 0.0006,
+        trailLength: 0.045
+      });
+    }
+
+    // 5. Ambient 3D Energy Particle Dust Constellation (120 particles)
+    const particleCount = 120;
+    const particleGeom = new THREE.BufferGeometry();
+    const particlePositions = new Float32Array(particleCount * 3);
+    const particleColors = new Float32Array(particleCount * 3);
+
+    const colorPalette = [
+      new THREE.Color(0x6366f1),
+      new THREE.Color(0x06b6d4),
+      new THREE.Color(0xec4899),
+      new THREE.Color(0x10b981),
+      new THREE.Color(0xf59e0b)
+    ];
+
+    for (let i = 0; i < particleCount; i++) {
+      particlePositions[i * 3] = (Math.random() - 0.5) * 36;
+      particlePositions[i * 3 + 1] = (Math.random() - 0.5) * 24;
+      particlePositions[i * 3 + 2] = (Math.random() - 0.5) * 16 - 2;
+
+      const c = colorPalette[i % colorPalette.length];
+      particleColors[i * 3] = c.r;
+      particleColors[i * 3 + 1] = c.g;
+      particleColors[i * 3 + 2] = c.b;
+    }
+
+    particleGeom.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+    particleGeom.setAttribute('color', new THREE.BufferAttribute(particleColors, 3));
+
+    const particleMat = new THREE.PointsMaterial({
+      size: 0.18,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.65,
+      blending: THREE.AdditiveBlending
+    });
+
+    const particleSystem = new THREE.Points(particleGeom, particleMat);
+    scene.add(particleSystem);
+
+    // ========================================================================
+    // 6. INTERACTIVE MOUSE PARALLAX & ANIMATION LOOP
+    // ========================================================================
+
     let mouseX = 0;
     let mouseY = 0;
     let targetMouseX = 0;
     let targetMouseY = 0;
 
-    const handleMouseMove = (e: MouseEvent) => {
+    const onMouseMove = (e: MouseEvent) => {
       targetMouseX = (e.clientX / window.innerWidth) * 2 - 1;
       targetMouseY = (e.clientY / window.innerHeight) * 2 - 1;
     };
 
-    window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    window.addEventListener('mousemove', onMouseMove, { passive: true });
 
-    // Responsive Canvas Resize with High-DPI Support
-    const resize = () => {
-      if (!canvas) return;
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const onResize = () => {
       width = window.innerWidth;
       height = window.innerHeight;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      canvas.style.width = `${width}px`;
-      canvas.style.height = `${height}px`;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     };
 
-    resize();
-    window.addEventListener('resize', resize);
+    window.addEventListener('resize', onResize);
 
-    // ========================================================================
-    // 1. GENERATE 3D MATHEMATICAL WIREFRAME SHAPES
-    // ========================================================================
+    let animId: number;
+    let clock = new THREE.Clock();
 
-    // 1A. Icosahedron (20-sided celestial polyhedron)
-    const createIcosahedron = (r: number): { vertices: Point3D[]; edges: Edge3D[] } => {
-      const phi = (1 + Math.sqrt(5)) / 2;
-      const rawVerts = [
-        [-1, phi, 0], [1, phi, 0], [-1, -phi, 0], [1, -phi, 0],
-        [0, -1, phi], [0, 1, phi], [0, -1, -phi], [0, 1, -phi],
-        [phi, 0, -1], [phi, 0, 1], [-phi, 0, -1], [-phi, 0, 1]
-      ];
+    const animate = () => {
+      const delta = clock.getDelta();
+      const elapsedTime = clock.getElapsedTime();
 
-      const vertices: Point3D[] = rawVerts.map(([x, y, z]) => {
-        const len = Math.hypot(x, y, z);
-        return { x: (x / len) * r, y: (y / len) * r, z: (z / len) * r };
+      // Fluid mouse parallax interpolation (lerp)
+      mouseX += (targetMouseX - mouseX) * 0.05;
+      mouseY += (targetMouseY - mouseY) * 0.05;
+
+      // Parallax camera tilt
+      camera.position.x = mouseX * 2.2;
+      camera.position.y = -mouseY * 1.8;
+      camera.lookAt(0, 0, 0);
+
+      // Shift dynamic point lights subtly for dynamic specular gleams
+      indigoLight.position.x = -10 + mouseX * 4;
+      cyanLight.position.x = 10 + mouseX * 4;
+      pinkLight.position.y = 10 - mouseY * 4;
+
+      // 1. Animate 3D Floating Objects
+      floatingObjects.forEach((obj) => {
+        obj.mesh.rotation.x += obj.rotSpeedX;
+        obj.mesh.rotation.y += obj.rotSpeedY;
+        obj.mesh.rotation.z += obj.rotSpeedZ;
+
+        // Vertical harmonic float bobbing + mouse parallax
+        const bob = Math.sin(elapsedTime * obj.floatSpeed * 1000 + obj.floatPhase) * obj.floatAmp;
+        obj.mesh.position.y = obj.baseY + bob - mouseY * 0.8;
+        obj.mesh.position.x = obj.baseX + mouseX * 0.8;
       });
 
-      const edges: Edge3D[] = [];
-      const distThreshold = (2 / Math.sqrt(1 + phi * phi)) * r * 1.15;
+      // 2. Animate and Deform 3D Spline Threads
+      threadsData.forEach((t) => {
+        const points = t.basePoints;
+        for (let i = 0; i < points.length; i++) {
+          const pt = points[i];
+          const wave = Math.sin(elapsedTime * 1.5 + i * 0.6 + t.phase) * t.amplitude;
+          const waveZ = Math.cos(elapsedTime * 1.2 + i * 0.5 + t.phase) * (t.amplitude * 0.6);
+          pt.y = pt.y + (wave - pt.y + t.basePoints[i].y) * 0.04;
+          pt.z = pt.z + (waveZ - pt.z + t.basePoints[i].z) * 0.04;
+        }
 
-      for (let i = 0; i < vertices.length; i++) {
-        for (let j = i + 1; j < vertices.length; j++) {
-          const d = Math.hypot(
-            vertices[i].x - vertices[j].x,
-            vertices[i].y - vertices[j].y,
-            vertices[i].z - vertices[j].z
-          );
-          if (d <= distThreshold) {
-            edges.push({ a: i, b: j });
+        t.curve.points = points;
+        // Regenerate tube geometry with updated deformed curve points
+        t.tubeMesh.geometry.dispose();
+        t.tubeMesh.geometry = new THREE.TubeGeometry(t.curve, 90, 0.085, 12, false);
+      });
+
+      // 3. Animate Light Packets Moving Along the 3D Threads (one place to another)
+      lightPackets.forEach((lp) => {
+        lp.progress += lp.speed * (delta * 60);
+        if (lp.progress > 1.0) {
+          lp.progress = 0.0;
+        }
+
+        const parentThread = threadsData[lp.threadIndex];
+        const headPos = parentThread.curve.getPointAt(lp.progress);
+        lp.mesh.position.copy(headPos);
+
+        // Update trailing tail line behind packet
+        const trailPositions: THREE.Vector3[] = [];
+        const steps = 14;
+        for (let s = 0; s < steps; s++) {
+          const trailT = Math.max(0, lp.progress - (s / steps) * lp.trailLength);
+          trailPositions.push(parentThread.curve.getPointAt(trailT));
+        }
+
+        lp.trailMesh.geometry.setFromPoints(trailPositions);
+      });
+
+      // 4. Subtle rotation of background ambient particle stars
+      particleSystem.rotation.y = elapsedTime * 0.02;
+      particleSystem.rotation.x = elapsedTime * 0.01;
+
+      renderer.render(scene, camera);
+      animId = requestAnimationFrame(animate);
+    };
+
+    // Pause when page is hidden to preserve GPU/battery
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        cancelAnimationFrame(animId);
+      } else {
+        clock.start();
+        animId = requestAnimationFrame(animate);
+      }
+    };
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    animId = requestAnimationFrame(animate);
+
+    // Cleanup on component unmount
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('resize', onResize);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+
+      if (container && renderer.domElement && container.contains(renderer.domElement)) {
+        container.removeChild(renderer.domElement);
+      }
+
+      // Dispose 3D geometries and materials
+      floatingObjects.forEach((obj) => {
+        if (obj.mesh instanceof THREE.Mesh) {
+          obj.mesh.geometry.dispose();
+          if (Array.isArray(obj.mesh.material)) {
+            obj.mesh.material.forEach((m) => m.dispose());
+          } else {
+            obj.mesh.material.dispose();
           }
         }
-      }
-      return { vertices, edges };
-    };
-
-    // 1B. Cube (Hexahedron)
-    const createCube = (s: number): { vertices: Point3D[]; edges: Edge3D[] } => {
-      const h = s / 2;
-      const vertices: Point3D[] = [
-        { x: -h, y: -h, z: -h },
-        { x: h, y: -h, z: -h },
-        { x: h, y: h, z: -h },
-        { x: -h, y: h, z: -h },
-        { x: -h, y: -h, z: h },
-        { x: h, y: -h, z: h },
-        { x: h, y: h, z: h },
-        { x: -h, y: h, z: h }
-      ];
-      const edges: Edge3D[] = [
-        { a: 0, b: 1 }, { a: 1, b: 2 }, { a: 2, b: 3 }, { a: 3, b: 0 },
-        { a: 4, b: 5 }, { a: 5, b: 6 }, { a: 6, b: 7 }, { a: 7, b: 4 },
-        { a: 0, b: 4 }, { a: 1, b: 5 }, { a: 2, b: 6 }, { a: 3, b: 7 }
-      ];
-      return { vertices, edges };
-    };
-
-    // 1C. Octahedron (Diamond / Double Pyramid)
-    const createOctahedron = (r: number): { vertices: Point3D[]; edges: Edge3D[] } => {
-      const vertices: Point3D[] = [
-        { x: 0, y: -r, z: 0 },
-        { x: 0, y: r, z: 0 },
-        { x: -r, y: 0, z: 0 },
-        { x: r, y: 0, z: 0 },
-        { x: 0, y: 0, z: -r },
-        { x: 0, y: 0, z: r }
-      ];
-      const edges: Edge3D[] = [
-        { a: 0, b: 2 }, { a: 0, b: 3 }, { a: 0, b: 4 }, { a: 0, b: 5 },
-        { a: 1, b: 2 }, { a: 1, b: 3 }, { a: 1, b: 4 }, { a: 1, b: 5 },
-        { a: 2, b: 4 }, { a: 4, b: 3 }, { a: 3, b: 5 }, { a: 5, b: 2 }
-      ];
-      return { vertices, edges };
-    };
-
-    // 1D. Tetrahedron (3D Triangular Prism)
-    const createTetrahedron = (r: number): { vertices: Point3D[]; edges: Edge3D[] } => {
-      const a = r / Math.sqrt(3);
-      const vertices: Point3D[] = [
-        { x: a, y: a, z: a },
-        { x: -a, y: -a, z: a },
-        { x: -a, y: a, z: -a },
-        { x: a, y: -a, z: -a }
-      ];
-      const edges: Edge3D[] = [
-        { a: 0, b: 1 }, { a: 0, b: 2 }, { a: 0, b: 3 },
-        { a: 1, b: 2 }, { a: 2, b: 3 }, { a: 3, b: 1 }
-      ];
-      return { vertices, edges };
-    };
-
-    // 1E. Gyroscope Dual Rings
-    const createGyroscopeRings = (r: number): { vertices: Point3D[]; edges: Edge3D[] } => {
-      const segments = 18;
-      const vertices: Point3D[] = [];
-      const edges: Edge3D[] = [];
-
-      // Ring 1 (XY plane)
-      for (let i = 0; i < segments; i++) {
-        const angle = (i / segments) * Math.PI * 2;
-        vertices.push({ x: Math.cos(angle) * r, y: Math.sin(angle) * r, z: 0 });
-        edges.push({ a: i, b: (i + 1) % segments });
-      }
-
-      // Ring 2 (YZ plane)
-      const offset = segments;
-      for (let i = 0; i < segments; i++) {
-        const angle = (i / segments) * Math.PI * 2;
-        vertices.push({ x: 0, y: Math.cos(angle) * (r * 0.88), z: Math.sin(angle) * (r * 0.88) });
-        edges.push({ a: offset + i, b: offset + ((i + 1) % segments) });
-      }
-
-      return { vertices, edges };
-    };
-
-    // 5 Unique Floating 3D Shapes positioned across the layout
-    const shapes: Shape3D[] = [
-      // Shape 1: Celestial Icosahedron in top-right
-      {
-        id: 'ico-top-right',
-        type: 'icosahedron',
-        xRel: 0.84,
-        yRel: 0.16,
-        radius: 48,
-        rotX: 0.3,
-        rotY: 0.6,
-        rotZ: 0.1,
-        speedX: 0.0035,
-        speedY: 0.005,
-        speedZ: 0.002,
-        color: '#6366f1', // Indigo
-        glowColor: 'rgba(99, 102, 241, 0.25)',
-        ...createIcosahedron(48),
-        floatPhase: 0,
-        floatSpeed: 0.0016,
-        floatAmp: 16
-      },
-      // Shape 2: Rotating Cube in upper-left
-      {
-        id: 'cube-top-left',
-        type: 'cube',
-        xRel: 0.12,
-        yRel: 0.22,
-        radius: 42,
-        rotX: 0.5,
-        rotY: 0.3,
-        rotZ: 0.2,
-        speedX: 0.004,
-        speedY: 0.003,
-        speedZ: 0.0025,
-        color: '#a855f7', // Purple
-        glowColor: 'rgba(168, 85, 247, 0.22)',
-        ...createCube(42),
-        floatPhase: 1.8,
-        floatSpeed: 0.0014,
-        floatAmp: 14
-      },
-      // Shape 3: Octahedron (Diamond) mid-right
-      {
-        id: 'octa-mid-right',
-        type: 'octahedron',
-        xRel: 0.9,
-        yRel: 0.54,
-        radius: 44,
-        rotX: 0.2,
-        rotY: 0.4,
-        rotZ: 0.3,
-        speedX: 0.0045,
-        speedY: 0.004,
-        speedZ: 0.003,
-        color: '#ec4899', // Pink
-        glowColor: 'rgba(236, 72, 153, 0.22)',
-        ...createOctahedron(44),
-        floatPhase: 3.2,
-        floatSpeed: 0.0018,
-        floatAmp: 18
-      },
-      // Shape 4: Gyroscope Dual Rings mid-left
-      {
-        id: 'rings-mid-left',
-        type: 'rings',
-        xRel: 0.08,
-        yRel: 0.68,
-        radius: 46,
-        rotX: 0.4,
-        rotY: 0.2,
-        rotZ: 0.5,
-        speedX: 0.003,
-        speedY: 0.0055,
-        speedZ: 0.002,
-        color: '#06b6d4', // Cyan
-        glowColor: 'rgba(6, 182, 212, 0.22)',
-        ...createGyroscopeRings(46),
-        floatPhase: 4.6,
-        floatSpeed: 0.0015,
-        floatAmp: 15
-      },
-      // Shape 5: Tetrahedron lower-right
-      {
-        id: 'tetra-bottom-right',
-        type: 'tetrahedron',
-        xRel: 0.82,
-        yRel: 0.84,
-        radius: 40,
-        rotX: 0.4,
-        rotY: 0.5,
-        rotZ: 0.3,
-        speedX: 0.004,
-        speedY: 0.0035,
-        speedZ: 0.0045,
-        color: '#10b981', // Emerald
-        glowColor: 'rgba(16, 185, 129, 0.22)',
-        ...createTetrahedron(40),
-        floatPhase: 2.4,
-        floatSpeed: 0.0017,
-        floatAmp: 14
-      }
-    ];
-
-    // ========================================================================
-    // 2. FLOWING 3D BEZIER THREADS & TRAVELING ENERGY PACKETS
-    // ========================================================================
-
-    interface ThreadDef {
-      yBaseRel: number;
-      amplitude: number;
-      frequency: number;
-      speed: number;
-      zDepth: number;
-      gradient: [string, string, string];
-    }
-
-    const threads: ThreadDef[] = [
-      {
-        yBaseRel: 0.18,
-        amplitude: 55,
-        frequency: 0.0018,
-        speed: 0.0011,
-        zDepth: 60,
-        gradient: ['rgba(99, 102, 241, 0.35)', 'rgba(168, 85, 247, 0.45)', 'rgba(236, 72, 153, 0.35)']
-      },
-      {
-        yBaseRel: 0.36,
-        amplitude: 75,
-        frequency: 0.0014,
-        speed: -0.00085,
-        zDepth: -40,
-        gradient: ['rgba(6, 182, 212, 0.35)', 'rgba(99, 102, 241, 0.45)', 'rgba(147, 51, 234, 0.35)']
-      },
-      {
-        yBaseRel: 0.6,
-        amplitude: 65,
-        frequency: 0.002,
-        speed: 0.0014,
-        zDepth: 30,
-        gradient: ['rgba(168, 85, 247, 0.35)', 'rgba(236, 72, 153, 0.45)', 'rgba(245, 158, 11, 0.35)']
-      },
-      {
-        yBaseRel: 0.8,
-        amplitude: 70,
-        frequency: 0.0016,
-        speed: -0.001,
-        zDepth: -50,
-        gradient: ['rgba(16, 185, 129, 0.35)', 'rgba(6, 182, 212, 0.45)', 'rgba(99, 102, 241, 0.35)']
-      }
-    ];
-
-    // Traveling light pulses / particles moving along threads (one place to another)
-    const particles: ThreadParticle[] = [
-      { t: 0.08, speed: 0.0008, threadIndex: 0, size: 4.5, color: '#818cf8' },
-      { t: 0.58, speed: 0.001, threadIndex: 0, size: 3.5, color: '#f472b6' },
-      { t: 0.22, speed: 0.0009, threadIndex: 1, size: 5.0, color: '#38bdf8' },
-      { t: 0.78, speed: 0.0007, threadIndex: 1, size: 3.5, color: '#a855f7' },
-      { t: 0.12, speed: 0.0011, threadIndex: 2, size: 4.5, color: '#fb7185' },
-      { t: 0.64, speed: 0.0008, threadIndex: 2, size: 4.0, color: '#c084fc' },
-      { t: 0.32, speed: 0.0009, threadIndex: 3, size: 4.5, color: '#34d399' },
-      { t: 0.88, speed: 0.0007, threadIndex: 3, size: 3.5, color: '#38bdf8' }
-    ];
-
-    // Ambient floating 3D dust / stars
-    const ambientNodes: AmbientNode3D[] = Array.from({ length: 24 }).map((_, i) => ({
-      xRel: Math.random(),
-      yRel: Math.random(),
-      z: (Math.random() - 0.5) * 120,
-      vx: (Math.random() - 0.5) * 0.0002,
-      vy: (Math.random() - 0.5) * 0.0002,
-      size: 1.5 + Math.random() * 2.0,
-      color: i % 4 === 0 ? '#818cf8' : i % 4 === 1 ? '#a855f7' : i % 4 === 2 ? '#38bdf8' : '#34d399'
-    }));
-
-    // ========================================================================
-    // 3. 3D MATH PROJECTION ENGINE
-    // ========================================================================
-
-    const project3D = (
-      p: Point3D,
-      cx: number,
-      cy: number,
-      rx: number,
-      ry: number,
-      rz: number,
-      fov: number = 420
-    ) => {
-      // Rotation Y
-      const cosY = Math.cos(ry);
-      const sinY = Math.sin(ry);
-      const x1 = p.x * cosY + p.z * sinY;
-      const z1 = -p.x * sinY + p.z * cosY;
-
-      // Rotation X
-      const cosX = Math.cos(rx);
-      const sinX = Math.sin(rx);
-      const y2 = p.y * cosX - z1 * sinX;
-      const z2 = p.y * sinX + z1 * cosX;
-
-      // Rotation Z
-      const cosZ = Math.cos(rz);
-      const sinZ = Math.sin(rz);
-      const x3 = x1 * cosZ - y2 * sinZ;
-      const y3 = x1 * sinZ + y2 * cosZ;
-
-      // Perspective Scale
-      const scale = fov / (fov + z2);
-      return {
-        x: cx + x3 * scale,
-        y: cy + y3 * scale,
-        z: z2,
-        scale
-      };
-    };
-
-    // Calculate thread Y position at specific X and time
-    const getThreadPoint = (thread: ThreadDef, x: number, t: number) => {
-      const baseY = thread.yBaseRel * height;
-      const wave1 = Math.sin(x * thread.frequency + t * thread.speed) * thread.amplitude;
-      const wave2 = Math.cos(x * (thread.frequency * 0.65) - t * (thread.speed * 0.75)) * (thread.amplitude * 0.45);
-      const mouseOffset = mouseX * 28 * (thread.zDepth / 100);
-      return baseY + wave1 + wave2 + mouseOffset;
-    };
-
-    // ========================================================================
-    // 4. ANIMATION RENDER LOOP
-    // ========================================================================
-
-    let lastTimestamp = performance.now();
-
-    const render = (timestamp: number) => {
-      const delta = Math.min((timestamp - lastTimestamp) / 16.66, 2.0);
-      lastTimestamp = timestamp;
-      time += 1.0 * delta;
-
-      // Smooth mouse parallax easing (lerp)
-      mouseX += (targetMouseX - mouseX) * 0.05 * delta;
-      mouseY += (targetMouseY - mouseY) * 0.05 * delta;
-
-      ctx.clearRect(0, 0, width, height);
-
-      // ----------------------------------------------------------------------
-      // Draw Ambient 3D Constellation Nodes (Depth Dust)
-      // ----------------------------------------------------------------------
-      ambientNodes.forEach((node) => {
-        node.xRel += node.vx * delta;
-        node.yRel += node.vy * delta;
-        if (node.xRel < 0) node.xRel = 1;
-        if (node.xRel > 1) node.xRel = 0;
-        if (node.yRel < 0) node.yRel = 1;
-        if (node.yRel > 1) node.yRel = 0;
-
-        const posX = node.xRel * width + mouseX * 20 * (node.z / 100);
-        const posY = node.yRel * height + mouseY * 20 * (node.z / 100);
-        const depthScale = 400 / (400 + node.z);
-        const alpha = Math.max(0.15, Math.min(0.5, 0.3 + node.z / 300)) * opacity;
-
-        ctx.save();
-        ctx.fillStyle = node.color;
-        ctx.globalAlpha = alpha;
-        ctx.beginPath();
-        ctx.arc(posX, posY, node.size * depthScale, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
       });
 
-      // ----------------------------------------------------------------------
-      // Draw Flowing 3D Threads (Multi-Strand Ribbon Bundles)
-      // ----------------------------------------------------------------------
-      threads.forEach((thread) => {
-        const step = 20;
-        const pts: { x: number; y: number }[] = [];
-
-        for (let x = -50; x <= width + 50; x += step) {
-          const y = getThreadPoint(thread, x, time * 10);
-          pts.push({ x, y });
-        }
-
-        if (pts.length < 2) return;
-
-        // Render main thread line with horizontal gradient
-        const grad = ctx.createLinearGradient(0, 0, width, 0);
-        grad.addColorStop(0, thread.gradient[0]);
-        grad.addColorStop(0.5, thread.gradient[1]);
-        grad.addColorStop(1, thread.gradient[2]);
-
-        ctx.save();
-        ctx.globalAlpha = opacity;
-        ctx.strokeStyle = grad;
-        ctx.lineWidth = 1.9;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-
-        ctx.beginPath();
-        ctx.moveTo(pts[0].x, pts[0].y);
-        for (let i = 1; i < pts.length; i++) {
-          const xc = (pts[i - 1].x + pts[i].x) / 2;
-          const yc = (pts[i - 1].y + pts[i].y) / 2;
-          ctx.quadraticCurveTo(pts[i - 1].x, pts[i - 1].y, xc, yc);
-        }
-        ctx.stroke();
-
-        // Render parallel secondary micro-strand for 3D ribbon volume
-        ctx.strokeStyle = thread.gradient[1];
-        ctx.lineWidth = 0.9;
-        ctx.beginPath();
-        ctx.moveTo(pts[0].x, pts[0].y + 7);
-        for (let i = 1; i < pts.length; i++) {
-          const xc = (pts[i - 1].x + pts[i].x) / 2;
-          const yc = (pts[i - 1].y + pts[i].y) / 2 + 7;
-          ctx.quadraticCurveTo(pts[i - 1].x, pts[i - 1].y + 7, xc, yc);
-        }
-        ctx.stroke();
-
-        ctx.restore();
+      threadsData.forEach((t) => {
+        t.tubeMesh.geometry.dispose();
+        (t.tubeMesh.material as THREE.Material).dispose();
       });
 
-      // ----------------------------------------------------------------------
-      // Draw Traveling Particles Moving Along Threads (One place to another)
-      // ----------------------------------------------------------------------
-      particles.forEach((p) => {
-        p.t += p.speed * delta;
-        if (p.t > 1) p.t = 0;
-
-        const currentThread = threads[p.threadIndex];
-        const currentX = p.t * width;
-        const currentY = getThreadPoint(currentThread, currentX, time * 10);
-
-        ctx.save();
-        ctx.globalAlpha = opacity;
-
-        // Radiant glowing halo
-        const haloGrad = ctx.createRadialGradient(
-          currentX,
-          currentY,
-          0,
-          currentX,
-          currentY,
-          p.size * 4.5
-        );
-        haloGrad.addColorStop(0, p.color);
-        haloGrad.addColorStop(0.4, p.color + '77');
-        haloGrad.addColorStop(1, 'transparent');
-
-        ctx.fillStyle = haloGrad;
-        ctx.beginPath();
-        ctx.arc(currentX, currentY, p.size * 4.5, 0, Math.PI * 2);
-        ctx.fill();
-
-        // High-energy core nucleus
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(currentX, currentY, p.size * 0.75, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Trailing luminous energy tail
-        const tailLength = 40;
-        const prevX = Math.max(0, currentX - tailLength);
-        const prevY = getThreadPoint(currentThread, prevX, time * 10);
-
-        const tailGrad = ctx.createLinearGradient(prevX, prevY, currentX, currentY);
-        tailGrad.addColorStop(0, 'transparent');
-        tailGrad.addColorStop(1, p.color);
-
-        ctx.strokeStyle = tailGrad;
-        ctx.lineWidth = 2.2;
-        ctx.beginPath();
-        ctx.moveTo(prevX, prevY);
-        ctx.lineTo(currentX, currentY);
-        ctx.stroke();
-
-        ctx.restore();
+      lightPackets.forEach((lp) => {
+        lp.mesh.geometry.dispose();
+        (lp.mesh.material as THREE.Material).dispose();
+        lp.trailMesh.geometry.dispose();
+        (lp.trailMesh.material as THREE.Material).dispose();
       });
 
-      // ----------------------------------------------------------------------
-      // Draw 3D Polyhedra Shapes (Wireframes with glowing nodes & specular depth)
-      // ----------------------------------------------------------------------
-      shapes.forEach((shape) => {
-        // Continuous 3D rotation on multiple axes
-        shape.rotX += shape.speedX * delta;
-        shape.rotY += shape.speedY * delta;
-        shape.rotZ += shape.speedZ * delta;
-
-        // Harmonic vertical float bobbing
-        const floatOffset = Math.sin(time * shape.floatSpeed + shape.floatPhase) * shape.floatAmp;
-        const mouseParallaxX = mouseX * 40;
-        const mouseParallaxY = mouseY * 40;
-
-        const centerX = shape.xRel * width + mouseParallaxX;
-        const centerY = shape.yRel * height + floatOffset + mouseParallaxY;
-
-        // Project 3D vertices into 2D viewport with perspective
-        const projectedVerts = shape.vertices.map((v) =>
-          project3D(v, centerX, centerY, shape.rotX, shape.rotY, shape.rotZ)
-        );
-
-        ctx.save();
-
-        // Ambient radial light bloom behind shape
-        const radialGlow = ctx.createRadialGradient(
-          centerX,
-          centerY,
-          0,
-          centerX,
-          centerY,
-          shape.radius * 1.6
-        );
-        radialGlow.addColorStop(0, shape.glowColor);
-        radialGlow.addColorStop(1, 'transparent');
-        ctx.fillStyle = radialGlow;
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, shape.radius * 1.6, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Draw 3D Wireframe Edges
-        ctx.strokeStyle = shape.color;
-        ctx.lineWidth = 1.35;
-        ctx.lineCap = 'round';
-
-        shape.edges.forEach((edge) => {
-          const vA = projectedVerts[edge.a];
-          const vB = projectedVerts[edge.b];
-          if (!vA || !vB) return;
-
-          // Depth-based opacity shading (closer edges are brighter)
-          const avgZ = (vA.z + vB.z) / 2;
-          const depthAlpha = Math.max(0.2, Math.min(0.9, 0.55 + avgZ / 100));
-          ctx.globalAlpha = depthAlpha * opacity;
-
-          ctx.beginPath();
-          ctx.moveTo(vA.x, vA.y);
-          ctx.lineTo(vB.x, vB.y);
-          ctx.stroke();
-        });
-
-        // Draw 3D Vertices (Glowing Nodes)
-        projectedVerts.forEach((v) => {
-          const nodeAlpha = Math.max(0.3, Math.min(1.0, 0.65 + v.z / 80));
-          ctx.globalAlpha = nodeAlpha * opacity;
-
-          // Outer colored glow ring
-          ctx.fillStyle = shape.color;
-          ctx.beginPath();
-          ctx.arc(v.x, v.y, 2.8 * v.scale, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Core bright white specular dot
-          ctx.fillStyle = '#ffffff';
-          ctx.beginPath();
-          ctx.arc(v.x, v.y, 1.3 * v.scale, 0, Math.PI * 2);
-          ctx.fill();
-        });
-
-        ctx.restore();
-      });
-
-      animationFrameId = requestAnimationFrame(render);
-    };
-
-    // Pause rendering when document is hidden to optimize performance
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        cancelAnimationFrame(animationFrameId);
-      } else {
-        lastTimestamp = performance.now();
-        animationFrameId = requestAnimationFrame(render);
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    animationFrameId = requestAnimationFrame(render);
-
-    return () => {
-      cancelAnimationFrame(animationFrameId);
-      window.removeEventListener('resize', resize);
-      window.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      particleGeom.dispose();
+      particleMat.dispose();
+      renderer.dispose();
     };
   }, [opacity]);
 
   return (
-    <canvas
-      ref={canvasRef}
+    <div
+      ref={mountRef}
       className={className}
       aria-hidden="true"
       style={{
         pointerEvents: 'none',
         position: 'fixed',
         inset: 0,
-        zIndex: 0
+        zIndex: 0,
+        overflow: 'hidden'
       }}
     />
   );
