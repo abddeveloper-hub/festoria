@@ -258,11 +258,11 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
   const categories = ['All', ...Array.from(new Set(allPhotos.map((p) => p.category || 'General')))];
 
   return (
-    <div className="min-h-screen min-h-dvh bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-slate-900 selection:text-white">
+    <div className="min-h-screen min-h-dvh bg-[#faf8ff] text-slate-800 flex flex-col font-sans selection:bg-[#0d9488] selection:text-white">
       {/* ==================================================================== */}
       {/* 1. PUBLIC TOP NAVIGATION                                             */}
       {/* ==================================================================== */}
-      <nav className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 sm:px-8 py-3 flex items-center justify-between">
+      <nav className="sticky top-0 z-40 bg-[#faf8ff]/85 backdrop-blur-md border-b border-[#e2e8f0] px-4 sm:px-8 py-3.5 flex items-center justify-between">
         <div className="flex items-center gap-3">
           {pageData.logo.logoUrl ? (
             <img
@@ -276,15 +276,15 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               src={FESTORIA_LOGO}
               alt={festName}
               onError={handleLogoError}
-              className="w-9 h-9 rounded-xl object-contain shadow-xs border border-slate-200/80 bg-white"
+              className="w-9 h-9 rounded-xl object-contain shadow-xs border border-[#e2e8f0] bg-white p-0.5"
             />
           )}
 
           <div>
-            <h1 className="text-sm font-bold tracking-tight text-slate-900 leading-tight">
+            <h1 className="text-sm sm:text-base font-bold tracking-tight text-[#0f172a] leading-tight font-display">
               {festName}
             </h1>
-            <p className="text-[10px] text-slate-500 font-semibold tracking-wide uppercase">
+            <p className="text-[10px] sm:text-[11px] text-[#64748b] font-medium tracking-wide">
               {fest?.institution ? `${fest.institution} · ` : ''}{fest?.edition || settings.festEdition || 'Official Festival Portal'}
             </p>
           </div>
@@ -296,7 +296,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
             type="button"
             onClick={() => setMenuDrawerOpen(true)}
             aria-label="Open Navigation Menu"
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all shadow-xs active:scale-95 cursor-pointer"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#0d9488] hover:bg-[#0f766e] text-white text-xs font-bold transition-all shadow-[0_4px_14px_rgba(13,148,136,0.25)] hover:shadow-[0_6px_18px_rgba(13,148,136,0.35)] active:scale-95 cursor-pointer"
           >
             <Menu className="w-4 h-4 text-white" />
             <span>Menu</span>
@@ -306,17 +306,17 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
       {/* Subview Navigation Breadcrumb (When viewing a specific section) */}
       {activeTabSection !== 'overview' && (
-        <div className="bg-slate-100/90 border-b border-slate-200 py-3 px-4 sm:px-8 sticky top-[57px] z-30 backdrop-blur-xs">
+        <div className="bg-[#f0fdfa]/90 border-b border-[#ccfbf1] py-3 px-4 sm:px-8 sticky top-[59px] z-30 backdrop-blur-md">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <button
               type="button"
               onClick={() => setActiveTabSection('overview')}
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-700 hover:text-indigo-900 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0f766e] hover:text-[#0d9488] transition-colors cursor-pointer"
             >
               <ChevronLeft className="w-4 h-4" />
               <span>Back to Festival Overview</span>
             </button>
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider">
               {activeTabSection === 'student_search' ? 'Student Directory' : activeTabSection.replace('_', ' ')}
             </span>
           </div>
@@ -327,7 +327,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       {/* 2. HERO SECTION WITH ADMIN-MANAGED VIDEO & FALLBACKS (OVERVIEW ONLY) */}
       {/* ==================================================================== */}
       {activeTabSection === 'overview' && (
-      <section className="relative min-h-[420px] sm:min-h-[480px] lg:min-h-[600px] flex items-center justify-center overflow-hidden bg-slate-950 text-white">
+      <section className="relative min-h-[420px] sm:min-h-[480px] lg:min-h-[580px] flex items-center justify-center overflow-hidden bg-[#06332e] text-white">
         {/* Background Video */}
         {pageData.hero.videoUrl && !videoFailed ? (
           <>
@@ -347,7 +347,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               type="button"
               onClick={toggleVideoPlayback}
               title={isPlaying ? 'Pause Background Video' : 'Play Background Video'}
-              className="absolute bottom-4 right-4 z-20 p-2 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors backdrop-blur-xs text-xs flex items-center gap-1.5"
+              className="absolute bottom-4 right-4 z-20 px-3 py-1.5 rounded-full bg-black/40 hover:bg-black/60 border border-white/20 text-white backdrop-blur-md transition-colors text-xs flex items-center gap-1.5"
             >
               {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
               <span className="text-[10px] font-medium pr-1">{isPlaying ? 'Pause' : 'Play'}</span>
@@ -360,12 +360,18 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
             className="absolute inset-0 w-full h-full object-cover object-center z-0 opacity-40"
           />
         ) : (
-          /* Simple, Clean Slate Gradient */
-          <div className="absolute inset-0 z-0 bg-linear-to-b from-slate-950 via-slate-900 to-slate-950" />
+          /* Clean Luminous Coastal Oceanic Mint & Sky Gradient */
+          <div className="absolute inset-0 z-0 bg-gradient-to-br from-[#06332e] via-[#0d6e64] to-[#044c69]" />
         )}
 
+        {/* Ambient Luminous Floating Glow Orbs */}
+        <div aria-hidden="true" className="absolute inset-0 overflow-hidden pointer-events-none z-10">
+          <div className="absolute -top-20 -left-20 w-80 h-80 bg-[#89f5e7]/15 rounded-full blur-3xl"></div>
+          <div className="absolute top-1/2 -right-20 w-88 h-88 bg-[#5bb8fe]/15 rounded-full blur-3xl"></div>
+        </div>
+
         {/* Vignette Overlay */}
-        <div className="absolute inset-0 bg-linear-to-t from-slate-950 via-slate-950/40 to-slate-950/70 z-10" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#06332e] via-[#06332e]/40 to-[#06332e]/70 z-10" />
 
         {/* Hero Foreground Content */}
         <div className="relative z-20 max-w-4xl mx-auto px-4 sm:px-6 py-12 sm:py-16 lg:py-20 text-center space-y-4 sm:space-y-6">
@@ -382,29 +388,29 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
           )}
 
           {/* Festival Pill */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-indigo-300 text-xs font-semibold tracking-wide uppercase">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/15 backdrop-blur-md border border-white/25 text-[#89f5e7] text-xs font-semibold tracking-wide uppercase shadow-sm">
+            <Sparkles className="w-3.5 h-3.5 text-[#6ffbbe]" />
             <span>{fest ? `${fest.name} · ${fest.institution || ''}` : (settings.festEdition || 'Annual Inter-Collegiate Fest')}</span>
           </div>
 
           {/* Heading */}
-          <h2 className="text-2xl sm:text-4xl lg:text-6xl font-black tracking-tight text-white leading-tight drop-shadow-md">
+          <h2 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight drop-shadow-md font-display">
             {pageData.hero.heading && !pageData.hero.heading.includes('Celebrate Passion') ? pageData.hero.heading : `Welcome to ${festName}`}
           </h2>
 
           {/* Description */}
-          <p className="text-xs sm:text-base lg:text-lg text-slate-300 max-w-2xl mx-auto font-normal leading-relaxed">
+          <p className="text-xs sm:text-base lg:text-lg text-white/90 max-w-2xl mx-auto font-normal leading-relaxed">
             {fest?.description || pageData.hero.description}
           </p>
 
           {/* Meta Info Bar (Dates, Venue, Host) */}
-          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 pt-1 text-xs font-medium text-slate-300">
-            <div className="flex items-center gap-2 bg-white/5 backdrop-blur-xs px-3 py-1.5 rounded-xl border border-white/10">
-              <Calendar className="w-4 h-4 text-indigo-400" />
+          <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-4 pt-1 text-xs font-medium text-white/90">
+            <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full border border-white/20">
+              <Calendar className="w-4 h-4 text-[#89f5e7]" />
               <span>{fest?.startDate || settings.startDate} to {fest?.endDate || settings.endDate}</span>
             </div>
-            <div className="flex items-center gap-2 bg-white/5 backdrop-blur-xs px-3 py-1.5 rounded-xl border border-white/10">
-              <MapPin className="w-4 h-4 text-indigo-400" />
+            <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full border border-white/20">
+              <MapPin className="w-4 h-4 text-[#89f5e7]" />
               <span>{fest ? `${fest.venue || ''}${fest.institution ? `, ${fest.institution}` : ''}` : (settings.venue || 'Grand University Campus')}</span>
             </div>
           </div>
@@ -412,64 +418,64 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
           {/* Dynamic Countdown Clock / Status Indicator */}
           <div className="pt-2">
             {countdown.status === 'upcoming' && (
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 <div className="flex items-center justify-center gap-1.5 sm:gap-2.5">
-                  <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-3 py-2 sm:px-4 sm:py-2.5 text-center min-w-[58px] sm:min-w-[72px] shadow-lg">
-                    <span className="font-mono font-black text-lg sm:text-2xl text-white block leading-none">
+                  <div className="bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl px-3.5 py-2.5 sm:px-5 sm:py-3 text-center min-w-[62px] sm:min-w-[76px] shadow-lg">
+                    <span className="font-mono font-black text-xl sm:text-3xl text-white block leading-none">
                       {countdown.days}
                     </span>
-                    <span className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-300 tracking-wider">Days</span>
+                    <span className="text-[9px] sm:text-[10px] uppercase font-bold text-teal-100 tracking-wider">Days</span>
                   </div>
                   <span className="text-white/60 font-black text-lg leading-none">:</span>
-                  <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-3 py-2 sm:px-4 sm:py-2.5 text-center min-w-[58px] sm:min-w-[72px] shadow-lg">
-                    <span className="font-mono font-black text-lg sm:text-2xl text-white block leading-none">
+                  <div className="bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl px-3.5 py-2.5 sm:px-5 sm:py-3 text-center min-w-[62px] sm:min-w-[76px] shadow-lg">
+                    <span className="font-mono font-black text-xl sm:text-3xl text-white block leading-none">
                       {String(countdown.hours).padStart(2, '0')}
                     </span>
-                    <span className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-300 tracking-wider">Hours</span>
+                    <span className="text-[9px] sm:text-[10px] uppercase font-bold text-teal-100 tracking-wider">Hours</span>
                   </div>
                   <span className="text-white/60 font-black text-lg leading-none">:</span>
-                  <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-3 py-2 sm:px-4 sm:py-2.5 text-center min-w-[58px] sm:min-w-[72px] shadow-lg">
-                    <span className="font-mono font-black text-lg sm:text-2xl text-white block leading-none">
+                  <div className="bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl px-3.5 py-2.5 sm:px-5 sm:py-3 text-center min-w-[62px] sm:min-w-[76px] shadow-lg">
+                    <span className="font-mono font-black text-xl sm:text-3xl text-white block leading-none">
                       {String(countdown.minutes).padStart(2, '0')}
                     </span>
-                    <span className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-300 tracking-wider">Mins</span>
+                    <span className="text-[9px] sm:text-[10px] uppercase font-bold text-teal-100 tracking-wider">Mins</span>
                   </div>
                   <span className="text-white/60 font-black text-lg leading-none">:</span>
-                  <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-3 py-2 sm:px-4 sm:py-2.5 text-center min-w-[58px] sm:min-w-[72px] shadow-lg">
-                    <span className="font-mono font-black text-lg sm:text-2xl text-amber-400 block leading-none">
+                  <div className="bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl px-3.5 py-2.5 sm:px-5 sm:py-3 text-center min-w-[62px] sm:min-w-[76px] shadow-lg">
+                    <span className="font-mono font-black text-xl sm:text-3xl text-[#6ffbbe] block leading-none">
                       {String(countdown.seconds).padStart(2, '0')}
                     </span>
-                    <span className="text-[9px] sm:text-[10px] uppercase font-bold text-amber-300 tracking-wider">Secs</span>
+                    <span className="text-[9px] sm:text-[10px] uppercase font-bold text-[#6ffbbe] tracking-wider">Secs</span>
                   </div>
                 </div>
-                <p className="text-[11px] text-slate-400 font-medium">Countdown to Opening Ceremony & Stage Competitions</p>
+                <p className="text-[11px] text-teal-100/80 font-medium">Countdown to Opening Ceremony & Stage Competitions</p>
               </div>
             )}
 
             {countdown.status === 'live' && (
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/20 backdrop-blur-md border border-emerald-400/50 text-emerald-300 text-xs font-bold uppercase tracking-wider shadow-lg">
+              <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#10b981]/25 backdrop-blur-md border border-[#10b981]/60 text-[#6ffbbe] text-xs font-bold uppercase tracking-wider shadow-lg">
                 <span className="relative flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#10b981] opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-[#10b981]"></span>
                 </span>
                 <span>Festival Is Live · Competitions in Progress</span>
               </div>
             )}
 
             {countdown.status === 'concluded' && (
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/20 backdrop-blur-md border border-amber-400/40 text-amber-300 text-xs font-bold uppercase tracking-wider">
-                <Trophy className="w-4 h-4 text-amber-400" />
+              <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-amber-500/20 backdrop-blur-md border border-amber-400/40 text-amber-200 text-xs font-bold uppercase tracking-wider shadow-md">
+                <Trophy className="w-4 h-4 text-amber-300" />
                 <span>Festival Concluded · Official Ratified Standings</span>
               </div>
             )}
           </div>
 
           {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-3 w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-3 w-full sm:w-auto">
             <button
               type="button"
               onClick={() => openAuth('participant', 'register')}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-white text-slate-950 rounded-xl text-xs sm:text-sm font-bold hover:bg-slate-100 transition-all shadow-lg hover:scale-102"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-full text-xs sm:text-sm font-bold shadow-[0_4px_14px_rgba(13,148,136,0.35)] hover:shadow-[0_6px_20px_rgba(13,148,136,0.45)] hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
             >
               <span>{pageData.hero.primaryCtaText || 'Register Now'}</span>
               <ArrowRight className="w-4 h-4" />
@@ -478,19 +484,19 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
             <button
               type="button"
               onClick={() => setActiveTabSection('schedule')}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-white/10 backdrop-blur-md border border-white/20 text-white rounded-xl text-xs sm:text-sm font-semibold hover:bg-white/20 transition-all"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-white/15 backdrop-blur-md border border-white/25 text-white rounded-full text-xs sm:text-sm font-semibold hover:bg-white/25 active:scale-[0.98] transition-all cursor-pointer"
             >
               <span>{pageData.hero.secondaryCtaText || 'View Schedule'}</span>
-              <ChevronRight className="w-4 h-4 text-slate-400" />
+              <ChevronRight className="w-4 h-4 text-teal-200" />
             </button>
           </div>
 
           {/* Quick Chest Number Student Search Bar directly in Hero */}
           <div className="w-full max-w-xl mx-auto pt-6 text-left">
-            <div className="relative bg-white/95 backdrop-blur-md rounded-2xl p-2 sm:p-2.5 shadow-2xl border border-white/30 space-y-2">
+            <div className="relative bg-white/95 backdrop-blur-md rounded-2xl p-2.5 sm:p-3 shadow-[0_8px_20px_-4px_rgba(13,148,136,0.15)] border border-[#99f6e4] space-y-2">
               <div className="flex items-center gap-2">
-                <div className="pl-3 text-slate-400">
-                  <Search className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600" />
+                <div className="pl-3 text-[#0d9488]">
+                  <Search className="w-4 h-4 sm:w-5 sm:h-5 text-[#0d9488]" />
                 </div>
                 <input
                   type="text"
@@ -502,7 +508,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                     }
                   }}
                   placeholder="Search student by Chest Number (e.g. 104) or Name..."
-                  className="flex-1 bg-transparent border-0 focus:outline-none text-slate-900 placeholder:text-slate-400 text-xs sm:text-sm py-2 px-1 font-medium"
+                  className="flex-1 bg-transparent border-0 focus:outline-none text-[#0f172a] placeholder:text-slate-400 text-xs sm:text-sm py-2 px-1 font-medium"
                 />
                 {studentSearchQuery && (
                   <button
@@ -521,7 +527,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                       setActiveTabSection('student_search');
                     }
                   }}
-                  className="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors shrink-0 shadow-xs cursor-pointer"
+                  className="px-5 py-2.5 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-full text-xs font-bold transition-all shrink-0 shadow-xs active:scale-95 cursor-pointer"
                 >
                   Search
                 </button>
@@ -538,7 +544,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                       setStudentSearchQuery(p.chestNumber || p.name);
                       setActiveTabSection('student_search');
                     }}
-                    className="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-mono font-bold transition-colors cursor-pointer"
+                    className="px-2.5 py-0.5 rounded-full bg-[#f0fdfa] hover:bg-[#ccfbf1] border border-[#99f6e4] text-[#0f766e] font-mono font-bold transition-colors cursor-pointer"
                   >
                     #{p.chestNumber || p.id}
                   </button>
@@ -546,7 +552,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveTabSection('student_search')}
-                  className="px-2 py-0.5 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold transition-colors cursor-pointer"
+                  className="px-2.5 py-0.5 rounded-full bg-[#f0f9ff] hover:bg-[#e0f2fe] border border-[#bae6fd] text-[#0284c7] font-semibold transition-colors cursor-pointer"
                 >
                   Student Directory →
                 </button>
@@ -554,7 +560,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
               {/* Floating Instant Matches Dropdown */}
               {studentSearchQuery.trim().length > 0 && (
-                <div className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden z-50 max-h-80 overflow-y-auto divide-y divide-slate-100">
+                <div className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl border border-[#99f6e4] shadow-2xl overflow-hidden z-50 max-h-80 overflow-y-auto divide-y divide-[#f0fdfa]">
                   {matchedStudents.length === 0 ? (
                     <div className="p-4 text-center text-xs text-slate-500">
                       No participant found for <strong className="text-slate-800 font-bold">"{studentSearchQuery}"</strong>. Check the chest number and try again.
@@ -570,16 +576,16 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                             setSelectedStudentForModal(student);
                             setActiveTabSection('student_search');
                           }}
-                          className="w-full p-3 hover:bg-slate-50 flex items-center justify-between gap-3 text-left transition-colors cursor-pointer"
+                          className="w-full p-3 hover:bg-[#f0fdfa] flex items-center justify-between gap-3 text-left transition-colors cursor-pointer"
                         >
                           <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-8 h-8 rounded-xl bg-slate-900 text-white font-bold text-xs flex items-center justify-center shrink-0">
+                            <div className="w-8 h-8 rounded-full bg-[#0d9488] text-white font-bold text-xs flex items-center justify-center shrink-0">
                               {student.name.charAt(0)}
                             </div>
                             <div className="min-w-0">
                               <div className="flex items-center gap-2">
-                                <span className="font-bold text-sm text-slate-900 truncate">{student.name}</span>
-                                <span className="font-mono font-bold text-xs bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-md">
+                                <span className="font-bold text-sm text-[#0f172a] truncate">{student.name}</span>
+                                <span className="font-mono font-bold text-xs bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4] px-2 py-0.5 rounded-full">
                                   Chest #{student.chestNumber || student.id}
                                 </span>
                               </div>
@@ -592,7 +598,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                           </div>
 
                           <div className="text-right shrink-0">
-                            <span className="font-mono font-bold text-sm text-slate-900">{stats.totalPoints} pts</span>
+                            <span className="font-mono font-bold text-sm text-[#0f172a]">{stats.totalPoints} pts</span>
                             <div className="text-[10px] text-slate-400 mt-0.5">
                               {stats.goldCount}🥇 {stats.silverCount}🥈 {stats.bronzeCount}🥉
                             </div>
@@ -601,11 +607,11 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                       );
                     })
                   )}
-                  <div className="p-2 bg-slate-50 text-center border-t border-slate-100">
+                  <div className="p-2.5 bg-[#f0fdfa] text-center border-t border-[#ccfbf1]">
                     <button
                       type="button"
                       onClick={() => setActiveTabSection('student_search')}
-                      className="text-xs font-bold text-indigo-600 hover:text-indigo-800"
+                      className="text-xs font-bold text-[#0d9488] hover:text-[#0f766e]"
                     >
                       View all in Student Directory →
                     </button>
@@ -622,21 +628,21 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       {/* 3. MAIN SECTION: CURATED MAIN PHOTOS                                */}
       {/* ==================================================================== */}
       {mainFeaturedPhotos.length > 0 && activeTabSection === 'overview' && (
-        <section className="py-16 bg-slate-50 border-b border-slate-200">
+        <section className="py-16 bg-[#faf8ff] border-b border-[#e2e8f0]">
           <div className="max-w-7xl mx-auto px-4 sm:px-8">
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
               <div>
-                <span className="text-xs font-bold text-indigo-600 uppercase tracking-widest">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f0fdfa] border border-[#99f6e4] text-[#0f766e] text-xs font-bold uppercase tracking-wider">
                   Featured Gallery
                 </span>
-                <h3 className="text-2xl font-bold tracking-tight text-slate-900 mt-1">
+                <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#0f172a] mt-2 font-display">
                   Fest Moments & Highlights
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setActiveTabSection('gallery')}
-                className="text-xs font-semibold text-slate-700 hover:text-slate-900 flex items-center gap-1 group"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white hover:bg-[#f0fdfa] text-xs font-bold text-[#0f766e] border border-[#e2e8f0] hover:border-[#99f6e4] shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04)] transition-all group cursor-pointer"
               >
                 <span>View Full Photo Gallery</span>
                 <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
@@ -648,7 +654,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                 <div
                   key={photo.id}
                   onClick={() => setSelectedPhoto(photo)}
-                  className="group cursor-pointer rounded-2xl overflow-hidden bg-white border border-slate-200 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col"
+                  className="group cursor-pointer rounded-2xl overflow-hidden bg-white border border-[#e2e8f0] shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04)] hover:shadow-[0_8px_20px_-4px_rgba(13,148,136,0.12)] hover:border-[#99f6e4] transition-all duration-200 flex flex-col"
                 >
                   <div className="aspect-16/10 w-full overflow-hidden bg-slate-100 relative">
                     <img
@@ -661,11 +667,11 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                     </div>
                   </div>
                   <div className="p-4">
-                    <h4 className="text-sm font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                    <h4 className="text-sm font-bold text-[#0f172a] group-hover:text-[#0d9488] transition-colors">
                       {photo.caption}
                     </h4>
                     {photo.description && (
-                      <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+                      <p className="text-xs text-[#64748b] mt-1 line-clamp-2">
                         {photo.description}
                       </p>
                     )}
@@ -683,60 +689,60 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       {activeTabSection === 'overview' && (
         <>
           {/* Festival Quick Metrics Strip */}
-          <section className="border-b border-slate-200 bg-slate-50/90 py-5">
+          <section className="border-b border-[#e2e8f0] bg-[#faf8ff] py-5">
             <div className="max-w-7xl mx-auto px-4 sm:px-8">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-                <div className="flex items-center gap-3 p-3 sm:p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center shrink-0">
-                    <Award className="w-5 h-5 text-indigo-600" />
+                <div className="flex items-center gap-3 p-3.5 sm:p-4 rounded-2xl bg-white border border-[#e2e8f0] shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04)]">
+                  <div className="w-10 h-10 rounded-xl bg-[#f0fdfa] border border-[#ccfbf1] text-[#0d9488] flex items-center justify-center shrink-0">
+                    <Award className="w-5 h-5 text-[#0d9488]" />
                   </div>
                   <div className="min-w-0">
-                    <span className="font-mono font-black text-lg sm:text-xl text-slate-900 leading-tight block">
+                    <span className="font-mono font-black text-lg sm:text-xl text-[#0f172a] leading-tight block">
                       {publishedProgrammes.length > 0 ? publishedProgrammes.length : '40+'}
                     </span>
-                    <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 uppercase tracking-wider block truncate">
+                    <span className="text-[10px] sm:text-[11px] font-semibold text-[#64748b] uppercase tracking-wider block truncate">
                       Collegiate Events
                     </span>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 p-3 sm:p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs">
-                  <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center shrink-0">
-                    <Shield className="w-5 h-5 text-purple-600" />
+                <div className="flex items-center gap-3 p-3.5 sm:p-4 rounded-2xl bg-white border border-[#e2e8f0] shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04)]">
+                  <div className="w-10 h-10 rounded-xl bg-[#f0f9ff] border border-[#bae6fd] text-[#0284c7] flex items-center justify-center shrink-0">
+                    <Shield className="w-5 h-5 text-[#0284c7]" />
                   </div>
                   <div className="min-w-0">
-                    <span className="font-mono font-black text-lg sm:text-xl text-slate-900 leading-tight block">
+                    <span className="font-mono font-black text-lg sm:text-xl text-[#0f172a] leading-tight block">
                       {teams.length > 0 ? teams.length : '4'}
                     </span>
-                    <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 uppercase tracking-wider block truncate">
+                    <span className="text-[10px] sm:text-[11px] font-semibold text-[#64748b] uppercase tracking-wider block truncate">
                       Competing Houses
                     </span>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 p-3 sm:p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs">
-                  <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
-                    <Users className="w-5 h-5 text-blue-600" />
+                <div className="flex items-center gap-3 p-3.5 sm:p-4 rounded-2xl bg-white border border-[#e2e8f0] shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04)]">
+                  <div className="w-10 h-10 rounded-xl bg-[#f0fdf4] border border-[#bbf7d0] text-[#10b981] flex items-center justify-center shrink-0">
+                    <Users className="w-5 h-5 text-[#10b981]" />
                   </div>
                   <div className="min-w-0">
-                    <span className="font-mono font-black text-lg sm:text-xl text-slate-900 leading-tight block">
+                    <span className="font-mono font-black text-lg sm:text-xl text-[#0f172a] leading-tight block">
                       {festParticipants.length > 0 ? festParticipants.length : '100+'}
                     </span>
-                    <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 uppercase tracking-wider block truncate">
+                    <span className="text-[10px] sm:text-[11px] font-semibold text-[#64748b] uppercase tracking-wider block truncate">
                       Contestants
                     </span>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 p-3 sm:p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
-                    <Trophy className="w-5 h-5 text-emerald-600" />
+                <div className="flex items-center gap-3 p-3.5 sm:p-4 rounded-2xl bg-white border border-[#e2e8f0] shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04)]">
+                  <div className="w-10 h-10 rounded-xl bg-[#f0fdfa] border border-[#ccfbf1] text-[#0d9488] flex items-center justify-center shrink-0">
+                    <Trophy className="w-5 h-5 text-[#0d9488]" />
                   </div>
                   <div className="min-w-0">
-                    <span className="font-mono font-black text-lg sm:text-xl text-slate-900 leading-tight block">
+                    <span className="font-mono font-black text-lg sm:text-xl text-[#0f172a] leading-tight block">
                       {publishedResults.length}
                     </span>
-                    <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 uppercase tracking-wider block truncate">
+                    <span className="text-[10px] sm:text-[11px] font-semibold text-[#64748b] uppercase tracking-wider block truncate">
                       Ratified Results
                     </span>
                   </div>
@@ -751,30 +757,30 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
               
               {/* Bento Card 1: Official Festival Brief & Highlights */}
-              <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-8 shadow-xs flex flex-col justify-between">
+              <div className="lg:col-span-2 bg-white rounded-3xl border border-[#e2e8f0] p-6 sm:p-8 shadow-[0_4px_16px_-4px_rgba(15,23,42,0.05)] flex flex-col justify-between">
                 <div>
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200/60 text-indigo-700 text-xs font-bold uppercase tracking-wider">
-                      <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f0fdfa] border border-[#99f6e4] text-[#0f766e] text-xs font-bold uppercase tracking-wider">
+                      <Sparkles className="w-3.5 h-3.5 text-[#0d9488]" />
                       <span>Official Festival Portal</span>
                     </span>
-                    <span className="text-xs text-slate-400 font-semibold">
+                    <span className="text-xs text-[#64748b] font-semibold">
                       {fest?.edition || settings.festEdition || '2026 Edition'}
                     </span>
                   </div>
 
-                  <h3 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-tight">
+                  <h3 className="text-2xl sm:text-3xl font-extrabold text-[#0f172a] tracking-tight leading-tight font-display">
                     {pageData.content.welcomeTitle || `Welcome to ${festName}`}
                   </h3>
                   
-                  <p className="text-xs sm:text-sm text-slate-600 mt-2.5 leading-relaxed">
+                  <p className="text-xs sm:text-sm text-[#334155] mt-2.5 leading-relaxed">
                     {pageData.content.welcomeMessage || fest?.description || 'Join thousands of delegates, participants, and spectators across multiple stages and auditoriums in this premier inter-collegiate cultural and arts summit.'}
                   </p>
                 </div>
 
                 {/* Highlights Feature Grid */}
-                <div className="mt-6 pt-6 border-t border-slate-100">
-                  <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-3.5">
+                <div className="mt-6 pt-6 border-t border-[#e2e8f0]">
+                  <h4 className="text-[11px] font-bold uppercase tracking-wider text-[#64748b] mb-3.5">
                     Festival Highlights & Standards
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -782,9 +788,9 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                       pageData.content.highlights.map((h, idx) => (
                         <div
                           key={idx}
-                          className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col justify-between"
+                          className="p-3.5 rounded-2xl bg-[#faf8ff] border border-[#e2e8f0] flex flex-col justify-between"
                         >
-                          <div className="w-8 h-8 rounded-xl bg-indigo-100/70 text-indigo-700 flex items-center justify-center mb-2">
+                          <div className="w-8 h-8 rounded-xl bg-[#f0fdfa] text-[#0d9488] border border-[#ccfbf1] flex items-center justify-center mb-2">
                             {idx === 0 ? (
                               <Trophy className="w-4 h-4" />
                             ) : idx === 1 ? (
@@ -793,33 +799,33 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                               <Award className="w-4 h-4" />
                             )}
                           </div>
-                          <span className="font-bold text-xs text-slate-900 line-clamp-3">{h}</span>
+                          <span className="font-bold text-xs text-[#0f172a] line-clamp-3">{h}</span>
                         </div>
                       ))
                     ) : (
                       <>
-                        <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col justify-between">
-                          <div className="w-8 h-8 rounded-xl bg-indigo-100/70 text-indigo-700 flex items-center justify-center mb-2">
+                        <div className="p-3.5 rounded-2xl bg-[#faf8ff] border border-[#e2e8f0] flex flex-col justify-between">
+                          <div className="w-8 h-8 rounded-xl bg-[#f0fdfa] text-[#0d9488] border border-[#ccfbf1] flex items-center justify-center mb-2">
                             <Trophy className="w-4 h-4" />
                           </div>
-                          <h5 className="font-bold text-xs text-slate-900">40+ Accredited Events</h5>
-                          <p className="text-[11px] text-slate-500 mt-0.5">Stage, on-stage and off-stage arts competitions.</p>
+                          <h5 className="font-bold text-xs text-[#0f172a]">40+ Accredited Events</h5>
+                          <p className="text-[11px] text-[#64748b] mt-0.5">Stage, on-stage and off-stage arts competitions.</p>
                         </div>
 
-                        <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col justify-between">
-                          <div className="w-8 h-8 rounded-xl bg-purple-100/70 text-purple-700 flex items-center justify-center mb-2">
+                        <div className="p-3.5 rounded-2xl bg-[#faf8ff] border border-[#e2e8f0] flex flex-col justify-between">
+                          <div className="w-8 h-8 rounded-xl bg-[#f0f9ff] text-[#0284c7] border border-[#bae6fd] flex items-center justify-center mb-2">
                             <Shield className="w-4 h-4" />
                           </div>
-                          <h5 className="font-bold text-xs text-slate-900">Real-Time Scoring</h5>
-                          <p className="text-[11px] text-slate-500 mt-0.5">Instant judge tabulation with transparent ratifications.</p>
+                          <h5 className="font-bold text-xs text-[#0f172a]">Real-Time Scoring</h5>
+                          <p className="text-[11px] text-[#64748b] mt-0.5">Instant judge tabulation with transparent ratifications.</p>
                         </div>
 
-                        <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col justify-between">
-                          <div className="w-8 h-8 rounded-xl bg-emerald-100/70 text-emerald-700 flex items-center justify-center mb-2">
+                        <div className="p-3.5 rounded-2xl bg-[#faf8ff] border border-[#e2e8f0] flex flex-col justify-between">
+                          <div className="w-8 h-8 rounded-xl bg-[#f0fdf4] text-[#10b981] border border-[#bbf7d0] flex items-center justify-center mb-2">
                             <Award className="w-4 h-4" />
                           </div>
-                          <h5 className="font-bold text-xs text-slate-900">Certified Honors</h5>
-                          <p className="text-[11px] text-slate-500 mt-0.5">Official medals, trophies, and university certifications.</p>
+                          <h5 className="font-bold text-xs text-[#0f172a]">Certified Honors</h5>
+                          <p className="text-[11px] text-[#64748b] mt-0.5">Official medals, trophies, and university certifications.</p>
                         </div>
                       </>
                     )}
@@ -828,14 +834,14 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               </div>
 
               {/* Bento Card 2: Official Portals Gateway */}
-              <div className="bg-slate-950 text-white rounded-3xl p-6 sm:p-7 shadow-xl border border-slate-800 flex flex-col justify-between">
+              <div className="bg-gradient-to-br from-[#06332e] via-[#00685f] to-[#044c69] text-white rounded-3xl p-6 sm:p-7 shadow-xl border border-teal-700/40 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400 bg-indigo-950/80 border border-indigo-800/80 px-2.5 py-0.5 rounded-full">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#89f5e7] bg-white/15 border border-white/25 px-2.5 py-0.5 rounded-full">
                       Portals
                     </span>
-                    <span className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-400">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span className="flex items-center gap-1.5 text-[11px] font-medium text-[#6ffbbe]">
+                      <span className="w-2 h-2 rounded-full bg-[#10b981] animate-pulse"></span>
                       <span>Access Open</span>
                     </span>
                   </div>
@@ -843,7 +849,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                   <h4 className="text-lg font-bold text-white tracking-tight">
                     Participant & Leader Portals
                   </h4>
-                  <p className="text-xs text-slate-300 mt-1.5 leading-relaxed">
+                  <p className="text-xs text-teal-100/80 mt-1.5 leading-relaxed">
                     Access your live scores, view registered stage entries, or manage house contestant rosters.
                   </p>
 
@@ -851,46 +857,46 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                     <button
                       type="button"
                       onClick={() => openAuth('participant', 'signin')}
-                      className="w-full flex items-center justify-between p-3 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 transition-all text-xs font-semibold text-white group"
+                      className="w-full flex items-center justify-between p-3 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 transition-all text-xs font-semibold text-white group cursor-pointer"
                     >
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-300 flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-xl bg-white/15 text-[#89f5e7] flex items-center justify-center">
                           <User className="w-4 h-4" />
                         </div>
                         <div className="text-left">
                           <div className="text-xs font-bold text-white">Participant Dashboard</div>
-                          <div className="text-[10px] text-slate-300">View chest # and events</div>
+                          <div className="text-[10px] text-teal-100/70">View chest # and events</div>
                         </div>
                       </div>
-                      <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+                      <ChevronRight className="w-4 h-4 text-teal-200/70 group-hover:translate-x-0.5 transition-transform" />
                     </button>
 
                     <button
                       type="button"
                       onClick={() => openAuth('team_leader', 'signin')}
-                      className="w-full flex items-center justify-between p-3 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 transition-all text-xs font-semibold text-white group"
+                      className="w-full flex items-center justify-between p-3 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 transition-all text-xs font-semibold text-white group cursor-pointer"
                     >
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-xl bg-white/15 text-[#6ffbbe] flex items-center justify-center">
                           <Shield className="w-4 h-4" />
                         </div>
                         <div className="text-left">
                           <div className="text-xs font-bold text-white">Team Leader Portal</div>
-                          <div className="text-[10px] text-slate-300">Manage house contestants</div>
+                          <div className="text-[10px] text-teal-100/70">Manage house contestants</div>
                         </div>
                       </div>
-                      <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+                      <ChevronRight className="w-4 h-4 text-teal-200/70 group-hover:translate-x-0.5 transition-transform" />
                     </button>
                   </div>
                 </div>
 
                 {/* Fast registration CTA */}
-                <div className="mt-6 pt-5 border-t border-slate-800 flex items-center justify-between">
-                  <span className="text-[11px] text-slate-400">New participant?</span>
+                <div className="mt-6 pt-5 border-t border-white/15 flex items-center justify-between">
+                  <span className="text-[11px] text-teal-100/80">New participant?</span>
                   <button
                     type="button"
                     onClick={() => openAuth('participant', 'register')}
-                    className="px-3.5 py-1.5 rounded-xl bg-white text-slate-950 font-bold text-xs hover:bg-slate-100 transition-colors shadow-xs"
+                    className="px-4 py-1.5 rounded-full bg-[#89f5e7] hover:bg-[#6bd8cb] text-[#00201d] font-bold text-xs transition-colors shadow-md cursor-pointer"
                   >
                     Register Now →
                   </button>
@@ -899,32 +905,32 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
             </div>
 
             {/* Bento Row 2: 3D Stepped Championship Podium (Olympic Style) */}
-            <div className="bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xs">
+            <div className="bg-white border border-[#e2e8f0] rounded-3xl p-6 sm:p-8 space-y-6 shadow-[0_4px_16px_-4px_rgba(15,23,42,0.05)]">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-200/80 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                    <span className="text-[10px] font-bold text-[#0f766e] bg-[#f0fdfa] border border-[#99f6e4] px-3 py-0.5 rounded-full uppercase tracking-wider">
                       Live Championship Spotlight
                     </span>
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span className="w-2 h-2 rounded-full bg-[#10b981] animate-pulse"></span>
                   </div>
-                  <h4 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight mt-1">
+                  <h4 className="text-xl sm:text-2xl font-extrabold text-[#0f172a] tracking-tight mt-1.5 font-display">
                     Championship Standings & Leaders
                   </h4>
-                  <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                  <p className="text-xs sm:text-sm text-[#64748b] mt-0.5">
                     Real-time ratified scores from stage competitions and house performances.
                   </p>
                 </div>
 
                 {/* Switcher: Top Teams vs Top Students */}
-                <div className="flex items-center gap-1.5 p-1 bg-white rounded-xl border border-slate-200 shadow-2xs self-start sm:self-auto">
+                <div className="flex items-center gap-1.5 p-1 bg-[#f0fdfa] rounded-full border border-[#ccfbf1] shadow-2xs self-start sm:self-auto">
                   <button
                     type="button"
                     onClick={() => setOverviewLeaderboardToggle('team')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
                       overviewLeaderboardToggle === 'team'
-                        ? 'bg-slate-900 text-white shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
+                        ? 'bg-[#0d9488] text-white shadow-xs'
+                        : 'text-[#0f766e] hover:text-[#0d9488]'
                     }`}
                   >
                     House Championship
@@ -932,10 +938,10 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                   <button
                     type="button"
                     onClick={() => setOverviewLeaderboardToggle('individual')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
                       overviewLeaderboardToggle === 'individual'
-                        ? 'bg-slate-900 text-white shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
+                        ? 'bg-[#0d9488] text-white shadow-xs'
+                        : 'text-[#0f766e] hover:text-[#0d9488]'
                     }`}
                   >
                     Star Contestants
@@ -947,28 +953,28 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               {overviewLeaderboardToggle === 'team' ? (
                 <div>
                   {leaderboard.length === 0 ? (
-                    <div className="p-8 text-center text-xs text-slate-500 bg-white rounded-2xl border border-slate-200">
+                    <div className="p-8 text-center text-xs text-[#64748b] bg-white rounded-2xl border border-[#e2e8f0]">
                       Championship house standings will appear once competitive events are ratified.
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 items-end pt-4">
                       {/* Step 2: Silver / 2nd Place (Left) */}
                       {leaderboard[1] && (
-                        <div className="order-2 md:order-1 bg-white border-2 border-slate-300 rounded-3xl p-5 md:pt-7 md:pb-6 flex flex-col justify-between shadow-md relative min-h-[220px]">
+                        <div className="order-2 md:order-1 bg-white border-2 border-[#e2e8f0] rounded-3xl p-5 md:pt-7 md:pb-6 flex flex-col justify-between shadow-[0_4px_14px_rgba(15,23,42,0.05)] relative min-h-[220px]">
                           <div>
                             <div className="flex items-center justify-between mb-3">
-                              <span className="text-xs font-black bg-slate-200 text-slate-800 px-3 py-1 rounded-xl shadow-2xs flex items-center gap-1.5">
+                              <span className="text-xs font-black bg-[#f1f5f9] text-[#334155] px-3 py-1 rounded-full shadow-2xs flex items-center gap-1.5 border border-[#e2e8f0]">
                                 <Medal className="w-3.5 h-3.5 text-slate-700" />
                                 <span>2nd Place</span>
                               </span>
-                              <span className="font-mono font-black text-xl text-slate-900">
+                              <span className="font-mono font-black text-xl text-[#0f172a]">
                                 {leaderboard[1].totalPoints} pts
                               </span>
                             </div>
-                            <h5 className="font-black text-base text-slate-900">{leaderboard[1].team.name}</h5>
-                            <p className="text-xs text-slate-500 mt-0.5">{leaderboard[1].team.institution || 'Collegiate House'}</p>
+                            <h5 className="font-black text-base text-[#0f172a]">{leaderboard[1].team.name}</h5>
+                            <p className="text-xs text-[#64748b] mt-0.5">{leaderboard[1].team.institution || 'Collegiate House'}</p>
                           </div>
-                          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-medium text-slate-600">
+                          <div className="mt-4 pt-3 border-t border-[#e2e8f0] flex items-center justify-between text-xs font-medium text-[#334155]">
                             <span>🥇 {leaderboard[1].firstPlaceCount} Gold</span>
                             <span>🥈 {leaderboard[1].secondPlaceCount} Silver</span>
                             <span>🥉 {leaderboard[1].thirdPlaceCount} Bronze</span>
@@ -978,25 +984,25 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
                       {/* Step 1: Gold / 1st Place Champion (Center - Elevated) */}
                       {leaderboard[0] && (
-                        <div className="order-1 md:order-2 bg-linear-to-b from-amber-50 via-yellow-50/70 to-white border-2 border-amber-400 rounded-3xl p-6 md:pt-9 md:pb-7 flex flex-col justify-between shadow-xl relative ring-4 ring-amber-400/20 md:-translate-y-3 z-10 min-h-[250px]">
-                          <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-amber-400 text-slate-950 font-black text-[11px] px-3.5 py-0.5 rounded-full shadow-md flex items-center gap-1 uppercase tracking-wider">
-                            <Crown className="w-3.5 h-3.5 text-slate-950 fill-slate-950" />
+                        <div className="order-1 md:order-2 bg-gradient-to-b from-[#f0fdfa] via-white to-white border-2 border-[#0d9488] rounded-3xl p-6 md:pt-9 md:pb-7 flex flex-col justify-between shadow-[0_12px_30px_rgba(13,148,136,0.15)] relative ring-4 ring-[#0d9488]/20 md:-translate-y-3 z-10 min-h-[250px]">
+                          <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#0d9488] text-white font-black text-[11px] px-4 py-1 rounded-full shadow-md flex items-center gap-1.5 uppercase tracking-wider">
+                            <Crown className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
                             <span>Championship Leader</span>
                           </div>
                           <div>
                             <div className="flex items-center justify-between mb-3 mt-1">
-                              <span className="text-xs font-black bg-amber-400 text-slate-950 px-3.5 py-1.5 rounded-xl shadow-xs flex items-center gap-1.5">
-                                <Trophy className="w-4 h-4 text-slate-950" />
+                              <span className="text-xs font-black bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4] px-3.5 py-1.5 rounded-full shadow-xs flex items-center gap-1.5">
+                                <Trophy className="w-4 h-4 text-[#0d9488]" />
                                 <span>1st Place</span>
                               </span>
-                              <span className="font-mono font-black text-2xl text-slate-950">
+                              <span className="font-mono font-black text-2xl text-[#0f172a]">
                                 {leaderboard[0].totalPoints} pts
                               </span>
                             </div>
-                            <h5 className="font-black text-lg text-slate-950">{leaderboard[0].team.name}</h5>
-                            <p className="text-xs text-slate-600 font-medium mt-0.5">{leaderboard[0].team.institution || 'Collegiate House'}</p>
+                            <h5 className="font-black text-lg text-[#0f172a]">{leaderboard[0].team.name}</h5>
+                            <p className="text-xs text-[#64748b] font-medium mt-0.5">{leaderboard[0].team.institution || 'Collegiate House'}</p>
                           </div>
-                          <div className="mt-4 pt-3 border-t border-amber-200/70 flex items-center justify-between text-xs font-bold text-slate-800">
+                          <div className="mt-4 pt-3 border-t border-[#ccfbf1] flex items-center justify-between text-xs font-bold text-[#0f766e]">
                             <span>🥇 {leaderboard[0].firstPlaceCount} Gold</span>
                             <span>🥈 {leaderboard[0].secondPlaceCount} Silver</span>
                             <span>🥉 {leaderboard[0].thirdPlaceCount} Bronze</span>
@@ -1006,21 +1012,21 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
                       {/* Step 3: Bronze / 3rd Place (Right) */}
                       {leaderboard[2] && (
-                        <div className="order-3 md:order-3 bg-white border-2 border-amber-200 rounded-3xl p-5 md:pt-6 md:pb-5 flex flex-col justify-between shadow-2xs relative min-h-[200px]">
+                        <div className="order-3 md:order-3 bg-white border-2 border-amber-200 rounded-3xl p-5 md:pt-6 md:pb-5 flex flex-col justify-between shadow-[0_4px_14px_rgba(15,23,42,0.04)] relative min-h-[200px]">
                           <div>
                             <div className="flex items-center justify-between mb-3">
-                              <span className="text-xs font-black bg-amber-100 text-amber-900 px-3 py-1 rounded-xl shadow-2xs flex items-center gap-1.5">
+                              <span className="text-xs font-black bg-amber-100 text-amber-900 border border-amber-200 px-3 py-1 rounded-full shadow-2xs flex items-center gap-1.5">
                                 <Medal className="w-3.5 h-3.5 text-amber-800" />
                                 <span>3rd Place</span>
                               </span>
-                              <span className="font-mono font-black text-xl text-slate-900">
+                              <span className="font-mono font-black text-xl text-[#0f172a]">
                                 {leaderboard[2].totalPoints} pts
                               </span>
                             </div>
-                            <h5 className="font-black text-base text-slate-900">{leaderboard[2].team.name}</h5>
-                            <p className="text-xs text-slate-500 mt-0.5">{leaderboard[2].team.institution || 'Collegiate House'}</p>
+                            <h5 className="font-black text-base text-[#0f172a]">{leaderboard[2].team.name}</h5>
+                            <p className="text-xs text-[#64748b] mt-0.5">{leaderboard[2].team.institution || 'Collegiate House'}</p>
                           </div>
-                          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-medium text-slate-600">
+                          <div className="mt-4 pt-3 border-t border-[#e2e8f0] flex items-center justify-between text-xs font-medium text-[#334155]">
                             <span>🥇 {leaderboard[2].firstPlaceCount} Gold</span>
                             <span>🥈 {leaderboard[2].secondPlaceCount} Silver</span>
                             <span>🥉 {leaderboard[2].thirdPlaceCount} Bronze</span>
@@ -1033,7 +1039,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               ) : (
                 <div>
                   {topIndividualContestants.length === 0 ? (
-                    <div className="p-8 text-center text-xs text-slate-500 bg-white rounded-2xl border border-slate-200">
+                    <div className="p-8 text-center text-xs text-[#64748b] bg-white rounded-2xl border border-[#e2e8f0]">
                       Individual student standings will appear once competitive events are concluded.
                     </div>
                   ) : (
@@ -1045,23 +1051,23 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                             setSelectedStudentForModal(topIndividualContestants[1].participant);
                             setActiveTabSection('student_search');
                           }}
-                          className="order-2 md:order-1 bg-white border-2 border-slate-300 rounded-3xl p-5 md:pt-7 md:pb-6 flex flex-col justify-between shadow-md relative min-h-[220px] cursor-pointer hover:border-slate-400 transition-all"
+                          className="order-2 md:order-1 bg-white border-2 border-[#e2e8f0] rounded-3xl p-5 md:pt-7 md:pb-6 flex flex-col justify-between shadow-[0_4px_14px_rgba(15,23,42,0.05)] relative min-h-[220px] cursor-pointer hover:border-[#99f6e4] transition-all"
                         >
                           <div>
                             <div className="flex items-center justify-between mb-3">
-                              <span className="font-mono font-bold text-xs bg-slate-200 text-slate-800 px-2.5 py-1 rounded-lg">
+                              <span className="font-mono font-bold text-xs bg-[#f1f5f9] text-[#334155] border border-[#e2e8f0] px-3 py-1 rounded-full">
                                 Chest #{topIndividualContestants[1].participant.chestNumber || topIndividualContestants[1].participant.id}
                               </span>
-                              <span className="font-mono font-black text-xl text-slate-900">
+                              <span className="font-mono font-black text-xl text-[#0f172a]">
                                 {topIndividualContestants[1].totalPoints} pts
                               </span>
                             </div>
-                            <h5 className="font-black text-base text-slate-900">{topIndividualContestants[1].participant.name}</h5>
-                            <p className="text-xs text-slate-500 mt-0.5">
+                            <h5 className="font-black text-base text-[#0f172a]">{topIndividualContestants[1].participant.name}</h5>
+                            <p className="text-xs text-[#64748b] mt-0.5">
                               {topIndividualContestants[1].team?.name || 'Independent'} • {topIndividualContestants[1].category}
                             </p>
                           </div>
-                          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-medium text-slate-600">
+                          <div className="mt-4 pt-3 border-t border-[#e2e8f0] flex items-center justify-between text-xs font-medium text-[#334155]">
                             <span>🥇 {topIndividualContestants[1].firstPlaceCount} 1st</span>
                             <span>🥈 {topIndividualContestants[1].secondPlaceCount} 2nd</span>
                             <span>🥉 {topIndividualContestants[1].thirdPlaceCount} 3rd</span>
@@ -1076,27 +1082,27 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                             setSelectedStudentForModal(topIndividualContestants[0].participant);
                             setActiveTabSection('student_search');
                           }}
-                          className="order-1 md:order-2 bg-linear-to-b from-amber-50 via-yellow-50/70 to-white border-2 border-amber-400 rounded-3xl p-6 md:pt-9 md:pb-7 flex flex-col justify-between shadow-xl relative ring-4 ring-amber-400/20 md:-translate-y-3 z-10 min-h-[250px] cursor-pointer hover:border-amber-500 transition-all"
+                          className="order-1 md:order-2 bg-gradient-to-b from-[#f0fdfa] via-white to-white border-2 border-[#0d9488] rounded-3xl p-6 md:pt-9 md:pb-7 flex flex-col justify-between shadow-[0_12px_30px_rgba(13,148,136,0.15)] relative ring-4 ring-[#0d9488]/20 md:-translate-y-3 z-10 min-h-[250px] cursor-pointer hover:border-[#0f766e] transition-all"
                         >
-                          <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-amber-400 text-slate-950 font-black text-[11px] px-3.5 py-0.5 rounded-full shadow-md flex items-center gap-1 uppercase tracking-wider">
-                            <Crown className="w-3.5 h-3.5 text-slate-950 fill-slate-950" />
+                          <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#0d9488] text-white font-black text-[11px] px-4 py-1 rounded-full shadow-md flex items-center gap-1.5 uppercase tracking-wider">
+                            <Crown className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
                             <span>Golden Performer</span>
                           </div>
                           <div>
                             <div className="flex items-center justify-between mb-3 mt-1">
-                              <span className="font-mono font-bold text-xs bg-slate-950 text-amber-300 px-2.5 py-1 rounded-lg">
+                              <span className="font-mono font-bold text-xs bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4] px-3 py-1 rounded-full">
                                 Chest #{topIndividualContestants[0].participant.chestNumber || topIndividualContestants[0].participant.id}
                               </span>
-                              <span className="font-mono font-black text-2xl text-slate-950">
+                              <span className="font-mono font-black text-2xl text-[#0f172a]">
                                 {topIndividualContestants[0].totalPoints} pts
                               </span>
                             </div>
-                            <h5 className="font-black text-lg text-slate-950">{topIndividualContestants[0].participant.name}</h5>
-                            <p className="text-xs text-slate-600 font-medium mt-0.5">
+                            <h5 className="font-black text-lg text-[#0f172a]">{topIndividualContestants[0].participant.name}</h5>
+                            <p className="text-xs text-[#64748b] font-medium mt-0.5">
                               {topIndividualContestants[0].team?.name || 'Independent'} • {topIndividualContestants[0].category}
                             </p>
                           </div>
-                          <div className="mt-4 pt-3 border-t border-amber-200/70 flex items-center justify-between text-xs font-bold text-slate-800">
+                          <div className="mt-4 pt-3 border-t border-[#ccfbf1] flex items-center justify-between text-xs font-bold text-[#0f766e]">
                             <span>🥇 {topIndividualContestants[0].firstPlaceCount} 1st</span>
                             <span>🥈 {topIndividualContestants[0].secondPlaceCount} 2nd</span>
                             <span>🥉 {topIndividualContestants[0].thirdPlaceCount} 3rd</span>
@@ -1111,23 +1117,23 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                             setSelectedStudentForModal(topIndividualContestants[2].participant);
                             setActiveTabSection('student_search');
                           }}
-                          className="order-3 md:order-3 bg-white border-2 border-amber-200 rounded-3xl p-5 md:pt-6 md:pb-5 flex flex-col justify-between shadow-2xs relative min-h-[200px] cursor-pointer hover:border-amber-300 transition-all"
+                          className="order-3 md:order-3 bg-white border-2 border-amber-200 rounded-3xl p-5 md:pt-6 md:pb-5 flex flex-col justify-between shadow-[0_4px_14px_rgba(15,23,42,0.04)] relative min-h-[200px] cursor-pointer hover:border-amber-300 transition-all"
                         >
                           <div>
                             <div className="flex items-center justify-between mb-3">
-                              <span className="font-mono font-bold text-xs bg-amber-100 text-amber-900 px-2.5 py-1 rounded-lg">
+                              <span className="font-mono font-bold text-xs bg-amber-100 text-amber-900 border border-amber-200 px-3 py-1 rounded-full">
                                 Chest #{topIndividualContestants[2].participant.chestNumber || topIndividualContestants[2].participant.id}
                               </span>
-                              <span className="font-mono font-black text-xl text-slate-900">
+                              <span className="font-mono font-black text-xl text-[#0f172a]">
                                 {topIndividualContestants[2].totalPoints} pts
                               </span>
                             </div>
-                            <h5 className="font-black text-base text-slate-900">{topIndividualContestants[2].participant.name}</h5>
-                            <p className="text-xs text-slate-500 mt-0.5">
+                            <h5 className="font-black text-base text-[#0f172a]">{topIndividualContestants[2].participant.name}</h5>
+                            <p className="text-xs text-[#64748b] mt-0.5">
                               {topIndividualContestants[2].team?.name || 'Independent'} • {topIndividualContestants[2].category}
                             </p>
                           </div>
-                          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-medium text-slate-600">
+                          <div className="mt-4 pt-3 border-t border-[#e2e8f0] flex items-center justify-between text-xs font-medium text-[#334155]">
                             <span>🥇 {topIndividualContestants[2].firstPlaceCount} 1st</span>
                             <span>🥈 {topIndividualContestants[2].secondPlaceCount} 2nd</span>
                             <span>🥉 {topIndividualContestants[2].thirdPlaceCount} 3rd</span>
@@ -1143,7 +1149,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveTabSection('leaderboard')}
-                  className="text-xs sm:text-sm font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1.5 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#f0fdfa] hover:bg-[#ccfbf1] text-xs sm:text-sm font-bold text-[#0d9488] border border-[#ccfbf1] transition-all cursor-pointer"
                 >
                   <span>View Full Championship Leaderboards</span>
                   <ChevronRight className="w-4 h-4" />
@@ -1155,21 +1161,21 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
               
               {/* Bento Card 4: Upcoming Schedule Highlights */}
-              <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-7 shadow-xs flex flex-col justify-between">
+              <div className="lg:col-span-2 bg-white rounded-3xl border border-[#e2e8f0] p-6 sm:p-7 shadow-[0_4px_16px_-4px_rgba(15,23,42,0.05)] flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#0d9488] bg-[#f0fdfa] border border-[#ccfbf1] px-2.5 py-0.5 rounded-full">
                         Timetable
                       </span>
-                      <h4 className="text-lg font-bold text-slate-900 tracking-tight">
+                      <h4 className="text-lg font-bold text-[#0f172a] tracking-tight mt-1 font-display">
                         Upcoming Programme Schedule
                       </h4>
                     </div>
                     <button
                       type="button"
                       onClick={() => setActiveTabSection('schedule')}
-                      className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+                      className="text-xs font-bold text-[#0d9488] hover:text-[#0f766e] flex items-center gap-1 cursor-pointer"
                     >
                       <span>Full Schedule</span>
                       <ChevronRight className="w-3.5 h-3.5" />
@@ -1180,47 +1186,47 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                     {publishedProgrammes.slice(0, 3).map((prg) => (
                       <div
                         key={prg.id}
-                        className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-between gap-3 hover:bg-slate-100/70 transition-colors"
+                        className="p-3.5 rounded-2xl bg-[#faf8ff] border border-[#e2e8f0] flex items-center justify-between gap-3 hover:bg-[#f0fdfa] hover:border-[#99f6e4] transition-colors"
                       >
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <h5 className="font-bold text-xs sm:text-sm text-slate-900 truncate">{prg.name}</h5>
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-600 shrink-0">
+                            <h5 className="font-bold text-xs sm:text-sm text-[#0f172a] truncate">{prg.name}</h5>
+                            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-white border border-[#e2e8f0] text-[#0f766e] shrink-0">
                               {prg.category}
                             </span>
                           </div>
-                          <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
+                          <div className="flex items-center gap-3 text-xs text-[#64748b] mt-1">
                             <span className="flex items-center gap-1">
-                              <Clock className="w-3 h-3 text-slate-400" />
+                              <Clock className="w-3 h-3 text-[#0d9488]" />
                               {prg.startTime} - {prg.endTime}
                             </span>
                             <span>•</span>
                             <span className="flex items-center gap-1 truncate">
-                              <MapPin className="w-3 h-3 text-slate-400" />
+                              <MapPin className="w-3 h-3 text-[#0d9488]" />
                               {prg.venue} ({prg.stage})
                             </span>
                           </div>
                         </div>
 
-                        <span className="text-[11px] font-semibold px-2.5 py-1 rounded-xl bg-white border border-slate-200 text-slate-700 shrink-0">
+                        <span className="text-[11px] font-semibold px-3 py-1 rounded-full bg-white border border-[#e2e8f0] text-[#0f766e] shrink-0">
                           {prg.type === 'individual' ? 'Solo' : 'Group'}
                         </span>
                       </div>
                     ))}
                     {publishedProgrammes.length === 0 && (
-                      <p className="text-xs text-slate-400 italic py-6 text-center">
+                      <p className="text-xs text-[#64748b] italic py-6 text-center">
                         Detailed stage schedules are currently being synchronized by the coordinators.
                       </p>
                     )}
                   </div>
                 </div>
 
-                <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                <div className="mt-4 pt-4 border-t border-[#e2e8f0] flex items-center justify-between text-xs text-[#64748b]">
                   <span>Auditoriums, open amphitheatre & main stages</span>
                   <button
                     type="button"
                     onClick={() => setActiveTabSection('schedule')}
-                    className="font-bold text-indigo-600 hover:text-indigo-800"
+                    className="font-bold text-[#0d9488] hover:text-[#0f766e] cursor-pointer"
                   >
                     View all stages →
                   </button>
@@ -1228,22 +1234,22 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               </div>
 
               {/* Bento Card 5: Festival Campus & Stage Locations */}
-              <div className="bg-slate-900 text-white rounded-3xl p-6 sm:p-7 shadow-xl border border-slate-800 flex flex-col justify-between">
+              <div className="bg-gradient-to-br from-[#06332e] via-[#00685f] to-[#044c69] text-white rounded-3xl p-6 sm:p-7 shadow-xl border border-teal-700/40 flex flex-col justify-between">
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400 bg-indigo-950/80 border border-indigo-800/80 px-2.5 py-0.5 rounded-full">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#89f5e7] bg-white/15 border border-white/25 px-2.5 py-0.5 rounded-full">
                     Festival Grounds
                   </span>
                   
-                  <h4 className="text-lg font-bold text-white tracking-tight mt-2.5">
+                  <h4 className="text-lg font-bold text-white tracking-tight mt-2.5 font-display">
                     Campus Grounds & Stages
                   </h4>
-                  <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                  <p className="text-xs text-teal-100/80 mt-1 leading-relaxed">
                     Official venues, stage distribution, and campus grounds for all accredited festival events.
                   </p>
 
                   <div className="space-y-2.5 mt-4 text-xs">
-                    <div className="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1">
-                      <div className="flex items-center gap-2 text-indigo-300 font-semibold text-[11px]">
+                    <div className="p-3 rounded-2xl bg-white/10 border border-white/15 space-y-1">
+                      <div className="flex items-center gap-2 text-[#89f5e7] font-semibold text-[11px]">
                         <MapPin className="w-3.5 h-3.5" />
                         <span>Festival Venue</span>
                       </div>
@@ -1252,8 +1258,8 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                       </div>
                     </div>
 
-                    <div className="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1">
-                      <div className="flex items-center gap-2 text-indigo-300 font-semibold text-[11px]">
+                    <div className="p-3 rounded-2xl bg-white/10 border border-white/15 space-y-1">
+                      <div className="flex items-center gap-2 text-[#89f5e7] font-semibold text-[11px]">
                         <Calendar className="w-3.5 h-3.5" />
                         <span>Festival Dates</span>
                       </div>
@@ -1262,24 +1268,24 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                       </div>
                     </div>
 
-                    <div className="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1">
-                      <div className="flex items-center gap-2 text-indigo-300 font-semibold text-[11px]">
+                    <div className="p-3 rounded-2xl bg-white/10 border border-white/15 space-y-1">
+                      <div className="flex items-center gap-2 text-[#89f5e7] font-semibold text-[11px]">
                         <Layers className="w-3.5 h-3.5" />
                         <span>Official Stages</span>
                       </div>
-                      <div className="text-slate-300 text-xs">
+                      <div className="text-teal-100/80 text-xs">
                         Main Stage, Open Amphitheatre, Cultural Hall & Seminar Stage
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-5 pt-4 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+                <div className="mt-5 pt-4 border-t border-white/15 flex items-center justify-between text-[11px] text-teal-100/80">
                   <span>Entry open to contestants & delegates</span>
                   <button
                     type="button"
                     onClick={() => setActiveTabSection('schedule')}
-                    className="text-indigo-400 hover:text-indigo-300 font-bold"
+                    className="text-[#89f5e7] hover:text-white font-bold cursor-pointer"
                   >
                     View Schedule →
                   </button>
@@ -1295,44 +1301,44 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       {/* ==================================================================== */}
       {activeTabSection === 'leaderboard' && (
         <section className="py-12 max-w-7xl mx-auto px-4 sm:px-8 space-y-8">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#e2e8f0] pb-5">
             <div>
-              <span className="text-xs font-bold text-indigo-600 uppercase tracking-widest block">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f0fdfa] border border-[#99f6e4] text-[#0f766e] text-xs font-bold uppercase tracking-wider">
                 Championship Standings
               </span>
-              <h3 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 mt-1">
+              <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#0f172a] mt-2 font-display">
                 Official Festival Leaderboards
               </h3>
-              <p className="text-xs sm:text-sm text-slate-500 mt-1">
+              <p className="text-xs sm:text-sm text-[#64748b] mt-1">
                 Real-time verified standings for competing houses and top individual student performers.
               </p>
             </div>
 
             {/* Main Leaderboard Switcher: Team vs Individual */}
-            <div className="flex items-center gap-1.5 p-1.5 bg-slate-100 rounded-2xl border border-slate-200 self-start sm:self-auto shadow-2xs">
+            <div className="flex items-center gap-1.5 p-1 bg-[#f0fdfa] rounded-full border border-[#ccfbf1] self-start sm:self-auto shadow-2xs">
               <button
                 type="button"
                 onClick={() => setLeaderboardType('team')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                   leaderboardType === 'team'
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-[#0d9488] text-white shadow-xs'
+                    : 'text-[#0f766e] hover:text-[#0d9488]'
                 }`}
               >
-                <Trophy className="w-4 h-4 text-amber-500" />
+                <Trophy className="w-4 h-4 text-amber-300" />
                 <span>Team Leaderboard</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setLeaderboardType('individual')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                   leaderboardType === 'individual'
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-[#0d9488] text-white shadow-xs'
+                    : 'text-[#0f766e] hover:text-[#0d9488]'
                 }`}
               >
-                <Award className="w-4 h-4 text-indigo-600" />
+                <Award className="w-4 h-4 text-teal-200" />
                 <span>Individual Leaderboard</span>
               </button>
             </div>
@@ -1345,20 +1351,20 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               {leaderboard.length >= 3 && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* 2nd Place */}
-                  <div className="order-2 md:order-1 bg-slate-50 border border-slate-200 rounded-2xl p-5 flex flex-col justify-between shadow-2xs">
+                  <div className="order-2 md:order-1 bg-white border border-[#e2e8f0] rounded-3xl p-5 flex flex-col justify-between shadow-[0_4px_14px_rgba(15,23,42,0.05)]">
                     <div>
                       <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs font-black bg-slate-200 text-slate-800 px-3 py-1 rounded-lg">
+                        <span className="text-xs font-black bg-[#f1f5f9] text-[#334155] border border-[#e2e8f0] px-3 py-1 rounded-full">
                           🥈 2nd Place
                         </span>
-                        <span className="font-mono font-black text-xl text-slate-900">
+                        <span className="font-mono font-black text-xl text-[#0f172a]">
                           {leaderboard[1].totalPoints} pts
                         </span>
                       </div>
-                      <h4 className="text-lg font-black text-slate-900">{leaderboard[1].team.name}</h4>
-                      <p className="text-xs text-slate-500 mt-0.5">{leaderboard[1].team.institution || 'Collegiate House'}</p>
+                      <h4 className="text-lg font-black text-[#0f172a]">{leaderboard[1].team.name}</h4>
+                      <p className="text-xs text-[#64748b] mt-0.5">{leaderboard[1].team.institution || 'Collegiate House'}</p>
                     </div>
-                    <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between text-xs font-semibold text-slate-600">
+                    <div className="mt-4 pt-3 border-t border-[#e2e8f0] flex items-center justify-between text-xs font-semibold text-[#334155]">
                       <span>🥇 {leaderboard[1].firstPlaceCount} Gold</span>
                       <span>🥈 {leaderboard[1].secondPlaceCount} Silver</span>
                       <span>🥉 {leaderboard[1].thirdPlaceCount} Bronze</span>
@@ -1366,24 +1372,24 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                   </div>
 
                   {/* 1st Place Champion */}
-                  <div className="order-1 md:order-2 bg-gradient-to-b from-amber-50 to-amber-100/60 border-2 border-amber-300 rounded-2xl p-6 flex flex-col justify-between shadow-md relative -translate-y-1">
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-400 text-slate-950 font-black text-[11px] uppercase tracking-wider px-3 py-0.5 rounded-full shadow-xs">
+                  <div className="order-1 md:order-2 bg-gradient-to-b from-[#f0fdfa] via-white to-white border-2 border-[#0d9488] rounded-3xl p-6 flex flex-col justify-between shadow-[0_12px_30px_rgba(13,148,136,0.15)] relative -translate-y-1 ring-4 ring-[#0d9488]/20">
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#0d9488] text-white font-black text-[11px] uppercase tracking-wider px-3.5 py-0.5 rounded-full shadow-xs">
                       Fest Leader
                     </div>
                     <div>
                       <div className="flex items-center justify-between mb-3 mt-1">
-                        <span className="text-xs font-black bg-amber-400 text-slate-950 px-3 py-1 rounded-lg flex items-center gap-1">
-                          <Trophy className="w-3.5 h-3.5" />
+                        <span className="text-xs font-black bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4] px-3 py-1 rounded-full flex items-center gap-1">
+                          <Trophy className="w-3.5 h-3.5 text-[#0d9488]" />
                           1st Place Champion
                         </span>
-                        <span className="font-mono font-black text-2xl text-slate-900">
+                        <span className="font-mono font-black text-2xl text-[#0f172a]">
                           {leaderboard[0].totalPoints} pts
                         </span>
                       </div>
-                      <h4 className="text-xl font-black text-slate-900">{leaderboard[0].team.name}</h4>
-                      <p className="text-xs text-slate-600 mt-0.5">{leaderboard[0].team.institution || 'Collegiate House'}</p>
+                      <h4 className="text-xl font-black text-[#0f172a]">{leaderboard[0].team.name}</h4>
+                      <p className="text-xs text-[#64748b] mt-0.5">{leaderboard[0].team.institution || 'Collegiate House'}</p>
                     </div>
-                    <div className="mt-4 pt-3 border-t border-amber-200 flex items-center justify-between text-xs font-bold text-slate-800">
+                    <div className="mt-4 pt-3 border-t border-[#ccfbf1] flex items-center justify-between text-xs font-bold text-[#0f766e]">
                       <span>🥇 {leaderboard[0].firstPlaceCount} Gold</span>
                       <span>🥈 {leaderboard[0].secondPlaceCount} Silver</span>
                       <span>🥉 {leaderboard[0].thirdPlaceCount} Bronze</span>
@@ -1391,20 +1397,20 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                   </div>
 
                   {/* 3rd Place */}
-                  <div className="order-3 bg-amber-50/40 border border-amber-200 rounded-2xl p-5 flex flex-col justify-between shadow-2xs">
+                  <div className="order-3 bg-white border border-amber-200 rounded-3xl p-5 flex flex-col justify-between shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                     <div>
                       <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs font-black bg-amber-200 text-amber-900 px-3 py-1 rounded-lg">
+                        <span className="text-xs font-black bg-amber-100 text-amber-900 border border-amber-200 px-3 py-1 rounded-full">
                           🥉 3rd Place
                         </span>
-                        <span className="font-mono font-black text-xl text-slate-900">
+                        <span className="font-mono font-black text-xl text-[#0f172a]">
                           {leaderboard[2].totalPoints} pts
                         </span>
                       </div>
-                      <h4 className="text-lg font-black text-slate-900">{leaderboard[2].team.name}</h4>
-                      <p className="text-xs text-slate-500 mt-0.5">{leaderboard[2].team.institution || 'Collegiate House'}</p>
+                      <h4 className="text-lg font-black text-[#0f172a]">{leaderboard[2].team.name}</h4>
+                      <p className="text-xs text-[#64748b] mt-0.5">{leaderboard[2].team.institution || 'Collegiate House'}</p>
                     </div>
-                    <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between text-xs font-semibold text-slate-600">
+                    <div className="mt-4 pt-3 border-t border-[#e2e8f0] flex items-center justify-between text-xs font-semibold text-[#334155]">
                       <span>🥇 {leaderboard[2].firstPlaceCount} Gold</span>
                       <span>🥈 {leaderboard[2].secondPlaceCount} Silver</span>
                       <span>🥉 {leaderboard[2].thirdPlaceCount} Bronze</span>
@@ -1414,17 +1420,17 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               )}
 
               {/* Complete Team Leaderboard Table */}
-              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
-                <div className="p-4 bg-slate-50 border-b border-slate-200 text-xs text-slate-600 flex items-center justify-between">
-                  <span className="font-bold text-slate-800">
+              <div className="bg-white border border-[#e2e8f0] rounded-2xl overflow-hidden shadow-xs">
+                <div className="p-4 bg-[#f0fdfa] border-b border-[#ccfbf1] text-xs text-[#0f766e] flex items-center justify-between">
+                  <span className="font-bold text-[#0f172a]">
                     House Championship Standings — Cumulative Points from Individual & Team Programmes
                   </span>
-                  <span className="font-mono text-[11px] text-slate-500">Live Ratified</span>
+                  <span className="font-mono text-[11px] text-[#0f766e] font-bold">Live Ratified</span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead>
-                      <tr className="border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[11px] bg-slate-50/50">
+                      <tr className="border-b border-[#e2e8f0] text-[#64748b] uppercase tracking-wider text-[11px] bg-[#faf8ff]">
                         <th className="py-3 px-4 text-center w-16">Rank</th>
                         <th className="py-3 px-4">House / Team</th>
                         <th className="py-3 px-4">Institution</th>
@@ -1434,18 +1440,18 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                         <th className="py-3 px-4 text-right">Ratified Points</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-[#f1f5f9]">
                       {leaderboard.map((entry) => (
-                        <tr key={entry.team.id} className="hover:bg-slate-50/70 transition-colors">
+                        <tr key={entry.team.id} className="hover:bg-[#f0fdfa]/60 transition-colors">
                           <td className="py-3.5 px-4 text-center font-mono font-bold">
                             <span
                               className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${
                                 entry.rank === 1
-                                  ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                  ? 'bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4]'
                                   : entry.rank === 2
                                   ? 'bg-slate-200 text-slate-900'
                                   : entry.rank === 3
-                                  ? 'bg-amber-50 text-amber-900 border border-amber-200'
+                                  ? 'bg-amber-100 text-amber-900 border border-amber-200'
                                   : 'bg-slate-100 text-slate-600'
                               }`}
                             >
@@ -1453,10 +1459,10 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                             </span>
                           </td>
                           <td className="py-3.5 px-4">
-                            <div className="font-bold text-slate-900">{entry.team.name}</div>
-                            <div className="font-mono text-[10px] text-slate-400">{entry.team.code}</div>
+                            <div className="font-bold text-[#0f172a]">{entry.team.name}</div>
+                            <div className="font-mono text-[10px] text-[#64748b]">{entry.team.code}</div>
                           </td>
-                          <td className="py-3.5 px-4 text-slate-600">
+                          <td className="py-3.5 px-4 text-[#334155]">
                             {entry.team.institution || 'Collegiate House'}
                           </td>
                           <td className="py-3.5 px-3 text-center font-mono font-bold text-amber-700">
@@ -1468,7 +1474,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                           <td className="py-3.5 px-3 text-center font-mono font-bold text-amber-800">
                             {entry.thirdPlaceCount}
                           </td>
-                          <td className="py-3.5 px-4 text-right font-mono font-bold text-base text-slate-900">
+                          <td className="py-3.5 px-4 text-right font-mono font-bold text-base text-[#0f172a]">
                             {entry.totalPoints} pts
                           </td>
                         </tr>
@@ -1484,15 +1490,15 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
           {leaderboardType === 'individual' && (
             <div className="space-y-6">
               {/* Category Filter Pills */}
-              <div className="flex flex-wrap items-center gap-2 pb-2 border-b border-slate-200">
-                <span className="text-xs font-bold text-slate-500 mr-1 uppercase tracking-wider">Category:</span>
+              <div className="flex flex-wrap items-center gap-2 pb-2 border-b border-[#e2e8f0]">
+                <span className="text-xs font-bold text-[#64748b] mr-1 uppercase tracking-wider">Category:</span>
                 <button
                   type="button"
                   onClick={() => setLeaderboardCategory('all')}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
                     leaderboardCategory === 'all'
-                      ? 'bg-slate-900 text-white shadow-xs'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      ? 'bg-[#0d9488] text-white shadow-xs'
+                      : 'bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1] hover:bg-[#ccfbf1]'
                   }`}
                 >
                   All Categories (Overall Champions)
@@ -1502,10 +1508,10 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                     key={c.id}
                     type="button"
                     onClick={() => setLeaderboardCategory(c.name)}
-                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
                       leaderboardCategory.toLowerCase() === c.name.toLowerCase()
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        ? 'bg-[#0d9488] text-white shadow-xs'
+                        : 'bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1] hover:bg-[#ccfbf1]'
                     }`}
                   >
                     {c.name}
@@ -1517,82 +1523,82 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               {individualLeaderboardData.length >= 3 && individualLeaderboardData[0].totalPoints > 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* 2nd Place Individual */}
-                  <div className="order-2 md:order-1 bg-slate-50 border border-slate-200 rounded-2xl p-5 flex flex-col justify-between shadow-2xs">
+                  <div className="order-2 md:order-1 bg-white border border-[#e2e8f0] rounded-3xl p-5 flex flex-col justify-between shadow-[0_4px_14px_rgba(15,23,42,0.05)]">
                     <div>
                       <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs font-black bg-slate-200 text-slate-800 px-3 py-1 rounded-lg">
+                        <span className="text-xs font-black bg-[#f1f5f9] text-[#334155] border border-[#e2e8f0] px-3 py-1 rounded-full">
                           🥈 2nd Place
                         </span>
-                        <span className="font-mono font-bold text-xs bg-slate-900 text-amber-300 px-2 py-0.5 rounded-md">
+                        <span className="font-mono font-bold text-xs bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4] px-2.5 py-0.5 rounded-full">
                           Chest #{individualLeaderboardData[1].participant.chestNumber || individualLeaderboardData[1].participant.id}
                         </span>
                       </div>
-                      <h4 className="text-lg font-black text-slate-900">{individualLeaderboardData[1].participant.name}</h4>
-                      <p className="text-xs text-slate-500 mt-0.5">
+                      <h4 className="text-lg font-black text-[#0f172a]">{individualLeaderboardData[1].participant.name}</h4>
+                      <p className="text-xs text-[#64748b] mt-0.5">
                         {individualLeaderboardData[1].team?.name || 'Independent'} • {individualLeaderboardData[1].category}
                       </p>
                     </div>
-                    <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between">
-                      <span className="text-xs text-slate-500 font-medium">
+                    <div className="mt-4 pt-3 border-t border-[#e2e8f0] flex items-center justify-between">
+                      <span className="text-xs text-[#64748b] font-medium">
                         🥇 {individualLeaderboardData[1].firstPlaceCount} • 🥈 {individualLeaderboardData[1].secondPlaceCount} • 🥉 {individualLeaderboardData[1].thirdPlaceCount}
                       </span>
-                      <span className="font-mono font-black text-lg text-slate-900">
+                      <span className="font-mono font-black text-lg text-[#0f172a]">
                         {individualLeaderboardData[1].totalPoints} pts
                       </span>
                     </div>
                   </div>
 
                   {/* 1st Place Individual Champion */}
-                  <div className="order-1 md:order-2 bg-gradient-to-b from-amber-50 to-amber-100/60 border-2 border-amber-300 rounded-2xl p-6 flex flex-col justify-between shadow-md relative -translate-y-1">
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-400 text-slate-950 font-black text-[11px] uppercase tracking-wider px-3 py-0.5 rounded-full shadow-xs">
+                  <div className="order-1 md:order-2 bg-gradient-to-b from-[#f0fdfa] via-white to-white border-2 border-[#0d9488] rounded-3xl p-6 flex flex-col justify-between shadow-[0_12px_30px_rgba(13,148,136,0.15)] relative -translate-y-1 ring-4 ring-[#0d9488]/20">
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#0d9488] text-white font-black text-[11px] uppercase tracking-wider px-3.5 py-0.5 rounded-full shadow-xs">
                       Category Champion
                     </div>
                     <div>
                       <div className="flex items-center justify-between mb-3 mt-1">
-                        <span className="text-xs font-black bg-amber-400 text-slate-950 px-3 py-1 rounded-lg flex items-center gap-1">
-                          <Trophy className="w-3.5 h-3.5" />
+                        <span className="text-xs font-black bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4] px-3 py-1 rounded-full flex items-center gap-1">
+                          <Trophy className="w-3.5 h-3.5 text-[#0d9488]" />
                           1st Place Champion
                         </span>
-                        <span className="font-mono font-bold text-xs bg-slate-900 text-amber-300 px-2.5 py-1 rounded-md">
+                        <span className="font-mono font-bold text-xs bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4] px-2.5 py-1 rounded-full">
                           Chest #{individualLeaderboardData[0].participant.chestNumber || individualLeaderboardData[0].participant.id}
                         </span>
                       </div>
-                      <h4 className="text-xl font-black text-slate-900">{individualLeaderboardData[0].participant.name}</h4>
-                      <p className="text-xs text-slate-600 mt-0.5">
+                      <h4 className="text-xl font-black text-[#0f172a]">{individualLeaderboardData[0].participant.name}</h4>
+                      <p className="text-xs text-[#64748b] mt-0.5">
                         {individualLeaderboardData[0].team?.name || 'Independent'} • {individualLeaderboardData[0].category}
                       </p>
                     </div>
-                    <div className="mt-4 pt-3 border-t border-amber-200 flex items-center justify-between">
-                      <span className="text-xs text-slate-700 font-bold">
+                    <div className="mt-4 pt-3 border-t border-[#ccfbf1] flex items-center justify-between">
+                      <span className="text-xs text-[#0f766e] font-bold">
                         🥇 {individualLeaderboardData[0].firstPlaceCount} • 🥈 {individualLeaderboardData[0].secondPlaceCount} • 🥉 {individualLeaderboardData[0].thirdPlaceCount}
                       </span>
-                      <span className="font-mono font-black text-2xl text-slate-900">
+                      <span className="font-mono font-black text-2xl text-[#0f172a]">
                         {individualLeaderboardData[0].totalPoints} pts
                       </span>
                     </div>
                   </div>
 
                   {/* 3rd Place Individual */}
-                  <div className="order-3 bg-amber-50/40 border border-amber-200 rounded-2xl p-5 flex flex-col justify-between shadow-2xs">
+                  <div className="order-3 bg-white border border-amber-200 rounded-3xl p-5 flex flex-col justify-between shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
                     <div>
                       <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs font-black bg-amber-200 text-amber-900 px-3 py-1 rounded-lg">
+                        <span className="text-xs font-black bg-amber-100 text-amber-900 border border-amber-200 px-3 py-1 rounded-full">
                           🥉 3rd Place
                         </span>
-                        <span className="font-mono font-bold text-xs bg-slate-900 text-amber-300 px-2 py-0.5 rounded-md">
+                        <span className="font-mono font-bold text-xs bg-amber-100 text-amber-900 border border-amber-200 px-2.5 py-0.5 rounded-full">
                           Chest #{individualLeaderboardData[2].participant.chestNumber || individualLeaderboardData[2].participant.id}
                         </span>
                       </div>
-                      <h4 className="text-lg font-black text-slate-900">{individualLeaderboardData[2].participant.name}</h4>
-                      <p className="text-xs text-slate-500 mt-0.5">
+                      <h4 className="text-lg font-black text-[#0f172a]">{individualLeaderboardData[2].participant.name}</h4>
+                      <p className="text-xs text-[#64748b] mt-0.5">
                         {individualLeaderboardData[2].team?.name || 'Independent'} • {individualLeaderboardData[2].category}
                       </p>
                     </div>
-                    <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between">
-                      <span className="text-xs text-slate-500 font-medium">
+                    <div className="mt-4 pt-3 border-t border-[#e2e8f0] flex items-center justify-between">
+                      <span className="text-xs text-[#64748b] font-medium">
                         🥇 {individualLeaderboardData[2].firstPlaceCount} • 🥈 {individualLeaderboardData[2].secondPlaceCount} • 🥉 {individualLeaderboardData[2].thirdPlaceCount}
                       </span>
-                      <span className="font-mono font-black text-lg text-slate-900">
+                      <span className="font-mono font-black text-lg text-[#0f172a]">
                         {individualLeaderboardData[2].totalPoints} pts
                       </span>
                     </div>
@@ -1601,19 +1607,19 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               )}
 
               {/* Complete Individual Leaderboard Table */}
-              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
-                <div className="p-4 bg-slate-50 border-b border-slate-200 text-xs text-slate-600 flex items-center justify-between">
-                  <span className="font-bold text-slate-800">
+              <div className="bg-white border border-[#e2e8f0] rounded-2xl overflow-hidden shadow-xs">
+                <div className="p-4 bg-[#f0fdfa] border-b border-[#ccfbf1] text-xs text-[#0f766e] flex items-center justify-between">
+                  <span className="font-bold text-[#0f172a]">
                     Individual Contestants Standings — {leaderboardCategory === 'all' ? 'All Categories' : `${leaderboardCategory} Category`}
                   </span>
-                  <span className="font-mono text-[11px] text-slate-500">
+                  <span className="font-mono text-[11px] text-[#0f766e] font-bold">
                     Tie-breaker: Points &gt; 1st &gt; 2nd &gt; Marks
                   </span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead>
-                      <tr className="border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[11px] bg-slate-50/50">
+                      <tr className="border-b border-[#e2e8f0] text-[#64748b] uppercase tracking-wider text-[11px] bg-[#faf8ff]">
                         <th className="py-3 px-3 text-center w-16">Rank</th>
                         <th className="py-3 px-4">Chest #</th>
                         <th className="py-3 px-4">Contestant</th>
@@ -1626,16 +1632,16 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                         <th className="py-3 px-4 text-right">Individual Points</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-[#f1f5f9]">
                       {individualLeaderboardData.length === 0 ? (
                         <tr>
-                          <td colSpan={10} className="py-12 text-center text-slate-400">
+                          <td colSpan={10} className="py-12 text-center text-[#64748b]">
                             No participants scored yet in this category.
                           </td>
                         </tr>
                       ) : (
                         individualLeaderboardData.map((entry) => (
-                          <tr key={entry.participant.id} className="hover:bg-slate-50/70 transition-colors">
+                          <tr key={entry.participant.id} className="hover:bg-[#f0fdfa]/60 transition-colors">
                             <td className="py-3.5 px-3 text-center font-mono font-bold">
                               {entry.totalPoints > 0 ? (
                                 <span className="inline-flex items-center gap-1">
@@ -1643,24 +1649,24 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                                   #{entry.rank}
                                 </span>
                               ) : (
-                                <span className="text-slate-400 font-normal">-</span>
+                                <span className="text-[#64748b] font-normal">-</span>
                               )}
                             </td>
                             <td className="py-3.5 px-4 font-mono">
-                              <span className="font-mono font-bold text-xs bg-slate-100 text-slate-900 px-2.5 py-1 rounded-md border border-slate-200 shadow-2xs">
+                              <span className="font-mono font-bold text-xs bg-[#ccfbf1] text-[#0f766e] px-2.5 py-1 rounded-full border border-[#99f6e4] shadow-2xs">
                                 #{entry.participant.chestNumber || entry.participant.id}
                               </span>
                             </td>
                             <td className="py-3.5 px-4">
-                              <div className="font-bold text-slate-900">{entry.participant.name}</div>
-                              <div className="font-mono text-[10px] text-slate-400">ID: {entry.participant.id}</div>
+                              <div className="font-bold text-[#0f172a]">{entry.participant.name}</div>
+                              <div className="font-mono text-[10px] text-[#64748b]">ID: {entry.participant.id}</div>
                             </td>
                             <td className="py-3.5 px-4">
-                              <div className="font-semibold text-slate-800">{entry.team?.name || 'Independent'}</div>
-                              <div className="text-[10px] text-slate-400">{entry.team?.institution}</div>
+                              <div className="font-semibold text-[#0f172a]">{entry.team?.name || 'Independent'}</div>
+                              <div className="text-[10px] text-[#64748b]">{entry.team?.institution}</div>
                             </td>
                             <td className="py-3.5 px-3">
-                              <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700 font-medium">
+                              <span className="px-2.5 py-0.5 rounded-full bg-[#f0fdfa] border border-[#ccfbf1] text-[#0f766e] font-medium">
                                 {entry.category}
                               </span>
                             </td>
@@ -1673,10 +1679,10 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                             <td className="py-3.5 px-2 text-center font-mono font-bold text-amber-800">
                               {entry.thirdPlaceCount}
                             </td>
-                            <td className="py-3.5 px-2 text-center font-mono text-slate-700">
+                            <td className="py-3.5 px-2 text-center font-mono text-[#334155]">
                               {entry.totalMarks}
                             </td>
-                            <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-900 text-sm">
+                            <td className="py-3.5 px-4 text-right font-mono font-bold text-[#0f172a] text-sm">
                               {entry.totalPoints} pts
                             </td>
                           </tr>
@@ -1696,22 +1702,22 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       {/* ==================================================================== */}
       {activeTabSection === 'student_search' && (
         <section className="py-12 max-w-7xl mx-auto px-4 sm:px-8 space-y-8">
-          <div className="border-b border-slate-200 pb-5">
+          <div className="border-b border-[#e2e8f0] pb-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <span className="text-xs font-bold text-indigo-600 uppercase tracking-widest block">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f0fdfa] border border-[#99f6e4] text-[#0f766e] text-xs font-bold uppercase tracking-wider">
                   Official Student Directory & Live Search
                 </span>
-                <h3 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 mt-1">
+                <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#0f172a] mt-2 font-display">
                   Student & Contestant Lookup
                 </h3>
-                <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                <p className="text-xs sm:text-sm text-[#64748b] mt-1">
                   Search any student by Chest Number or Name to inspect event schedules, registered programmes, and live points won.
                 </p>
               </div>
 
               <div className="flex items-center gap-2 self-start sm:self-auto">
-                <span className="text-xs font-bold bg-slate-100 text-slate-700 px-3 py-1.5 rounded-xl border border-slate-200">
+                <span className="text-xs font-bold bg-[#f0fdfa] text-[#0f766e] px-3.5 py-1.5 rounded-full border border-[#ccfbf1]">
                   {festParticipants.length} Contestants Enrolled
                 </span>
               </div>
@@ -1719,23 +1725,23 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
             {/* Search Input Bar */}
             <div className="mt-6 max-w-2xl">
-              <div className="relative flex items-center bg-white border-2 border-slate-300 rounded-2xl shadow-sm focus-within:border-slate-900 transition-colors">
-                <div className="pl-4 text-slate-400">
-                  <Search className="w-5 h-5 text-indigo-600" />
+              <div className="relative flex items-center bg-white border-2 border-[#e2e8f0] focus-within:border-[#0d9488] focus-within:ring-3 focus-within:ring-[#0d9488]/15 rounded-2xl shadow-xs transition-colors">
+                <div className="pl-4 text-[#0d9488]">
+                  <Search className="w-5 h-5 text-[#0d9488]" />
                 </div>
                 <input
                   type="text"
                   value={studentSearchQuery}
                   onChange={(e) => setStudentSearchQuery(e.target.value)}
                   placeholder="Search by Chest Number (e.g. 104, PT-104) or Student Name..."
-                  className="w-full pl-3 pr-10 py-3.5 text-sm sm:text-base text-slate-900 bg-transparent focus:outline-none placeholder:text-slate-400 font-medium"
+                  className="w-full pl-3 pr-10 py-3.5 text-sm sm:text-base text-[#0f172a] bg-transparent focus:outline-none placeholder:text-[#64748b] font-medium"
                   autoFocus
                 />
                 {studentSearchQuery && (
                   <button
                     type="button"
                     onClick={() => setStudentSearchQuery('')}
-                    className="absolute right-3 p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
+                    className="absolute right-3 p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 cursor-pointer"
                     title="Clear search"
                   >
                     <X className="w-4 h-4" />
@@ -1752,14 +1758,14 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
             if (queryPresent && studentsToDisplay.length === 0) {
               return (
-                <div className="p-16 text-center border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50 space-y-3">
-                  <div className="w-12 h-12 rounded-2xl bg-slate-200 text-slate-600 flex items-center justify-center mx-auto">
+                <div className="p-16 text-center border-2 border-dashed border-[#e2e8f0] rounded-3xl bg-[#faf8ff] space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-[#f0fdfa] text-[#0d9488] border border-[#ccfbf1] flex items-center justify-center mx-auto">
                     <Search className="w-6 h-6" />
                   </div>
-                  <h4 className="text-base font-bold text-slate-900">
+                  <h4 className="text-base font-bold text-[#0f172a]">
                     No participant found matching "{studentSearchQuery}"
                   </h4>
-                  <p className="text-xs text-slate-500 max-w-md mx-auto">
+                  <p className="text-xs text-[#64748b] max-w-md mx-auto">
                     Please verify the chest number (e.g. 101, CH-12) or try searching by the participant's full name.
                   </p>
                 </div>
@@ -1768,7 +1774,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
             return (
               <div className="space-y-4">
-                <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
+                <div className="flex items-center justify-between text-xs text-[#64748b] font-medium">
                   <span>
                     Showing {studentsToDisplay.length} {studentsToDisplay.length === 1 ? 'student' : 'students'}
                     {queryPresent ? ` for "${studentSearchQuery}"` : ''}
@@ -1786,46 +1792,46 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                     return (
                       <div
                         key={student.id}
-                        className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs hover:shadow-md hover:border-slate-300 transition-all flex flex-col justify-between space-y-4"
+                        className="bg-white border border-[#e2e8f0] rounded-2xl p-5 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04)] hover:shadow-[0_8px_20px_-4px_rgba(13,148,136,0.12)] hover:border-[#99f6e4] transition-all flex flex-col justify-between space-y-4"
                       >
                         <div>
                           {/* Top Badges */}
                           <div className="flex items-center justify-between gap-2 mb-3">
-                            <span className="font-mono font-black text-xs bg-slate-900 text-amber-300 px-3 py-1 rounded-xl shadow-xs">
+                            <span className="font-mono font-bold text-xs bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4] px-3 py-1 rounded-full shadow-2xs">
                               Chest #{student.chestNumber || student.id}
                             </span>
-                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
+                            <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1]">
                               {student.category}
                             </span>
                           </div>
 
                           {/* Student Info */}
                           <div className="flex items-start gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-sm shrink-0">
+                            <div className="w-10 h-10 rounded-full bg-[#0d9488] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
                               {student.name.charAt(0)}
                             </div>
                             <div className="min-w-0">
-                              <h4 className="font-bold text-base text-slate-900 truncate">{student.name}</h4>
-                              <p className="text-xs text-slate-600 mt-0.5">
-                                House: <strong className="text-slate-900">{team?.name || 'Team'}</strong>
+                              <h4 className="font-bold text-base text-[#0f172a] truncate">{student.name}</h4>
+                              <p className="text-xs text-[#334155] mt-0.5">
+                                House: <strong className="text-[#0f172a]">{team?.name || 'Team'}</strong>
                               </p>
                               {team?.institution && (
-                                <p className="text-[11px] text-slate-400 truncate">{team.institution}</p>
+                                <p className="text-[11px] text-[#64748b] truncate">{team.institution}</p>
                               )}
                             </div>
                           </div>
 
                           {/* Points & Medals Strip */}
-                          <div className="mt-4 p-3 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between">
+                          <div className="mt-4 p-3 bg-[#faf8ff] border border-[#e2e8f0] rounded-xl flex items-center justify-between">
                             <div>
-                              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Total Points</span>
-                              <span className="font-mono font-black text-base text-slate-900">
+                              <span className="text-[10px] text-[#64748b] uppercase font-bold tracking-wider block">Total Points</span>
+                              <span className="font-mono font-black text-base text-[#0f172a]">
                                 {stats.totalPoints} pts
                               </span>
                             </div>
                             <div className="text-right">
-                              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Medals Won</span>
-                              <span className="text-xs font-bold text-slate-700">
+                              <span className="text-[10px] text-[#64748b] uppercase font-bold tracking-wider block">Medals Won</span>
+                              <span className="text-xs font-bold text-[#334155]">
                                 🥇 {stats.goldCount} · 🥈 {stats.silverCount} · 🥉 {stats.bronzeCount}
                               </span>
                             </div>
@@ -1833,28 +1839,28 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
                           {/* Registered Programmes */}
                           <div className="mt-3.5 space-y-1.5">
-                            <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">
+                            <span className="text-[10px] text-[#64748b] uppercase font-bold tracking-wider block">
                               Events ({studentProgs.length})
                             </span>
                             {studentProgs.length === 0 ? (
-                              <p className="text-xs text-slate-400 italic">No events assigned yet.</p>
+                              <p className="text-xs text-[#64748b] italic">No events assigned yet.</p>
                             ) : (
                               studentProgs.slice(0, 3).map((prg) => {
                                 const res = stats.studentResults.find((r) => r.programmeId === prg.id);
                                 return (
                                   <div
                                     key={prg.id}
-                                    className="flex items-center justify-between text-xs py-1 px-2 rounded-lg bg-slate-50 border border-slate-100"
+                                    className="flex items-center justify-between text-xs py-1.5 px-2.5 rounded-lg bg-[#faf8ff] border border-[#e2e8f0]"
                                   >
-                                    <span className="font-medium text-slate-800 truncate max-w-[170px]">
+                                    <span className="font-medium text-[#0f172a] truncate max-w-[170px]">
                                       {prg.name}
                                     </span>
                                     {res ? (
-                                      <span className="font-mono font-bold text-[11px] text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                                      <span className="font-mono font-bold text-[11px] text-[#0f766e] bg-[#ccfbf1] px-2 py-0.5 rounded-full border border-[#99f6e4]">
                                         Rank #{res.rank} (+{res.pointsAwarded} pts)
                                       </span>
                                     ) : (
-                                      <span className="text-[10px] text-slate-400 font-medium">
+                                      <span className="text-[10px] text-[#64748b] font-medium">
                                         {prg.venue || 'Scheduled'}
                                       </span>
                                     )}
@@ -1863,7 +1869,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                               })
                             )}
                             {studentProgs.length > 3 && (
-                              <span className="text-[11px] text-slate-400 block pt-0.5">
+                              <span className="text-[11px] text-[#64748b] block pt-0.5">
                                 +{studentProgs.length - 3} more events
                               </span>
                             )}
@@ -1871,13 +1877,13 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                         </div>
 
                         {/* View Card Button */}
-                        <div className="pt-2 border-t border-slate-100">
+                        <div className="pt-2 border-t border-[#e2e8f0]">
                           <button
                             type="button"
                             onClick={() => setSelectedStudentForModal(student)}
-                            className="w-full py-2 px-3 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors flex items-center justify-center gap-1.5"
+                            className="w-full py-2 px-3 text-xs font-bold text-[#0f766e] bg-[#f0fdfa] border border-[#ccfbf1] rounded-full hover:bg-[#ccfbf1] transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                           >
-                            <User className="w-3.5 h-3.5 text-indigo-600" />
+                            <User className="w-3.5 h-3.5 text-[#0d9488]" />
                             <span>View Full Student Card</span>
                           </button>
                         </div>
@@ -1896,12 +1902,12 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       {/* ==================================================================== */}
       {activeTabSection === 'gallery' && (
         <section className="py-12 max-w-7xl mx-auto px-4 sm:px-8 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#e2e8f0] pb-4">
             <div>
-              <h3 className="text-2xl font-bold tracking-tight text-slate-900">
+              <h3 className="text-2xl font-extrabold tracking-tight text-[#0f172a] font-display">
                 Official Photo Gallery
               </h3>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-[#64748b] mt-1">
                 Admin-curated captures and stage recordings across all festival programs.
               </p>
             </div>
@@ -1912,10 +1918,10 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                 <button
                   key={cat}
                   onClick={() => setActiveCategory(cat)}
-                  className={`px-3 py-1.5 rounded-full transition-all whitespace-nowrap ${
+                  className={`px-3.5 py-1.5 rounded-full transition-all whitespace-nowrap cursor-pointer ${
                     activeCategory === cat
-                      ? 'bg-slate-900 text-white shadow-xs'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      ? 'bg-[#0d9488] text-white shadow-xs font-bold'
+                      : 'bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1] hover:bg-[#ccfbf1]'
                   }`}
                 >
                   {cat}
@@ -1925,9 +1931,9 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
           </div>
 
           {filteredGalleryPhotos.length === 0 ? (
-            <div className="p-16 text-center border-2 border-dashed border-slate-200 rounded-2xl">
-              <ImageIcon className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-              <p className="text-xs font-bold text-slate-700">No photos in this category</p>
+            <div className="p-16 text-center border-2 border-dashed border-[#e2e8f0] rounded-2xl bg-[#faf8ff]">
+              <ImageIcon className="w-10 h-10 text-[#0d9488]/40 mx-auto mb-2" />
+              <p className="text-xs font-bold text-[#0f172a]">No photos in this category</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -1935,7 +1941,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                 <div
                   key={photo.id}
                   onClick={() => setSelectedPhoto(photo)}
-                  className="group cursor-pointer rounded-xl overflow-hidden bg-white border border-slate-200 shadow-2xs hover:shadow-md transition-all flex flex-col"
+                  className="group cursor-pointer rounded-2xl overflow-hidden bg-white border border-[#e2e8f0] shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04)] hover:shadow-[0_8px_20px_-4px_rgba(13,148,136,0.12)] hover:border-[#99f6e4] transition-all flex flex-col"
                 >
                   <div className="aspect-4/3 w-full bg-slate-100 overflow-hidden relative">
                     <img
@@ -1948,10 +1954,10 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                     </div>
                   </div>
                   <div className="p-3 bg-white">
-                    <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider block">
+                    <span className="text-[10px] font-bold text-[#0d9488] uppercase tracking-wider block">
                       {photo.category || 'General'}
                     </span>
-                    <h4 className="text-xs font-bold text-slate-900 mt-0.5 truncate">
+                    <h4 className="text-xs font-bold text-[#0f172a] mt-0.5 truncate group-hover:text-[#0d9488] transition-colors">
                       {photo.caption}
                     </h4>
                   </div>
@@ -1967,25 +1973,25 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       {/* ==================================================================== */}
       {activeTabSection === 'results' && (
         <section className="py-12 max-w-7xl mx-auto px-4 sm:px-8 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#e2e8f0] pb-4">
             <div>
-              <h3 className="text-2xl font-bold tracking-tight text-slate-900">
+              <h3 className="text-2xl font-extrabold tracking-tight text-[#0f172a] font-display">
                 Official Festival Results & Standings
               </h3>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-[#64748b] mt-1">
                 Ratified results, championship team standings, and category individual scoreboards.
               </p>
             </div>
 
             {/* Sub-Tabs: Programmes vs Team Leaderboard vs Individual Scoreboards */}
-            <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-xl text-xs font-semibold">
+            <div className="flex items-center gap-1.5 p-1 bg-[#f0fdfa] rounded-full border border-[#ccfbf1] text-xs font-semibold">
               <button
                 type="button"
                 onClick={() => setResultsSubTab('programmes')}
-                className={`px-3 py-1.5 rounded-lg transition-colors ${
+                className={`px-3.5 py-1.5 rounded-full transition-colors cursor-pointer ${
                   resultsSubTab === 'programmes'
-                    ? 'bg-white text-slate-900 shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-[#0d9488] text-white shadow-2xs font-bold'
+                    : 'text-[#0f766e] hover:text-[#0d9488]'
                 }`}
               >
                 Event Results
@@ -1993,10 +1999,10 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               <button
                 type="button"
                 onClick={() => setResultsSubTab('team_scoreboard')}
-                className={`px-3 py-1.5 rounded-lg transition-colors ${
+                className={`px-3.5 py-1.5 rounded-full transition-colors cursor-pointer ${
                   resultsSubTab === 'team_scoreboard'
-                    ? 'bg-white text-slate-900 shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-[#0d9488] text-white shadow-2xs font-bold'
+                    : 'text-[#0f766e] hover:text-[#0d9488]'
                 }`}
               >
                 Team Scoreboard
@@ -2004,10 +2010,10 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               <button
                 type="button"
                 onClick={() => setResultsSubTab('category_scoreboards')}
-                className={`px-3 py-1.5 rounded-lg transition-colors ${
+                className={`px-3.5 py-1.5 rounded-full transition-colors cursor-pointer ${
                   resultsSubTab === 'category_scoreboards'
-                    ? 'bg-white text-slate-900 shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-[#0d9488] text-white shadow-2xs font-bold'
+                    : 'text-[#0f766e] hover:text-[#0d9488]'
                 }`}
               >
                 Individual Scoreboards
@@ -2019,7 +2025,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
           {resultsSubTab === 'programmes' && (
             <div>
               {publishedResults.length === 0 ? (
-                <div className="p-12 text-center border border-slate-200 rounded-xl bg-slate-50 text-xs text-slate-500">
+                <div className="p-12 text-center border border-[#e2e8f0] rounded-2xl bg-[#faf8ff] text-xs text-[#64748b]">
                   No results have been published yet. Please check back as programmes conclude.
                 </div>
               ) : (
@@ -2030,60 +2036,60 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                     return (
                       <div
                         key={r.id}
-                        className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-slate-300 transition-colors"
+                        className="bg-white border border-[#e2e8f0] rounded-2xl p-5 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04)] flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-[#99f6e4] transition-colors"
                       >
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase ${
                               r.rank === 1
-                                ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                ? 'bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4]'
                                 : r.rank === 2
                                 ? 'bg-slate-200 text-slate-800'
                                 : r.rank === 3
-                                ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                                ? 'bg-amber-100 text-amber-800 border border-amber-200'
                                 : 'bg-slate-100 text-slate-700'
                             }`}>
                               Rank #{r.rank}
                             </span>
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
                               isTeam
-                                ? 'bg-purple-100 text-purple-800'
-                                : 'bg-blue-100 text-blue-800'
+                                ? 'bg-[#f0f9ff] text-[#0284c7] border border-[#bae6fd]'
+                                : 'bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1]'
                             }`}>
                               {isTeam ? 'Team Programme' : 'Individual'}
                             </span>
                             {r.category && (
-                              <span className="px-2 py-0.5 rounded text-[10px] bg-slate-100 text-slate-600 font-medium">
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] bg-[#faf8ff] text-[#64748b] border border-[#e2e8f0] font-medium">
                                 {r.category}
                               </span>
                             )}
                           </div>
 
-                          <h4 className="text-base font-bold text-slate-900">
+                          <h4 className="text-base font-bold text-[#0f172a]">
                             {r.programmeName || prog?.name || 'Programme Event'}
                           </h4>
 
-                          <p className="text-xs text-slate-600">
+                          <p className="text-xs text-[#334155]">
                             {isTeam ? (
                               <>
-                                Winning Entry: <strong className="text-purple-900 font-bold">{r.entryName || 'Squad Entry'}</strong>
-                                {' '}• Representing <strong className="text-slate-900">{r.teamName}</strong>
+                                Winning Entry: <strong className="text-[#0284c7] font-bold">{r.entryName || 'Squad Entry'}</strong>
+                                {' '}• Representing <strong className="text-[#0f172a]">{r.teamName}</strong>
                               </>
                             ) : (
                               <>
-                                Winner: <strong className="text-slate-900 font-bold">{r.participantName || 'Contestant'}</strong>
-                                {' '}• <span className="text-slate-700">{r.teamName}</span>
+                                Winner: <strong className="text-[#0f172a] font-bold">{r.participantName || 'Contestant'}</strong>
+                                {' '}• <span className="text-[#334155]">{r.teamName}</span>
                               </>
                             )}
                           </p>
                         </div>
 
                         <div className="text-left sm:text-right shrink-0">
-                          <div className="text-base font-mono font-bold text-slate-900">
+                          <div className="text-base font-mono font-bold text-[#0f172a]">
                             +{r.pointsAwarded} pts
                           </div>
                           {r.publishedAt && (
-                            <span className="text-[11px] text-slate-400">
+                            <span className="text-[11px] text-[#64748b]">
                               Ratified {r.publishedAt.slice(0, 10)}
                             </span>
                           )}
@@ -2098,17 +2104,17 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
           {/* VIEW 2: TEAM SCOREBOARD */}
           {resultsSubTab === 'team_scoreboard' && (
-            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
-              <div className="p-4 bg-slate-50 border-b border-slate-200 text-xs text-slate-600 flex items-center justify-between">
+            <div className="bg-white border border-[#e2e8f0] rounded-2xl overflow-hidden shadow-xs">
+              <div className="p-4 bg-[#f0fdfa] border-b border-[#ccfbf1] text-xs text-[#0f766e] flex items-center justify-between">
                 <span>
                   Official House Championship Standings. Points from both Individual and Team Programmes accrue to the team.
                 </span>
-                <span className="font-mono text-[11px] text-slate-500">Live Ratified Standings</span>
+                <span className="font-mono text-[11px] text-[#0f766e] font-bold">Live Ratified Standings</span>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
-                    <tr className="border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[11px] bg-slate-50/50">
+                    <tr className="border-b border-[#e2e8f0] text-[#64748b] uppercase tracking-wider text-[11px] bg-[#faf8ff]">
                       <th className="py-3 px-4 text-center w-16">Rank</th>
                       <th className="py-3 px-4">House / Team</th>
                       <th className="py-3 px-4">Institution</th>
@@ -2118,18 +2124,18 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                       <th className="py-3 px-4 text-right">Ratified Points</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-[#f1f5f9]">
                     {leaderboard.map((entry) => (
-                      <tr key={entry.team.id} className="hover:bg-slate-50/70 transition-colors">
+                      <tr key={entry.team.id} className="hover:bg-[#f0fdfa]/60 transition-colors">
                         <td className="py-3.5 px-4 text-center font-mono font-bold">
                           <span
                             className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${
                               entry.rank === 1
-                                ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                ? 'bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4]'
                                 : entry.rank === 2
                                 ? 'bg-slate-200 text-slate-900'
                                 : entry.rank === 3
-                                ? 'bg-amber-50 text-amber-900 border border-amber-200'
+                                ? 'bg-amber-100 text-amber-900 border border-amber-200'
                                 : 'bg-slate-100 text-slate-600'
                             }`}
                           >
@@ -2137,10 +2143,10 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                           </span>
                         </td>
                         <td className="py-3.5 px-4">
-                          <div className="font-bold text-slate-900">{entry.team.name}</div>
-                          <div className="font-mono text-[10px] text-slate-400">{entry.team.code}</div>
+                          <div className="font-bold text-[#0f172a]">{entry.team.name}</div>
+                          <div className="font-mono text-[10px] text-[#64748b]">{entry.team.code}</div>
                         </td>
-                        <td className="py-3.5 px-4 text-slate-600">
+                        <td className="py-3.5 px-4 text-[#334155]">
                           {entry.team.institution || 'Collegiate House'}
                         </td>
                         <td className="py-3.5 px-3 text-center font-mono font-bold text-amber-700">
@@ -2152,7 +2158,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                         <td className="py-3.5 px-3 text-center font-mono font-bold text-amber-800">
                           {entry.thirdPlaceCount}
                         </td>
-                        <td className="py-3.5 px-4 text-right font-mono font-bold text-base text-slate-900">
+                        <td className="py-3.5 px-4 text-right font-mono font-bold text-base text-[#0f172a]">
                           {entry.totalPoints} pts
                         </td>
                       </tr>
@@ -2167,19 +2173,17 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
           {resultsSubTab === 'category_scoreboards' && (
             <div className="space-y-4">
               {/* Category Pills */}
-              <div className="flex flex-wrap items-center gap-2 pb-2 border-b border-slate-200">
-                <span className="text-xs font-semibold text-slate-500 mr-1">Category:</span>
+              <div className="flex flex-wrap items-center gap-2 pb-2 border-b border-[#e2e8f0]">
+                <span className="text-xs font-semibold text-[#64748b] mr-1">Category:</span>
                 {festCategories.map((c) => (
                   <button
                     key={c.id}
                     type="button"
                     onClick={() => setSelectedPublicCategory(c.name)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
                       selectedPublicCategory.toLowerCase() === c.name.toLowerCase()
-                        ? c.isGeneral
-                          ? 'bg-amber-600 text-white shadow-xs'
-                          : 'bg-slate-900 text-white shadow-xs'
-                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        ? 'bg-[#0d9488] text-white shadow-xs font-bold'
+                        : 'bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1] hover:bg-[#ccfbf1]'
                     }`}
                   >
                     {c.name} {c.isGeneral ? '(General / Any Age)' : ''}
@@ -2187,11 +2191,11 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                 ))}
               </div>
 
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 flex items-center justify-between">
+              <div className="p-3.5 bg-[#f0fdfa] border border-[#ccfbf1] rounded-2xl text-xs text-[#0f766e] flex items-center justify-between">
                 <span>
                   Official individual rankings for <strong>{selectedPublicCategory} Category</strong>. Individual scores are attributed solely to individual competitors. Team programme scores are kept separate.
                 </span>
-                <span className="font-mono text-slate-500 text-[11px]">
+                <span className="font-mono text-[#0f766e] text-[11px] font-bold">
                   Tie-breaker: Points &gt; 1st &gt; 2nd &gt; Marks
                 </span>
               </div>
@@ -2200,18 +2204,18 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                 const scoreboard = getCategoryScoreboard(selectedPublicCategory);
                 if (scoreboard.length === 0) {
                   return (
-                    <div className="py-12 text-center text-slate-400 bg-white border border-slate-200 rounded-xl">
+                    <div className="py-12 text-center text-[#64748b] bg-white border border-[#e2e8f0] rounded-2xl">
                       No participants registered or scored in {selectedPublicCategory} category.
                     </div>
                   );
                 }
 
                 return (
-                  <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+                  <div className="bg-white border border-[#e2e8f0] rounded-2xl overflow-hidden shadow-xs">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs">
                         <thead>
-                          <tr className="border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[11px] bg-slate-50/50">
+                          <tr className="border-b border-[#e2e8f0] text-[#64748b] uppercase tracking-wider text-[11px] bg-[#faf8ff]">
                             <th className="py-3 px-3 text-center w-16">Rank</th>
                             <th className="py-3 px-4">Contestant</th>
                             <th className="py-3 px-4">House / Team</th>
@@ -2223,9 +2227,9 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                             <th className="py-3 px-4 text-right">Individual Points</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
+                        <tbody className="divide-y divide-[#f1f5f9]">
                           {scoreboard.map((entry) => (
-                            <tr key={entry.participant.id} className="hover:bg-slate-50/70 transition-colors">
+                            <tr key={entry.participant.id} className="hover:bg-[#f0fdfa]/60 transition-colors">
                               <td className="py-3 px-3 text-center font-mono font-bold">
                                 {entry.totalPoints > 0 ? (
                                   <span className="inline-flex items-center gap-1">
@@ -2233,19 +2237,19 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                                     #{entry.rank}
                                   </span>
                                 ) : (
-                                  <span className="text-slate-400 font-normal">-</span>
+                                  <span className="text-[#64748b] font-normal">-</span>
                                 )}
                               </td>
                               <td className="py-3 px-4">
-                                <div className="font-bold text-slate-900">{entry.participant.name}</div>
-                                <div className="font-mono text-[10px] text-slate-400">{entry.participant.id}</div>
+                                <div className="font-bold text-[#0f172a]">{entry.participant.name}</div>
+                                <div className="font-mono text-[10px] text-[#64748b]">{entry.participant.id}</div>
                               </td>
                               <td className="py-3 px-4">
-                                <div className="font-semibold text-slate-800">{entry.team?.name || 'Independent'}</div>
-                                <div className="text-[10px] text-slate-400">{entry.team?.institution}</div>
+                                <div className="font-semibold text-[#0f172a]">{entry.team?.name || 'Independent'}</div>
+                                <div className="text-[10px] text-[#64748b]">{entry.team?.institution}</div>
                               </td>
                               <td className="py-3 px-3">
-                                <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700 font-medium">
+                                <span className="px-2.5 py-0.5 rounded-full bg-[#f0fdfa] border border-[#ccfbf1] text-[#0f766e] font-medium">
                                   {entry.category}
                                 </span>
                               </td>
@@ -2258,10 +2262,10 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                               <td className="py-3 px-2 text-center font-mono font-bold text-amber-800">
                                 {entry.thirdPlaceCount}
                               </td>
-                              <td className="py-3 px-2 text-center font-mono text-slate-700">
+                              <td className="py-3 px-2 text-center font-mono text-[#334155]">
                                 {entry.totalMarks}
                               </td>
-                              <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 text-sm">
+                              <td className="py-3 px-4 text-right font-mono font-bold text-[#0f172a] text-sm">
                                 {entry.totalPoints} pts
                               </td>
                             </tr>
@@ -2282,11 +2286,11 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       {/* ==================================================================== */}
       {activeTabSection === 'schedule' && (
         <section className="py-12 max-w-7xl mx-auto px-4 sm:px-8 space-y-6">
-          <div className="border-b border-slate-200 pb-4">
-            <h3 className="text-2xl font-bold tracking-tight text-slate-900">
+          <div className="border-b border-[#e2e8f0] pb-4">
+            <h3 className="text-2xl font-extrabold tracking-tight text-[#0f172a] font-display">
               Festival Timetable & Stages
             </h3>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-[#64748b] mt-1">
               Official schedule for stage events, contests, and ceremonies.
             </p>
           </div>
@@ -2295,19 +2299,19 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
             {publishedProgrammes.map((p) => (
               <div
                 key={p.id}
-                className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs flex items-start gap-3.5"
+                className="bg-white border border-[#e2e8f0] rounded-2xl p-4 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04)] flex items-start gap-3.5 hover:border-[#99f6e4] transition-colors"
               >
-                <div className="w-10 h-10 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs shrink-0">
-                  <Clock className="w-4 h-4" />
+                <div className="w-10 h-10 rounded-xl bg-[#f0fdfa] border border-[#ccfbf1] text-[#0d9488] flex items-center justify-center font-bold text-xs shrink-0">
+                  <Clock className="w-4 h-4 text-[#0d9488]" />
                 </div>
                 <div className="flex-1">
-                  <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">
+                  <span className="text-[10px] font-bold text-[#0d9488] uppercase tracking-wider">
                     {p.category}
                   </span>
-                  <h4 className="text-sm font-bold text-slate-900 mt-0.5">{p.name}</h4>
-                  <div className="flex items-center gap-3 text-xs text-slate-500 mt-2">
+                  <h4 className="text-sm font-bold text-[#0f172a] mt-0.5">{p.name}</h4>
+                  <div className="flex items-center gap-3 text-xs text-[#64748b] mt-2">
                     <span className="flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                      <MapPin className="w-3.5 h-3.5 text-[#0d9488]" />
                       {p.venue || 'Main Stage'}
                     </span>
                     <span>•</span>
@@ -2325,11 +2329,11 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       {/* ==================================================================== */}
       {activeTabSection === 'teams' && (
         <section className="py-12 max-w-7xl mx-auto px-4 sm:px-8 space-y-6">
-          <div className="border-b border-slate-200 pb-4">
-            <h3 className="text-2xl font-bold tracking-tight text-slate-900">
+          <div className="border-b border-[#e2e8f0] pb-4">
+            <h3 className="text-2xl font-extrabold tracking-tight text-[#0f172a] font-display">
               Participating Houses & Teams
             </h3>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-[#64748b] mt-1">
               Official houses competing in {settings.festName}.
             </p>
           </div>
@@ -2338,19 +2342,19 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
             {teams.map((t) => (
               <div
                 key={t.id}
-                className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs space-y-3"
+                className="bg-white border border-[#e2e8f0] rounded-2xl p-5 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04)] space-y-3 hover:border-[#99f6e4] transition-colors"
               >
                 <div className="flex items-center justify-between">
-                  <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center font-bold text-xs">
+                  <div className="w-8 h-8 rounded-xl bg-[#0d9488] text-white flex items-center justify-center font-bold text-xs shadow-xs">
                     {t.code}
                   </div>
-                  <span className="text-xs font-mono font-bold text-indigo-600">
+                  <span className="text-xs font-mono font-bold text-[#0d9488]">
                     {(t.totalPoints ?? t.totalScore) ?? results.filter((r) => r.teamId === t.id && r.published).reduce((sum, r) => sum + (r.pointsAwarded || 0), 0)} pts
                   </span>
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-slate-900">{t.name}</h4>
-                  <p className="text-xs text-slate-500 mt-0.5">{t.institution || 'Collegiate House'}</p>
+                  <h4 className="text-sm font-bold text-[#0f172a]">{t.name}</h4>
+                  <p className="text-xs text-[#64748b] mt-0.5">{t.institution || 'Collegiate House'}</p>
                 </div>
               </div>
             ))}
@@ -2363,17 +2367,17 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       {/* ==================================================================== */}
       {activeTabSection === 'bulletin' && (
         <section className="py-12 max-w-7xl mx-auto px-4 sm:px-8 space-y-6">
-          <div className="border-b border-slate-200 pb-4">
-            <h3 className="text-2xl font-bold tracking-tight text-slate-900">
+          <div className="border-b border-[#e2e8f0] pb-4">
+            <h3 className="text-2xl font-extrabold tracking-tight text-[#0f172a] font-display">
               Official Bulletins & Notices
             </h3>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-[#64748b] mt-1">
               Real-time notices and schedule updates from the Fest Administration.
             </p>
           </div>
 
           {publicAnnouncements.length === 0 ? (
-            <div className="p-12 text-center border border-slate-200 rounded-xl bg-slate-50 text-xs text-slate-500">
+            <div className="p-12 text-center border border-[#e2e8f0] rounded-2xl bg-[#faf8ff] text-xs text-[#64748b]">
               No public notices posted at this moment.
             </div>
           ) : (
@@ -2381,17 +2385,17 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               {publicAnnouncements.map((a) => (
                 <div
                   key={a.id}
-                  className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs space-y-2"
+                  className="bg-white border border-[#e2e8f0] rounded-2xl p-5 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04)] space-y-2 hover:border-[#99f6e4] transition-colors"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-indigo-600 flex items-center gap-1.5">
-                      <Bell className="w-3.5 h-3.5" />
+                    <span className="text-xs font-bold text-[#0d9488] flex items-center gap-1.5">
+                      <Bell className="w-3.5 h-3.5 text-[#0d9488]" />
                       {a.category || 'General Notice'}
                     </span>
-                    <span className="text-xs text-slate-400">{a.createdAt?.slice(0, 10)}</span>
+                    <span className="text-xs text-[#64748b]">{a.createdAt?.slice(0, 10)}</span>
                   </div>
-                  <h4 className="text-base font-bold text-slate-900">{a.title}</h4>
-                  <p className="text-xs text-slate-600 leading-relaxed whitespace-pre-line">{a.content}</p>
+                  <h4 className="text-base font-bold text-[#0f172a]">{a.title}</h4>
+                  <p className="text-xs text-[#334155] leading-relaxed whitespace-pre-line">{a.content}</p>
                 </div>
               ))}
             </div>
@@ -2445,16 +2449,16 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       {/* ==================================================================== */}
       {/* FOOTER                                                               */}
       {/* ==================================================================== */}
-      <footer className="mt-auto border-t border-slate-200 bg-slate-50 py-8 px-4 sm:px-8 text-xs text-slate-500">
+      <footer className="mt-auto border-t border-[#e2e8f0] bg-[#faf8ff] py-8 px-4 sm:px-8 text-xs text-[#64748b]">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div>
-            <p className="font-medium text-slate-700">© 2026 {festName}. Powered by Festoria Festival Management Platform.</p>
-            <p className="text-[11px] text-slate-400 mt-0.5">Unified collegiate governance & scoring infrastructure.</p>
+            <p className="font-semibold text-[#0f172a]">© 2026 {festName}. Powered by Festoria Festival Management Platform.</p>
+            <p className="text-[11px] text-[#64748b] mt-0.5">Unified collegiate governance & scoring infrastructure.</p>
           </div>
 
           <div className="flex items-center gap-4">
-            <a href={getAppUrl()} className="hover:text-slate-900 font-semibold min-h-[44px] inline-flex items-center">Festoria Home</a>
-            <a href={getAppUrl('admin.html')} className="hover:text-slate-900 font-semibold min-h-[44px] inline-flex items-center">Admin Sign In</a>
+            <a href={getAppUrl()} className="text-[#0f766e] hover:text-[#0d9488] font-bold min-h-[44px] inline-flex items-center">Festoria Home</a>
+            <a href={getAppUrl('admin.html')} className="text-[#0f766e] hover:text-[#0d9488] font-bold min-h-[44px] inline-flex items-center">Admin Sign In</a>
           </div>
         </div>
       </footer>
@@ -2474,51 +2478,51 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
             onClick={() => setSelectedStudentForModal(null)}
           >
             <div
-              className="max-w-lg w-full bg-white rounded-3xl overflow-hidden shadow-2xl border border-slate-200"
+              className="max-w-lg w-full bg-white rounded-3xl overflow-hidden shadow-2xl border border-[#e2e8f0]"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header Banner */}
-              <div className="bg-slate-900 text-white p-6 relative">
+              <div className="bg-gradient-to-r from-[#06332e] to-[#00685f] text-white p-6 relative">
                 <button
                   type="button"
                   onClick={() => setSelectedStudentForModal(null)}
-                  className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors"
+                  className="absolute top-4 right-4 p-1.5 text-teal-200 hover:text-white rounded-full hover:bg-white/10 transition-colors cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
 
                 <div className="flex items-center gap-2 mb-3">
-                  <span className="font-mono font-black text-xs bg-amber-400 text-slate-950 px-3 py-1 rounded-xl shadow-xs">
+                  <span className="font-mono font-bold text-xs bg-[#ccfbf1] text-[#0f766e] px-3.5 py-1 rounded-full shadow-xs">
                     Chest #{student.chestNumber || student.id}
                   </span>
-                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-lg bg-white/10 text-slate-300">
+                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-white/15 text-teal-100">
                     {student.category}
                   </span>
-                  <span className="text-[10px] font-mono text-slate-400">ID: {student.id}</span>
+                  <span className="text-[10px] font-mono text-teal-200/70">ID: {student.id}</span>
                 </div>
 
-                <h3 className="text-xl sm:text-2xl font-black text-white">{student.name}</h3>
-                <p className="text-xs text-slate-300 mt-1">
+                <h3 className="text-xl sm:text-2xl font-extrabold text-white font-display">{student.name}</h3>
+                <p className="text-xs text-teal-100/90 mt-1">
                   Representing <strong className="text-white font-bold">{team?.name || 'Independent'}</strong>
                   {team?.institution ? ` • ${team.institution}` : ''}
                 </p>
               </div>
 
               {/* Statistics Strip */}
-              <div className="p-5 border-b border-slate-100 bg-slate-50/70 grid grid-cols-2 gap-3 text-center">
-                <div className="p-3 bg-white rounded-2xl border border-slate-200/80 shadow-2xs">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
+              <div className="p-5 border-b border-[#e2e8f0] bg-[#faf8ff] grid grid-cols-2 gap-3 text-center">
+                <div className="p-3 bg-white rounded-2xl border border-[#e2e8f0] shadow-xs">
+                  <span className="text-[10px] text-[#64748b] font-bold uppercase tracking-wider block">
                     Total Individual Points
                   </span>
-                  <span className="font-mono font-black text-2xl text-slate-900 mt-0.5 block">
+                  <span className="font-mono font-black text-2xl text-[#0f172a] mt-0.5 block">
                     {stats.totalPoints} pts
                   </span>
                 </div>
-                <div className="p-3 bg-white rounded-2xl border border-slate-200/80 shadow-2xs">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
+                <div className="p-3 bg-white rounded-2xl border border-[#e2e8f0] shadow-xs">
+                  <span className="text-[10px] text-[#64748b] font-bold uppercase tracking-wider block">
                     Medals Won
                   </span>
-                  <span className="text-sm font-black text-slate-800 mt-1.5 block">
+                  <span className="text-sm font-black text-[#0f172a] mt-1.5 block">
                     🥇 {stats.goldCount} · 🥈 {stats.silverCount} · 🥉 {stats.bronzeCount}
                   </span>
                 </div>
@@ -2526,41 +2530,41 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
               {/* Registered Programmes Detail */}
               <div className="p-6 space-y-3 max-h-72 overflow-y-auto">
-                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <h4 className="text-xs font-bold text-[#64748b] uppercase tracking-wider">
                   Registered Programmes ({studentProgs.length})
                 </h4>
 
                 {studentProgs.length === 0 ? (
-                  <p className="text-xs text-slate-400 italic">No programmes registered yet.</p>
+                  <p className="text-xs text-[#64748b] italic">No programmes registered yet.</p>
                 ) : (
                   studentProgs.map((prg) => {
                     const res = stats.studentResults.find((r) => r.programmeId === prg.id);
                     return (
                       <div
                         key={prg.id}
-                        className="p-3 rounded-2xl border border-slate-200 bg-white shadow-2xs space-y-1.5"
+                        className="p-3 rounded-2xl border border-[#e2e8f0] bg-white shadow-2xs space-y-1.5"
                       >
                         <div className="flex items-center justify-between gap-2">
-                          <h5 className="font-bold text-sm text-slate-900">{prg.name}</h5>
+                          <h5 className="font-bold text-sm text-[#0f172a]">{prg.name}</h5>
                           {res ? (
-                            <span className="font-mono font-black text-xs text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-lg border border-emerald-300">
+                            <span className="font-mono font-black text-xs text-[#0f766e] bg-[#ccfbf1] px-2.5 py-0.5 rounded-full border border-[#99f6e4]">
                               Rank #{res.rank} (+{res.pointsAwarded} pts)
                             </span>
                           ) : (
-                            <span className="text-[11px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                            <span className="text-[11px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
                               Scheduled
                             </span>
                           )}
                         </div>
 
-                        <div className="flex items-center gap-3 text-xs text-slate-500">
+                        <div className="flex items-center gap-3 text-xs text-[#64748b]">
                           <span className="flex items-center gap-1">
-                            <Clock className="w-3.5 h-3.5 text-slate-400" />
+                            <Clock className="w-3.5 h-3.5 text-[#0d9488]" />
                             {prg.startTime} - {prg.endTime}
                           </span>
                           <span>•</span>
                           <span className="flex items-center gap-1">
-                            <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                            <MapPin className="w-3.5 h-3.5 text-[#0d9488]" />
                             {prg.venue} ({prg.stage})
                           </span>
                         </div>
@@ -2571,11 +2575,11 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               </div>
 
               {/* Footer Modal Action */}
-              <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+              <div className="p-4 bg-[#faf8ff] border-t border-[#e2e8f0] flex justify-end">
                 <button
                   type="button"
                   onClick={() => setSelectedStudentForModal(null)}
-                  className="px-5 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors shadow-xs"
+                  className="px-6 py-2.5 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-full text-xs font-bold transition-colors shadow-xs cursor-pointer"
                 >
                   Close
                 </button>
@@ -2597,10 +2601,10 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
           />
 
           <div className="fixed inset-y-0 right-0 max-w-full flex pl-8 sm:pl-10 z-50">
-            <div className="w-screen max-w-sm sm:max-w-md bg-white shadow-2xl flex flex-col justify-between border-l border-slate-200 animate-in slide-in-from-right duration-300">
+            <div className="w-screen max-w-sm sm:max-w-md bg-white shadow-2xl flex flex-col justify-between border-l border-[#e2e8f0] animate-in slide-in-from-right duration-300">
               
               {/* Drawer Header */}
-              <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/90">
+              <div className="p-4 sm:p-5 border-b border-[#e2e8f0] flex items-center justify-between bg-[#faf8ff]">
                 <div className="flex items-center gap-3 min-w-0">
                   {pageData.logo.logoUrl ? (
                     <img
@@ -2614,12 +2618,12 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                       src={FESTORIA_LOGO}
                       alt={festName}
                       onError={handleLogoError}
-                      className="w-8 h-8 rounded-xl object-contain border border-slate-200 bg-white"
+                      className="w-8 h-8 rounded-xl object-contain border border-[#e2e8f0] bg-white p-0.5"
                     />
                   )}
                   <div className="min-w-0">
-                    <h3 className="font-bold text-sm text-slate-900 truncate">{festName}</h3>
-                    <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider truncate">
+                    <h3 className="font-extrabold text-sm text-[#0f172a] truncate font-display">{festName}</h3>
+                    <p className="text-[10px] text-[#64748b] font-semibold uppercase tracking-wider truncate">
                       {fest?.institution ? `${fest.institution} · ` : ''}{fest?.edition || settings.festEdition || 'Official Festival Portal'}
                     </p>
                   </div>
@@ -2628,7 +2632,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                 <button
                   type="button"
                   onClick={() => setMenuDrawerOpen(false)}
-                  className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors"
+                  className="p-2 rounded-full text-slate-400 hover:text-slate-700 hover:bg-[#f0fdfa] transition-colors cursor-pointer"
                   aria-label="Close navigation menu"
                 >
                   <X className="w-5 h-5" />
@@ -2638,18 +2642,18 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               {/* Drawer Content */}
               <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-6">
                 {/* Fast Action Card (Register & Sign In) */}
-                <div className="bg-linear-to-br from-indigo-900 via-indigo-950 to-slate-950 rounded-2xl p-4 text-white shadow-lg space-y-3">
+                <div className="bg-gradient-to-br from-[#06332e] via-[#00685f] to-[#044c69] rounded-2xl p-4 text-white shadow-lg space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-300">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#89f5e7]">
                       Contestant Access
                     </span>
-                    <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-semibold">
+                    <span className="text-[10px] bg-white/15 text-[#89f5e7] border border-white/20 px-2.5 py-0.5 rounded-full font-semibold">
                       Live
                     </span>
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-white">Join as a Participant</h4>
-                    <p className="text-[11px] text-indigo-200/80 mt-0.5">
+                    <h4 className="text-sm font-bold text-white font-display">Join as a Participant</h4>
+                    <p className="text-[11px] text-teal-100/80 mt-0.5">
                       Register your entries, verify your chest number, and track live scores.
                     </p>
                   </div>
@@ -2660,7 +2664,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                         setMenuDrawerOpen(false);
                         openAuth('participant', 'register');
                       }}
-                      className="w-full py-2 px-3 rounded-xl bg-white text-indigo-950 text-xs font-bold hover:bg-indigo-50 transition-colors text-center shadow-xs"
+                      className="w-full py-2 px-3 rounded-full bg-[#89f5e7] hover:bg-[#6bd8cb] text-[#00201d] text-xs font-bold transition-colors text-center shadow-md cursor-pointer"
                     >
                       Register Now
                     </button>
@@ -2670,7 +2674,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                         setMenuDrawerOpen(false);
                         openAuth('participant', 'signin');
                       }}
-                      className="w-full py-2 px-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-semibold transition-colors text-center"
+                      className="w-full py-2 px-3 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-semibold transition-colors text-center cursor-pointer"
                     >
                       Sign In
                     </button>
@@ -2679,7 +2683,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
                 {/* Festival Navigation Sections */}
                 <div>
-                  <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 px-2">
+                  <h4 className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider mb-2 px-2">
                     Festival Navigation
                   </h4>
                   <nav className="space-y-1">
@@ -2703,19 +2707,19 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                             setActiveTabSection(item.id as any);
                             setMenuDrawerOpen(false);
                           }}
-                          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                          className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
                             isActive
-                              ? 'bg-indigo-50 text-indigo-950 font-bold border border-indigo-200/80 shadow-2xs'
-                              : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                              ? 'bg-[#f0fdfa] text-[#0d9488] font-bold border border-[#ccfbf1] shadow-2xs'
+                              : 'text-[#334155] hover:bg-[#faf8ff] hover:text-[#0d9488]'
                           }`}
                         >
                           <div className="flex items-center gap-3">
-                            <IconComp className={`w-4 h-4 ${isActive ? 'text-indigo-600' : 'text-slate-500'}`} />
+                            <IconComp className={`w-4 h-4 ${isActive ? 'text-[#0d9488]' : 'text-[#64748b]'}`} />
                             <span>{item.label}</span>
                           </div>
                           {item.badge && (
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                              isActive ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'
+                            <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                              isActive ? 'bg-[#0d9488] text-white' : 'bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1]'
                             }`}>
                               {item.badge}
                             </span>
@@ -2728,7 +2732,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
                 {/* Portals & Management Access */}
                 <div>
-                  <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 px-2">
+                  <h4 className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider mb-2 px-2">
                     Portals & Management
                   </h4>
                   <div className="space-y-1">
@@ -2738,10 +2742,10 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                         setMenuDrawerOpen(false);
                         openAuth('team_leader', 'signin');
                       }}
-                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+                      className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-full text-xs font-semibold text-[#334155] hover:bg-[#f0fdfa] hover:text-[#0d9488] transition-colors cursor-pointer"
                     >
                       <div className="flex items-center gap-3">
-                        <Shield className="w-4 h-4 text-emerald-600" />
+                        <Shield className="w-4 h-4 text-[#0284c7]" />
                         <span>Team Leader Portal</span>
                       </div>
                       <ChevronRight className="w-4 h-4 text-slate-400" />
@@ -2749,10 +2753,10 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
                     <a
                       href={getAppUrl('admin.html')}
-                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+                      className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-full text-xs font-semibold text-[#334155] hover:bg-[#f0fdfa] hover:text-[#0d9488] transition-colors"
                     >
                       <div className="flex items-center gap-3">
-                        <User className="w-4 h-4 text-purple-600" />
+                        <User className="w-4 h-4 text-[#0d9488]" />
                         <span>Fest Admin Console</span>
                       </div>
                       <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
@@ -2760,10 +2764,10 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
                     <a
                       href={getAppUrl()}
-                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+                      className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-full text-xs font-semibold text-[#334155] hover:bg-[#f0fdfa] hover:text-[#0d9488] transition-colors"
                     >
                       <div className="flex items-center gap-3">
-                        <Sparkles className="w-4 h-4 text-indigo-600" />
+                        <Sparkles className="w-4 h-4 text-[#0d9488]" />
                         <span>Festoria Platform Home</span>
                       </div>
                       <ChevronRight className="w-4 h-4 text-slate-400" />
@@ -2772,28 +2776,28 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                 </div>
 
                 {/* Festival Grounds & Edition Info */}
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2 text-xs">
+                <div className="p-4 bg-[#faf8ff] rounded-2xl border border-[#e2e8f0] space-y-2 text-xs">
                   <div className="flex items-center justify-between">
-                    <h5 className="font-bold text-slate-900">Festival Info</h5>
-                    <span className="text-[10px] bg-indigo-100 text-indigo-800 font-semibold px-2 py-0.5 rounded-full">
+                    <h5 className="font-bold text-[#0f172a]">Festival Info</h5>
+                    <span className="text-[10px] bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1] font-semibold px-2.5 py-0.5 rounded-full">
                       {fest?.edition || 'Official Edition'}
                     </span>
                   </div>
-                  <div className="text-slate-600 space-y-1.5 text-[11px] pt-1">
+                  <div className="text-[#334155] space-y-1.5 text-[11px] pt-1">
                     <div className="flex items-start gap-1.5">
-                      <MapPin className="w-3.5 h-3.5 text-indigo-600 shrink-0 mt-0.5" />
-                      <span>Venue: <strong className="text-slate-800">{fest?.venue || settings.venue || 'Campus Convention Grounds'}</strong></span>
+                      <MapPin className="w-3.5 h-3.5 text-[#0d9488] shrink-0 mt-0.5" />
+                      <span>Venue: <strong className="text-[#0f172a]">{fest?.venue || settings.venue || 'Campus Convention Grounds'}</strong></span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                      <span>Dates: <strong className="text-slate-800">{fest?.startDate || settings.startDate} to {fest?.endDate || settings.endDate}</strong></span>
+                      <Calendar className="w-3.5 h-3.5 text-[#0d9488] shrink-0" />
+                      <span>Dates: <strong className="text-[#0f172a]">{fest?.startDate || settings.startDate} to {fest?.endDate || settings.endDate}</strong></span>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Drawer Footer */}
-              <div className="p-4 border-t border-slate-200 bg-slate-50 text-center text-[11px] text-slate-500">
+              <div className="p-4 border-t border-[#e2e8f0] bg-[#faf8ff] text-center text-[11px] text-[#64748b]">
                 <span>© 2026 {festName} · Powered by Festoria</span>
               </div>
             </div>

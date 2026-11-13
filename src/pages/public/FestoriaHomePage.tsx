@@ -98,13 +98,8 @@ export const FestoriaHomePage: React.FC = () => {
           {/* Brand Logo with micro-interaction */}
           <div className="flex items-center gap-3">
             <a aria-label="Festoria Home" className="group flex items-center gap-2.5" href="#">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-700 via-emerald-500 to-teal-400 flex items-center justify-center shadow-[0_8px_20px_-3px_rgba(5,150,105,0.25)] ring-1 ring-emerald-400/40 group-active:scale-95 group-hover:rotate-6 transition-all duration-200 p-1 bg-white">
-                <img
-                  src={FESTORIA_LOGO}
-                  alt="Festoria Logo"
-                  onError={handleLogoError}
-                  className="w-full h-full object-contain rounded-xl"
-                />
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-700 via-emerald-500 to-teal-400 flex items-center justify-center shadow-[0_8px_20px_-3px_rgba(5,150,105,0.25)] ring-1 ring-emerald-400/40 group-active:scale-95 group-hover:rotate-6 transition-all duration-200 select-none text-white font-extrabold text-lg">
+                <span>F</span>
               </div>
               <div className="flex flex-col">
                 <div className="flex items-center gap-1.5">
@@ -187,12 +182,9 @@ export const FestoriaHomePage: React.FC = () => {
             <div className="space-y-6">
               <div className="flex items-center justify-between pb-4 border-b border-slate-200">
                 <div className="flex items-center gap-2.5">
-                  <img
-                    src={FESTORIA_LOGO}
-                    alt="Festoria Logo"
-                    onError={handleLogoError}
-                    className="w-8 h-8 rounded-lg object-contain bg-slate-100"
-                  />
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-emerald-700 to-teal-500 flex items-center justify-center text-white font-extrabold text-sm shadow-xs select-none">
+                    <span>F</span>
+                  </div>
                   <span className="font-extrabold text-slate-900 text-base font-display">Festoria OS</span>
                 </div>
                 <button
@@ -804,9 +796,9 @@ export const FestoriaHomePage: React.FC = () => {
           <button
             type="button"
             onClick={() => openCreateFest('apply')}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-xs hover:bg-emerald-700 transition-colors self-start sm:self-auto"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-linear-to-r from-emerald-600 to-teal-600 text-white text-xs font-bold shadow-xs hover:from-emerald-700 hover:to-teal-700 transition-colors self-start sm:self-auto"
           >
-            <span>Organise Your Fest</span>
+            <span>Create New Fest / Organise</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -839,7 +831,8 @@ export const FestoriaHomePage: React.FC = () => {
 
               <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
                 <a
-                  href={getAppUrl(`?fest=${fest.id}`)}
+                  href={getAppUrl(`/f/${fest.id}`)}
+                  data-portal-url={`/f/${fest.id}`}
                   onClick={(e) => {
                     e.preventDefault();
                     setActiveFestId(fest.id);
