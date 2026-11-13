@@ -61,6 +61,7 @@ export const ProgrammesPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterType, setFilterType] = useState<'all' | 'individual' | 'team'>('all');
+  const [filterStageType, setFilterStageType] = useState<'all' | 'stage' | 'off_stage'>('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterDate, setFilterDate] = useState('all');
 
@@ -71,7 +72,7 @@ export const ProgrammesPage: React.FC = () => {
   const [viewingProgramme, setViewingProgramme] = useState<Programme | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // Form Step: 1 to 7
+  // Form Step: 1 to 6
   const [currentStep, setCurrentStep] = useState<number>(1);
 
   // Form State
@@ -82,6 +83,7 @@ export const ProgrammesPage: React.FC = () => {
     rules: '',
     category: 'Music' as ProgrammeCategory,
     type: 'individual' as ProgrammeType,
+    stageType: 'stage' as 'stage' | 'off_stage',
     eligibleCategories: ['Senior', 'Junior'] as ParticipantCategory[],
     assignedJudgeIds: [] as string[],
 
@@ -162,13 +164,18 @@ export const ProgrammesPage: React.FC = () => {
       if (filterStatus !== 'all' && p.status !== filterStatus) return false;
       if (filterDate !== 'all' && p.date !== filterDate) return false;
 
+      if (filterStageType !== 'all') {
+        const pStageType = p.stageType || 'stage';
+        if (pStageType !== filterStageType) return false;
+      }
+
       const isTeam = p.type === 'group' || p.type === 'team' || p.programmeType === 'team';
       if (filterType === 'individual' && isTeam) return false;
       if (filterType === 'team' && !isTeam) return false;
 
       return true;
     });
-  }, [programmes, search, filterCategory, filterType, filterStatus, filterDate]);
+  }, [programmes, search, filterCategory, filterType, filterStageType, filterStatus, filterDate]);
 
   const handleOpenAdd = () => {
     setEditingProgramme(null);
@@ -183,6 +190,7 @@ export const ProgrammesPage: React.FC = () => {
       rules: '',
       category: defaultCat,
       type: 'individual',
+      stageType: 'stage',
       eligibleCategories: [defaultCat],
       assignedJudgeIds: judges.length > 0 ? [judges[0].id] : [],
       maxParticipantsPerTeam: 2,
@@ -193,7 +201,7 @@ export const ProgrammesPage: React.FC = () => {
       allowMultiEntriesPerParticipant: false,
       venue: 'Auditorium Hall A',
       stage: 'Stage 1',
-      date: '2026-11-06',
+      date: '2026-11-22',
       startTime: '10:00',
       endTime: '12:00',
       maxCapacity: 16,
@@ -222,7 +230,8 @@ export const ProgrammesPage: React.FC = () => {
       rules: p.rules || '',
       category: p.category,
       type: isTeam ? 'team' : 'individual',
-      eligibleCategories: [...p.eligibleCategories],
+      stageType: p.stageType || 'stage',
+      eligibleCategories: p.eligibleCategories?.length ? [...p.eligibleCategories] : [p.category],
       assignedJudgeIds: [...p.assignedJudgeIds],
       maxParticipantsPerTeam: p.maxParticipantsPerTeam || 2,
       minTeamMembers: p.minTeamMembers || 3,
@@ -311,18 +320,15 @@ export const ProgrammesPage: React.FC = () => {
       const hasConflict = checkLimitConflicts();
       if (hasConflict) {
         setConfirmLimitReduction(true);
-        setCurrentStep(7); // Jump to Review step to see warning
+        setCurrentStep(6); // Jump to Review step to see warning
         return;
       }
     }
 
-    if (formData.eligibleCategories.length === 0) {
-      addToast('error', 'Eligibility Required', 'Please select at least one eligible category.');
-      setCurrentStep(3);
-      return;
-    }
-
     const isTeam = formData.type === 'team' || formData.type === 'group';
+    const effectiveEligible = formData.eligibleCategories.length > 0
+      ? formData.eligibleCategories
+      : [formData.category];
 
     const payload = {
       code: formData.code.trim(),
@@ -332,7 +338,8 @@ export const ProgrammesPage: React.FC = () => {
       category: formData.category,
       type: formData.type,
       programmeType: isTeam ? ('team' as const) : ('individual' as const),
-      eligibleCategories: formData.eligibleCategories,
+      stageType: formData.stageType || 'stage',
+      eligibleCategories: effectiveEligible,
       assignedJudgeIds: formData.assignedJudgeIds,
       maxParticipantsPerTeam: isTeam ? undefined : formData.maxParticipantsPerTeam,
       minTeamMembers: isTeam ? formData.minTeamMembers : undefined,
@@ -462,7 +469,7 @@ export const ProgrammesPage: React.FC = () => {
 
       {/* Filter and Search Bar */}
       <div className="bg-white border border-slate-200 rounded-lg p-3.5 shadow-xs">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2.5">
           <div className="relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
             <input
@@ -483,6 +490,18 @@ export const ProgrammesPage: React.FC = () => {
               <option value="all">All Types (Individual & Team)</option>
               <option value="individual">Individual Programmes Only</option>
               <option value="team">Team Programmes Only</option>
+            </select>
+          </div>
+
+          <div>
+            <select
+              value={filterStageType}
+              onChange={(e) => setFilterStageType(e.target.value as any)}
+              className="w-full text-xs bg-white border border-slate-200 rounded px-2.5 py-1.5 focus:outline-none focus:border-slate-400 text-slate-800"
+            >
+              <option value="all">All Modes (Stage & Off-Stage)</option>
+              <option value="stage">🎭 Stage (On-Stage)</option>
+              <option value="off_stage">📝 Off-Stage</option>
             </select>
           </div>
 
@@ -540,6 +559,7 @@ export const ProgrammesPage: React.FC = () => {
           const totalMarks = prog.criteria.reduce((s, c) => s + c.maxMarks, 0);
           const isTeam = prog.type === 'group' || prog.type === 'team' || prog.programmeType === 'team';
           const teamEntriesCount = teamProgrammeEntries.filter((e) => e.programmeId === prog.id).length;
+          const isOffStage = prog.stageType === 'off_stage';
 
           return (
             <div
@@ -549,7 +569,7 @@ export const ProgrammesPage: React.FC = () => {
               <div>
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="font-mono text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
                         {prog.code}
                       </span>
@@ -561,6 +581,15 @@ export const ProgrammesPage: React.FC = () => {
                         }`}
                       >
                         {isTeam ? 'Team Event' : 'Individual'}
+                      </span>
+                      <span
+                        className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                          isOffStage
+                            ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                            : 'bg-indigo-50 text-indigo-800 border border-indigo-200'
+                        }`}
+                      >
+                        {isOffStage ? '📝 Off-Stage' : '🎭 Stage'}
                       </span>
                     </div>
                     <h3 className="text-xs font-bold text-slate-900 mt-1.5 leading-snug">
@@ -681,16 +710,15 @@ export const ProgrammesPage: React.FC = () => {
         maxWidth="2xl"
       >
         <div className="space-y-4">
-          {/* 7-Step Navigation Header */}
-          <div className="grid grid-cols-7 gap-1 pb-3 border-b border-slate-200">
+          {/* 6-Step Navigation Header */}
+          <div className="grid grid-cols-6 gap-1 pb-3 border-b border-slate-200">
             {[
               { num: 1, label: 'Basic' },
               { num: 2, label: 'Type' },
-              { num: 3, label: 'Categories' },
-              { num: 4, label: 'Limits' },
-              { num: 5, label: 'Rubric' },
-              { num: 6, label: 'Schedule' },
-              { num: 7, label: 'Review' },
+              { num: 3, label: 'Limits' },
+              { num: 4, label: 'Rubric' },
+              { num: 5, label: 'Schedule' },
+              { num: 6, label: 'Review' },
             ].map((step) => {
               const isActive = currentStep === step.num;
               const isPast = currentStep > step.num;
@@ -765,13 +793,10 @@ export const ProgrammesPage: React.FC = () => {
                     value={formData.category}
                     onChange={(e) => {
                       const selected = e.target.value;
-                      const currentEligible = formData.eligibleCategories.includes(selected)
-                        ? formData.eligibleCategories
-                        : [...formData.eligibleCategories, selected];
                       setFormData({
                         ...formData,
                         category: selected,
-                        eligibleCategories: currentEligible,
+                        eligibleCategories: [selected],
                       });
                     }}
                     className="w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs bg-white font-medium text-slate-900"
@@ -787,8 +812,78 @@ export const ProgrammesPage: React.FC = () => {
                     )}
                   </select>
                   <p className="text-[10px] text-slate-500 mt-1">
-                    Select from the categories configured by the Admin. Only participants assigned to this category or eligible categories can compete.
+                    Programme competition category. Participants in this category will be eligible to register.
                   </p>
+                </div>
+
+                {/* STAGE VS OFF-STAGE FUNCTION SELECTION */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                    Programme Function / Venue Mode *
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFormData({
+                          ...formData,
+                          stageType: 'stage',
+                          stage: formData.stage === 'Off-Stage' ? 'Stage 1' : formData.stage,
+                        })
+                      }
+                      className={`p-3 rounded-lg border-2 text-left transition-all flex items-center justify-between ${
+                        formData.stageType === 'stage'
+                          ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 font-bold shadow-xs'
+                          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-xl">🎭</span>
+                        <div>
+                          <div className="text-xs font-bold leading-tight">Stage (On-Stage)</div>
+                          <div className="text-[10px] text-slate-500 font-normal mt-0.5">Live performance on stage</div>
+                        </div>
+                      </div>
+                      <input
+                        type="radio"
+                        name="stage_mode"
+                        checked={formData.stageType === 'stage'}
+                        onChange={() => {}}
+                        className="text-indigo-600"
+                      />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFormData({
+                          ...formData,
+                          stageType: 'off_stage',
+                          stage: 'Off-Stage',
+                        })
+                      }
+                      className={`p-3 rounded-lg border-2 text-left transition-all flex items-center justify-between ${
+                        formData.stageType === 'off_stage'
+                          ? 'border-amber-600 bg-amber-50/70 text-amber-950 font-bold shadow-xs'
+                          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-xl">📝</span>
+                        <div>
+                          <div className="text-xs font-bold leading-tight">Off-Stage</div>
+                          <div className="text-[10px] text-slate-500 font-normal mt-0.5">Written / arts / classroom / room</div>
+                        </div>
+                      </div>
+                      <input
+                        type="radio"
+                        name="stage_mode"
+                        checked={formData.stageType === 'off_stage'}
+                        onChange={() => {}}
+                        className="text-amber-600"
+                      />
+                    </button>
+                  </div>
                 </div>
 
                 <div>
@@ -879,85 +974,11 @@ export const ProgrammesPage: React.FC = () => {
               </div>
             )}
 
-            {/* SECTION 3: ELIGIBLE CATEGORIES */}
+            {/* SECTION 3: PARTICIPANT AND TEAM LIMITS */}
             {currentStep === 3 && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between pb-1 border-b border-slate-100">
-                  <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-slate-900 text-white text-[10px] font-bold flex items-center justify-center">3</span>
-                    <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Eligible Participant Categories</h3>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsCategoryModalOpen(true)}
-                    className="text-[11px] font-semibold text-indigo-600 hover:underline flex items-center gap-1"
-                  >
-                    <Sliders className="w-3 h-3" /> Manage Categories
-                  </button>
-                </div>
-
-                <p className="text-[11px] text-slate-500">
-                  Select which categories of participants are eligible to register for this programme. Participants in General Category can participate in programmes that explicitly allow General Category.
-                </p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                  {categories.map((cat) => {
-                    const isChecked = formData.eligibleCategories.includes(cat.name);
-                    const isGeneral = cat.isGeneral || cat.name.toLowerCase() === 'general';
-
-                    return (
-                      <label
-                        key={cat.id}
-                        className={`flex items-start gap-2.5 p-2.5 rounded border cursor-pointer transition-colors ${
-                          !cat.enabled
-                            ? 'opacity-50 bg-slate-50 border-slate-200'
-                            : isChecked
-                            ? isGeneral
-                              ? 'border-amber-400 bg-amber-50/60'
-                              : 'border-slate-800 bg-slate-50'
-                            : 'border-slate-200 hover:border-slate-300'
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          disabled={!cat.enabled}
-                          checked={isChecked}
-                          onChange={() => {
-                            const next = isChecked
-                              ? formData.eligibleCategories.filter((c) => c !== cat.name)
-                              : [...formData.eligibleCategories, cat.name];
-                            setFormData({ ...formData, eligibleCategories: next });
-                          }}
-                          className="mt-0.5 rounded text-slate-900"
-                        />
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-bold text-slate-900">{cat.name}</span>
-                            {isGeneral && (
-                              <span className="text-[9px] font-bold bg-amber-100 text-amber-800 px-1 py-0.2 rounded">
-                                No Age Limit
-                              </span>
-                            )}
-                            {!cat.enabled && (
-                              <span className="text-[9px] font-mono text-slate-400">Disabled</span>
-                            )}
-                          </div>
-                          <p className="text-[10px] text-slate-500 mt-0.5">
-                            {cat.description || (cat.minAge || cat.maxAge ? `Ages ${cat.minAge || 0} - ${cat.maxAge || 'Open'}` : 'General / Open')}
-                          </p>
-                        </div>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* SECTION 4: PARTICIPANT AND TEAM LIMITS */}
-            {currentStep === 4 && (
               <div className="space-y-4">
                 <div className="flex items-center gap-2 pb-1 border-b border-slate-100">
-                  <span className="w-5 h-5 rounded-full bg-slate-900 text-white text-[10px] font-bold flex items-center justify-center">4</span>
+                  <span className="w-5 h-5 rounded-full bg-slate-900 text-white text-[10px] font-bold flex items-center justify-center">3</span>
                   <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
                     {formData.type === 'individual' ? 'Individual Programme Limits Per Team' : 'Team Programme Participation Limits'}
                   </h3>
@@ -1079,12 +1100,12 @@ export const ProgrammesPage: React.FC = () => {
               </div>
             )}
 
-            {/* SECTION 5: SCORING CONFIGURATION */}
-            {currentStep === 5 && (
+            {/* SECTION 4: SCORING CONFIGURATION */}
+            {currentStep === 4 && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between pb-1 border-b border-slate-100">
                   <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-slate-900 text-white text-[10px] font-bold flex items-center justify-center">5</span>
+                    <span className="w-5 h-5 rounded-full bg-slate-900 text-white text-[10px] font-bold flex items-center justify-center">4</span>
                     <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Scoring Configuration & Rubrics</h3>
                   </div>
                   <button
@@ -1143,11 +1164,11 @@ export const ProgrammesPage: React.FC = () => {
               </div>
             )}
 
-            {/* SECTION 6: SCHEDULE */}
-            {currentStep === 6 && (
+            {/* SECTION 5: SCHEDULE */}
+            {currentStep === 5 && (
               <div className="space-y-3">
                 <div className="flex items-center gap-2 pb-1 border-b border-slate-100">
-                  <span className="w-5 h-5 rounded-full bg-slate-900 text-white text-[10px] font-bold flex items-center justify-center">6</span>
+                  <span className="w-5 h-5 rounded-full bg-slate-900 text-white text-[10px] font-bold flex items-center justify-center">5</span>
                   <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Schedule & Venue</h3>
                 </div>
 
@@ -1164,13 +1185,15 @@ export const ProgrammesPage: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">Stage</label>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                      {formData.stageType === 'off_stage' ? 'Room / Hall / Venue Desk *' : 'Stage / Platform *'}
+                    </label>
                     <input
                       type="text"
                       value={formData.stage}
                       onChange={(e) => setFormData({ ...formData, stage: e.target.value })}
                       className="w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs"
-                      placeholder="e.g. Stage 1 (Main Hall)"
+                      placeholder={formData.stageType === 'off_stage' ? 'e.g. Hall 2B, Library, Room 101' : 'e.g. Stage 1 (Main Hall)'}
                     />
                   </div>
                 </div>
@@ -1265,11 +1288,11 @@ export const ProgrammesPage: React.FC = () => {
               </div>
             )}
 
-            {/* SECTION 7: REVIEW AND PUBLISH */}
-            {currentStep === 7 && (
+            {/* SECTION 6: REVIEW AND PUBLISH */}
+            {currentStep === 6 && (
               <div className="space-y-3">
                 <div className="flex items-center gap-2 pb-1 border-b border-slate-100">
-                  <span className="w-5 h-5 rounded-full bg-slate-900 text-white text-[10px] font-bold flex items-center justify-center">7</span>
+                  <span className="w-5 h-5 rounded-full bg-slate-900 text-white text-[10px] font-bold flex items-center justify-center">6</span>
                   <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Review Configuration</h3>
                 </div>
 
@@ -1289,15 +1312,22 @@ export const ProgrammesPage: React.FC = () => {
                     <p className="font-bold text-slate-900">{formData.code} - {formData.name}</p>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 uppercase font-semibold">Type</span>
-                    <p className="font-bold text-slate-900 capitalize">
-                      {formData.type === 'team' || formData.type === 'group' ? 'Team Event' : 'Individual Event'}
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold">Category & Mode</span>
+                    <p className="font-bold text-slate-900 flex items-center gap-1.5">
+                      <span>{formData.category}</span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
+                        formData.stageType === 'off_stage'
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-indigo-100 text-indigo-800'
+                      }`}>
+                        {formData.stageType === 'off_stage' ? '📝 Off-Stage' : '🎭 Stage'}
+                      </span>
                     </p>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 uppercase font-semibold">Eligible Categories</span>
-                    <p className="font-bold text-slate-900 truncate">
-                      {formData.eligibleCategories.join(', ') || 'None selected'}
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold">Event Type</span>
+                    <p className="font-bold text-slate-900 capitalize">
+                      {formData.type === 'team' || formData.type === 'group' ? 'Team Event' : 'Individual Event'}
                     </p>
                   </div>
                   <div>
@@ -1354,7 +1384,7 @@ export const ProgrammesPage: React.FC = () => {
                   Cancel
                 </button>
 
-                {currentStep < 7 ? (
+                {currentStep < 6 ? (
                   <button
                     type="button"
                     onClick={() => setCurrentStep(currentStep + 1)}

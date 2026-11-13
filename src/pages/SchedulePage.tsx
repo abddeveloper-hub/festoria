@@ -26,6 +26,7 @@ export const SchedulePage: React.FC = () => {
     judges,
     participants,
     scheduleConflicts,
+    activeFest,
     addScheduleSlot,
     updateScheduleSlot,
     deleteScheduleSlot,
@@ -81,7 +82,7 @@ export const SchedulePage: React.FC = () => {
       programmeId: programmes[0]?.id || '',
       venue: 'Auditorium Hall A',
       stage: 'Stage 1',
-      date: distinctDates[0] || '2026-11-06',
+      date: distinctDates[0] || activeFest?.startDate || '2026-11-22',
       startTime: '10:00',
       endTime: '12:00',
       status: 'scheduled',
@@ -292,8 +293,19 @@ export const SchedulePage: React.FC = () => {
                           {slot.date}
                         </td>
                         <td className="py-3 px-3">
-                          <div className="font-semibold text-slate-900">
-                            {prog?.name || slot.programmeId}
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-semibold text-slate-900">
+                              {prog?.name || slot.programmeId}
+                            </span>
+                            <span
+                              className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${
+                                prog?.stageType === 'off_stage'
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : 'bg-indigo-100 text-indigo-800'
+                              }`}
+                            >
+                              {prog?.stageType === 'off_stage' ? '📝 Off-Stage' : '🎭 Stage'}
+                            </span>
                           </div>
                           <div className="text-[10px] text-slate-500 font-mono">
                             {prog?.code} • {prog?.category}

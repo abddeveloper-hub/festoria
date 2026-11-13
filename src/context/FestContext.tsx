@@ -621,9 +621,49 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
   }, [judges, activeFestId, currentPortal]);
 
   const festScheduleSlots = useMemo(() => {
-    if (currentPortal === 'super_admin') return scheduleSlots;
-    return scheduleSlots.filter((s) => (s.festId ? s.festId === activeFestId : activeFestId === 'FEST-01'));
-  }, [scheduleSlots, activeFestId, currentPortal]);
+    const festProgs = programmes.filter((p) =>
+      currentPortal === 'super_admin' ? true : (p.festId ? p.festId === activeFestId : activeFestId === 'FEST-01')
+    );
+
+    const explicitSlots = (scheduleSlots || []).filter((s) =>
+      currentPortal === 'super_admin' ? true : (s.festId ? s.festId === activeFestId : activeFestId === 'FEST-01')
+    );
+
+    const slotsByProgId = new Map<string, ScheduleSlot>();
+    explicitSlots.forEach((s) => {
+      if (s.programmeId) slotsByProgId.set(s.programmeId, s);
+    });
+
+    const mergedSlots: ScheduleSlot[] = [];
+    festProgs.forEach((prog) => {
+      const explicit = slotsByProgId.get(prog.id);
+      if (explicit) {
+        mergedSlots.push(explicit);
+      } else {
+        // Automatically derive schedule slot from the programme's scheduled venue, stage, date, time
+        mergedSlots.push({
+          id: `SCH-${prog.id}`,
+          festId: prog.festId || activeFestId,
+          programmeId: prog.id,
+          venue: prog.venue || 'Auditorium Hall A',
+          stage: prog.stage || (prog.stageType === 'off_stage' ? 'Off-Stage' : 'Stage 1'),
+          date: prog.date || activeFest?.startDate || '2026-11-22',
+          startTime: prog.startTime || '10:00',
+          endTime: prog.endTime || '12:00',
+          status: prog.status || 'scheduled',
+        });
+      }
+    });
+
+    // Also include any slots not tied to programmes (e.g. general session or ceremony slots)
+    explicitSlots.forEach((s) => {
+      if (!s.programmeId || !festProgs.some((p) => p.id === s.programmeId)) {
+        mergedSlots.push(s);
+      }
+    });
+
+    return mergedSlots;
+  }, [scheduleSlots, programmes, activeFestId, activeFest, currentPortal]);
 
   const festUsers = useMemo(() => {
     if (currentPortal === 'super_admin') return users;
@@ -1713,20 +1753,90 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
 
   // Schedule Slot Management
   const addScheduleSlot = (slot: Omit<ScheduleSlot, 'id'>) => {
+    const targetFest = slot.festId || activeFestId;
     const newId = `SCH-${Date.now().toString().slice(-4)}`;
-    setScheduleSlots((prev) => [...prev, { ...slot, id: newId }]);
+    const newSlot: ScheduleSlot = { ...slot, festId: targetFest, id: newId };
+    setScheduleSlots((prev) => [...prev, newSlot]);
+    if (slot.programmeId) {
+      setProgrammes((prev) =>
+        prev.map((p) => {
+          if (p.id === slot.programmeId) {
+            const updatedP: Programme = {
+              ...p,
+              date: slot.date,
+              venue: slot.venue,
+              stage: slot.stage,
+              startTime: slot.startTime,
+              endTime: slot.endTime,
+              status: slot.status,
+            };
+            saveProgrammeToFirestore(updatedP);
+            return updatedP;
+          }
+          return p;
+        })
+      );
+    }
     logActivity('CREATE_SCHEDULE_SLOT', 'schedule', newId, `Created schedule slot for programme ${slot.programmeId}.`);
     addToast('success', 'Slot Added', 'New schedule entry added.');
   };
 
   const updateScheduleSlot = (id: string, updates: Partial<ScheduleSlot>) => {
-    setScheduleSlots((prev) => prev.map((s) => (s.id === id ? { ...s, ...updates } : s)));
+    const progId = updates.programmeId || (id.startsWith('SCH-') ? id.replace('SCH-', '') : undefined);
+    setScheduleSlots((prev) => {
+      const exists = prev.some((s) => s.id === id);
+      if (exists) {
+        return prev.map((s) => (s.id === id ? { ...s, ...updates } : s));
+      }
+      return [
+        ...prev,
+        {
+          id,
+          festId: activeFestId,
+          programmeId: progId || '',
+          venue: updates.venue || 'Auditorium Hall A',
+          stage: updates.stage || 'Stage 1',
+          date: updates.date || '2026-11-22',
+          startTime: updates.startTime || '10:00',
+          endTime: updates.endTime || '12:00',
+          status: updates.status || 'scheduled',
+          ...updates,
+        },
+      ];
+    });
+
+    if (progId) {
+      setProgrammes((prev) =>
+        prev.map((p) => {
+          if (p.id === progId) {
+            const updatedP: Programme = {
+              ...p,
+              date: updates.date || p.date,
+              venue: updates.venue || p.venue,
+              stage: updates.stage || p.stage,
+              startTime: updates.startTime || p.startTime,
+              endTime: updates.endTime || p.endTime,
+              status: updates.status || p.status,
+            };
+            saveProgrammeToFirestore(updatedP);
+            return updatedP;
+          }
+          return p;
+        })
+      );
+    }
     logActivity('UPDATE_SCHEDULE_SLOT', 'schedule', id, `Updated schedule slot ${id}.`);
     addToast('success', 'Slot Updated', 'Schedule slot time/stage updated.');
   };
 
   const deleteScheduleSlot = (id: string) => {
+    const progId = id.startsWith('SCH-') ? id.replace('SCH-', '') : undefined;
     setScheduleSlots((prev) => prev.filter((s) => s.id !== id));
+    if (progId) {
+      setProgrammes((prev) =>
+        prev.map((p) => (p.id === progId ? { ...p, status: 'draft' } : p))
+      );
+    }
     logActivity('DELETE_SCHEDULE_SLOT', 'schedule', id, `Deleted schedule slot ${id}.`);
     addToast('info', 'Slot Removed', 'The schedule slot was removed.');
   };

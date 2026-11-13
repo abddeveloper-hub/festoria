@@ -182,6 +182,7 @@ export interface Programme {
   category: ProgrammeCategory;
   type: ProgrammeType;
   programmeType?: 'individual' | 'team';
+  stageType?: 'stage' | 'off_stage';
   eligibleCategories: ParticipantCategory[];
   eligibleCategoryIds?: string[];
   assignedJudgeIds: string[];
