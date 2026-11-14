@@ -94,7 +94,10 @@ import {
   deleteCategoryFromFirestore,
   fetchTeamProgrammeEntries,
   saveTeamProgrammeEntryToFirestore,
-  deleteTeamProgrammeEntryFromFirestore
+  deleteTeamProgrammeEntryFromFirestore,
+  fetchJudges,
+  saveJudgeToFirestore,
+  deleteJudgeFromFirestore
 } from '../firebase/firestoreService';
 
 export type NavigationTab =
@@ -282,7 +285,7 @@ interface FestContextType {
   deleteParticipant: (id: string) => void;
   bulkImportParticipants: (newParticipants: Omit<Participant, 'id' | 'createdAt'>[]) => { added: number; duplicates: number };
 
-  addJudge: (judge: Omit<Judge, 'id' | 'createdAt'>) => boolean;
+  addJudge: (judge: Omit<Judge, 'id' | 'createdAt'>) => string | false;
   updateJudge: (id: string, updates: Partial<Judge>) => void;
   deleteJudge: (id: string) => void;
 
@@ -937,14 +940,15 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       await seedFirestoreIfEmpty();
 
       // Fetch base collections accessible publicly
-      const [fsFests, fsTeams, fsParticipants, fsProgrammes, fsResults, fsCategories, fsTeamEntries] = await Promise.all([
+      const [fsFests, fsTeams, fsParticipants, fsProgrammes, fsResults, fsCategories, fsTeamEntries, fsJudges] = await Promise.all([
         fetchFests(),
         fetchTeams(),
         fetchParticipants(),
         fetchProgrammes(),
         fetchResults(),
         fetchCategories(),
-        fetchTeamProgrammeEntries()
+        fetchTeamProgrammeEntries(),
+        fetchJudges()
       ]);
       setFests(fsFests);
       setTeams(fsTeams);
@@ -953,6 +957,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       setResults(fsResults);
       if (fsCategories && fsCategories.length > 0) setCategories(fsCategories);
       if (fsTeamEntries && fsTeamEntries.length > 0) setTeamProgrammeEntries(fsTeamEntries);
+      if (fsJudges && fsJudges.length > 0) setJudges(fsJudges);
 
       // Fetch role-restricted collections safely
       if (currentUser.role === 'super_admin') {
@@ -1037,6 +1042,16 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       window.removeEventListener('storage', handleSyncStorage);
     };
   }, []);
+
+  // Auto-route judges to scores tab and restrict unauthorized navigation
+  useEffect(() => {
+    if (currentUser.role === 'judge') {
+      const allowedJudgeTabs: NavigationTab[] = ['scores', 'programmes', 'schedule'];
+      if (!allowedJudgeTabs.includes(activeTab)) {
+        setActiveTab('scores');
+      }
+    }
+  }, [currentUser.role, activeTab]);
 
   // Deduplicate fests on mount and clean up duplicate fest entries
   useEffect(() => {
@@ -1353,16 +1368,20 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
   };
 
   // Judge Management
-  const addJudge = (data: Omit<Judge, 'id' | 'createdAt'>): boolean => {
+  const addJudge = (data: Omit<Judge, 'id' | 'createdAt'>): string | false => {
     if (!hasPermission(['admin', 'fest_admin', 'super_admin'])) {
       addToast('error', 'Permission Denied', 'Only authorized Fest Admins can manage judges.');
       return false;
     }
     const festTarget = (data as any).festId || activeFestId;
-    const exists = judges.some(
-      (j) => ((j as any).festId ? (j as any).festId === festTarget : festTarget === 'FEST-01') &&
-             j.email.toLowerCase() === data.email.toLowerCase()
-    );
+    const exists = data.email
+      ? judges.some(
+          (j) =>
+            ((j as any).festId ? (j as any).festId === festTarget : festTarget === 'FEST-01') &&
+            j.email &&
+            j.email.toLowerCase() === data.email.toLowerCase()
+        )
+      : false;
     if (exists) {
       addToast('error', 'Duplicate Judge', `A judge with email ${data.email} already exists in this festival.`);
       return false;
@@ -1375,19 +1394,33 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       createdAt: new Date().toISOString().slice(0, 10),
     };
     setJudges((prev) => [...prev, newJudge]);
+    saveJudgeToFirestore(newJudge).catch(() => {});
     logActivity('ADD_JUDGE', 'judge', newId, `Added judge ${data.name} (${newId}) to fest ${festTarget}.`);
     addToast('success', 'Judge Created', `${data.name} has been added to the judging panel.`);
-    return true;
+    return newId;
   };
 
   const updateJudge = (id: string, updates: Partial<Judge>) => {
-    setJudges((prev) => prev.map((j) => (j.id === id ? { ...j, ...updates } : j)));
+    let updatedObj: Judge | undefined;
+    setJudges((prev) =>
+      prev.map((j) => {
+        if (j.id === id) {
+          updatedObj = { ...j, ...updates };
+          return updatedObj;
+        }
+        return j;
+      })
+    );
+    if (updatedObj) {
+      saveJudgeToFirestore(updatedObj).catch(() => {});
+    }
     logActivity('UPDATE_JUDGE', 'judge', id, `Updated judge record ${id}.`);
     addToast('success', 'Judge Updated', 'Judge information saved successfully.');
   };
 
   const deleteJudge = (id: string) => {
     setJudges((prev) => prev.filter((j) => j.id !== id));
+    deleteJudgeFromFirestore(id).catch(() => {});
     logActivity('DELETE_JUDGE', 'judge', id, `Removed judge record ${id}.`);
     addToast('info', 'Judge Removed', 'The judge was removed from the panel.');
   };

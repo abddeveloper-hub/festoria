@@ -34,10 +34,11 @@ interface NavItem {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) => {
-  const { activeTab, setActiveTab, summaryStats, settings, complaints } = useFest();
+  const { activeTab, setActiveTab, summaryStats, settings, complaints, currentUser } = useFest();
   const pendingComplaintsCount = complaints.filter(c => c.status === 'submitted' || c.status === 'under_review').length;
+  const isJudge = currentUser.role === 'judge';
 
-  const navItems: NavItem[] = [
+  const allNavItems: NavItem[] = [
     {
       id: 'dashboard',
       label: 'Dashboard / Total Analysis',
@@ -59,14 +60,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
     },
     {
       id: 'programmes',
-      label: 'Programmes',
+      label: isJudge ? 'Programmes & Criteria' : 'Programmes',
       icon: CalendarCheck,
       badge: summaryStats.totalProgrammes,
       badgeVariant: 'neutral',
     },
     {
       id: 'scores',
-      label: 'Scores',
+      label: isJudge ? 'Score Sheet / Adjudication' : 'Scores',
       icon: CheckSquare,
       badge: summaryStats.pendingScores > 0 ? `${summaryStats.pendingScores} pending` : undefined,
       badgeVariant: 'warning',
@@ -86,7 +87,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
     },
     {
       id: 'schedule',
-      label: 'Schedule',
+      label: isJudge ? 'Timetable & Venues' : 'Schedule',
       icon: Clock,
       badge: summaryStats.upcomingProgrammes > 0 ? `${summaryStats.upcomingProgrammes} live` : undefined,
       badgeVariant: 'info',
@@ -125,6 +126,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
     },
   ];
 
+  const navItems = isJudge
+    ? allNavItems.filter((item) => ['scores', 'programmes', 'schedule'].includes(item.id))
+    : allNavItems;
+
   const handleNavClick = (id: NavigationTab) => {
     setActiveTab(id);
     setMobileOpen(false);
@@ -160,7 +165,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
                 {settings.festName}
               </div>
               <div className="text-[10px] text-slate-500 font-medium truncate max-w-[140px]">
-                Admin Management Portal
+                {isJudge ? 'Official Adjudication' : 'Admin Management Portal'}
               </div>
             </div>
           </div>
@@ -175,7 +180,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
         {/* Navigation list in exact required order */}
         <div className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
           <div className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-            Fest Administration
+            {isJudge ? 'Jury Evaluation' : 'Fest Administration'}
           </div>
           {navItems.map((item, index) => {
             const Icon = item.icon;

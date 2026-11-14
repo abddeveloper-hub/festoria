@@ -17,6 +17,7 @@ import {
   Fest,
   User,
   Team,
+  Judge,
   Participant,
   Programme,
   ProgrammeAssignment,
@@ -426,6 +427,62 @@ export async function deleteTeamFromFirestore(teamId: string): Promise<void> {
       await deleteDoc(doc(db, 'teams', teamId));
     } catch (e) {
       console.warn('[Firestore] deleteTeamFromFirestore error:', e);
+    }
+  }
+}
+
+// ==========================================
+// 3B. JUDGES SERVICE
+// ==========================================
+export async function fetchJudges(festId?: string): Promise<Judge[]> {
+  if (isFirebaseConfigured && db) {
+    try {
+      const q = festId
+        ? query(collection(db, 'judges'), where('festId', '==', festId))
+        : collection(db, 'judges');
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        return snap.docs.map((d) => d.data() as Judge);
+      }
+    } catch (e) {
+      console.warn('[Firestore] fetchJudges error:', e);
+    }
+  }
+  return StorageService.getJudges();
+}
+
+export async function saveJudgeToFirestore(judge: Judge): Promise<void> {
+  const judges = StorageService.getJudges();
+  const index = judges.findIndex((j) => j.id === judge.id);
+  if (index >= 0) {
+    judges[index] = judge;
+  } else {
+    judges.push(judge);
+  }
+  StorageService.saveJudges(judges);
+
+  if (isFirebaseConfigured && db) {
+    try {
+      await setDoc(doc(db, 'judges', judge.id), cleanFirestoreData({
+        ...judge,
+        festId: judge.festId,
+        updatedAt: serverTimestamp()
+      }), { merge: true });
+    } catch (e) {
+      console.warn('[Firestore] saveJudgeToFirestore error:', e);
+    }
+  }
+}
+
+export async function deleteJudgeFromFirestore(judgeId: string): Promise<void> {
+  const judges = StorageService.getJudges();
+  StorageService.saveJudges(judges.filter((j) => j.id !== judgeId));
+
+  if (isFirebaseConfigured && db) {
+    try {
+      await deleteDoc(doc(db, 'judges', judgeId));
+    } catch (e) {
+      console.warn('[Firestore] deleteJudgeFromFirestore error:', e);
     }
   }
 }
@@ -2011,6 +2068,21 @@ export async function acceptFestInvitation(
           });
         } catch (tErr) {
           console.warn('[Firestore] Link team leader to team document note:', tErr);
+        }
+      }
+
+      // C2. If Judge, bind them to the judge record
+      if (inv.role === 'judge' && inv.assignedJudgeId) {
+        try {
+          await updateDoc(doc(db, 'judges', inv.assignedJudgeId), {
+            userId: user.id,
+            email: user.email || '',
+            phone: user.phone || '',
+            status: 'active',
+            activatedAt: nowIso
+          });
+        } catch (jErr) {
+          console.warn('[Firestore] Link judge to judge document note:', jErr);
         }
       }
 

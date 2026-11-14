@@ -300,6 +300,8 @@ export const InvitationAcceptPage: React.FC<InvitationAcceptPageProps> = ({ toke
                   onClick={() => {
                     if (claimedRole === 'team_leader') {
                       navigateTo(`team-leader.html?fest=${invitation?.festId}`);
+                    } else if (claimedRole === 'judge') {
+                      navigateTo(`admin.html?fest=${invitation?.festId}&tab=scores`);
                     } else {
                       navigateTo(`admin.html?fest=${invitation?.festId}`);
                     }

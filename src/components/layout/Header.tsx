@@ -105,7 +105,7 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
 
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-medium">
-            <span>Admin Portal</span>
+            <span>{currentUser.role === 'judge' ? 'Judge Portal' : 'Admin Portal'}</span>
             <span>/</span>
             <span className="text-slate-700">{breadcrumb}</span>
           </div>
@@ -215,18 +215,20 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
           <span className="hidden sm:inline">Public Fest Site</span>
         </button>
 
-        {/* Reset Database Button */}
-        <button
-          onClick={() => {
-            if (window.confirm('Reset fest data to clean default demo records?')) {
-              resetToDefaultData();
-            }
-          }}
-          className="p-1.5 rounded border border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-50"
-          title="Reset database to default seed state"
-        >
-          <RotateCcw className="w-3.5 h-3.5" />
-        </button>
+        {/* Reset Database Button (Super Admin Only) */}
+        {currentUser.role === 'super_admin' && (
+          <button
+            onClick={() => {
+              if (window.confirm('Reset fest data to clean default demo records?')) {
+                resetToDefaultData();
+              }
+            }}
+            className="p-1.5 rounded border border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-50"
+            title="Reset database to default seed state"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+          </button>
+        )}
 
         {/* Role Switcher Dropdown */}
         <div className="relative">

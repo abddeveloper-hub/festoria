@@ -39,7 +39,8 @@ export const ShareFestPage: React.FC = () => {
     teams,
     judges,
     currentUser,
-    addToast
+    addToast,
+    addJudge
   } = useFest();
 
   const [invitations, setInvitations] = useState<FestInvitation[]>([]);
@@ -134,16 +135,36 @@ export const ShareFestPage: React.FC = () => {
 
     try {
       setCreatingJudgeInvite(true);
-      const selectedJudge = judges.find((j) => j.id === judgeForm.assignedJudgeId);
+      let assignedJudgeId = judgeForm.assignedJudgeId;
+      let assignedJudgeName = judges.find((j) => j.id === assignedJudgeId)?.name;
+
+      // If no pre-existing judge was linked, automatically register them to this fest's jury panel
+      if (!assignedJudgeId) {
+        const isEmail = judgeForm.contactType === 'email';
+        const createdId = addJudge({
+          name: judgeForm.name.trim() || 'Honorable Judge',
+          email: isEmail ? judgeForm.contact.trim() : '',
+          phone: !isEmail ? judgeForm.contact.trim() : '',
+          designation: judgeForm.notes.trim() || 'Panel Adjudicator',
+          specialization: judgeForm.notes.trim() || 'General Jury',
+          assignedProgrammes: [],
+          status: 'invited',
+          festId: activeFestId
+        });
+        if (createdId && typeof createdId === 'string') {
+          assignedJudgeId = createdId;
+          assignedJudgeName = judgeForm.name.trim() || 'Honorable Judge';
+        }
+      }
 
       const inv = await createFestInvitation({
         festId: activeFestId,
         role: 'judge',
         recipientType: judgeForm.contactType,
         recipientContact: judgeForm.contact.trim(),
-        recipientName: judgeForm.name.trim() || selectedJudge?.name || 'Honorable Judge',
-        assignedJudgeId: judgeForm.assignedJudgeId || undefined,
-        assignedJudgeName: selectedJudge?.name,
+        recipientName: judgeForm.name.trim() || assignedJudgeName || 'Honorable Judge',
+        assignedJudgeId: assignedJudgeId || undefined,
+        assignedJudgeName: assignedJudgeName || undefined,
         expiresInDays: judgeForm.expiresInDays,
         createdByAdminId: currentUser?.id || 'admin',
         createdByAdminName: currentUser?.name || 'Fest Admin',

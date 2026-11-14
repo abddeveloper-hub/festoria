@@ -141,7 +141,7 @@ export interface Participant {
   updatedAt?: string;
 }
 
-export type JudgeStatus = 'active' | 'inactive' | 'on_break';
+export type JudgeStatus = 'active' | 'inactive' | 'on_break' | 'invited';
 
 export interface Judge {
   id: string; // e.g. "JD-01"

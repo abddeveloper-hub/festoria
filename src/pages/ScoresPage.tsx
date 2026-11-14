@@ -67,9 +67,17 @@ export const ScoresPage: React.FC = () => {
   // Selected programme object for form
   const activeFormProgramme = programmes.find((p) => p.id === selectedProgrammeId);
 
+  const isJudgeOnly = currentUser.role === 'judge';
+  const judgeId = currentUser.linkedJudgeId || (isJudgeOnly ? currentUser.id : undefined);
+
   // Filtered score submissions
   const filteredScores = useMemo(() => {
     return scores.filter((s) => {
+      // Judges only see their own score sheets
+      if (isJudgeOnly && judgeId && s.judgeId !== judgeId && s.judgeId !== currentUser.id) {
+        return false;
+      }
+
       const prog = programmes.find((p) => p.id === s.programmeId);
       const team = teams.find((t) => t.id === s.teamId);
       const participant = participants.find((pt) => pt.id === s.participantId);
@@ -89,15 +97,15 @@ export const ScoresPage: React.FC = () => {
 
       return true;
     });
-  }, [scores, search, filterProgramme, filterStatus, filterJudge, programmes, teams, participants]);
-
-  const isJudgeOnly = currentUser.role === 'judge';
-  const judgeId = currentUser.linkedJudgeId || (isJudgeOnly ? currentUser.id : undefined);
+  }, [scores, search, filterProgramme, filterStatus, filterJudge, programmes, teams, participants, isJudgeOnly, judgeId, currentUser.id]);
 
   // Programmes available for scoring (restricted for judges to assigned events)
   const scorableProgrammes = useMemo(() => {
     if (isJudgeOnly && judgeId) {
-      return programmes.filter((p) => p.assignedJudgeIds.includes(judgeId));
+      const assigned = programmes.filter((p) => p.assignedJudgeIds?.includes(judgeId));
+      if (assigned.length > 0) return assigned;
+      // Fallback: If no specific programmes are assigned to this judge yet, allow evaluating active programmes in this fest
+      return programmes;
     }
     return programmes;
   }, [programmes, isJudgeOnly, judgeId]);
@@ -176,8 +184,8 @@ export const ScoresPage: React.FC = () => {
     const judge = judges.find((j) => j.id === formJudgeId) || { name: currentUser.name };
     if (!prog) return;
 
-    // Requirement 6: Ensure judges can only score programmes assigned to them
-    if (isJudgeOnly && judgeId && !prog.assignedJudgeIds.includes(judgeId)) {
+    // Requirement 6: Ensure judges can only score programmes assigned to them (if specific assignments exist)
+    if (isJudgeOnly && judgeId && prog.assignedJudgeIds && prog.assignedJudgeIds.length > 0 && !prog.assignedJudgeIds.includes(judgeId)) {
       addToast('error', 'Unauthorized Score Submission', 'Judges can only record scores for events assigned to them.');
       return;
     }
@@ -216,6 +224,7 @@ export const ScoresPage: React.FC = () => {
   };
 
   const canApprove = hasPermission(['super_admin', 'admin', 'score_manager']);
+  const canRecord = canApprove || isJudgeOnly;
 
   return (
     <div className="space-y-5">
@@ -223,18 +232,20 @@ export const ScoresPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
         <div>
           <h2 className="text-base font-bold text-slate-900">
-            Scores & Results Management
+            {isJudgeOnly ? 'Jury Adjudication & Scoring Sheet' : 'Scores & Results Management'}
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Record judge evaluation sheets, review marks, calibrate scores, and publish ratified results.
+            {isJudgeOnly
+              ? 'Evaluate competition performances, enter official criteria marks, and submit scores.'
+              : 'Record judge evaluation sheets, review marks, calibrate scores, and publish ratified results.'}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          {canApprove && (
+          {canRecord && (
             <button
               onClick={handleOpenAddScore}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-slate-900 rounded hover:bg-slate-800 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-purple-600 hover:bg-purple-700 rounded transition-colors shadow-xs"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Record Scores</span>
@@ -434,15 +445,17 @@ export const ScoresPage: React.FC = () => {
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
+                          {(canApprove || (isJudgeOnly && (score.judgeId === judgeId || score.judgeId === currentUser.id) && score.status !== 'approved')) && (
+                            <button
+                              onClick={() => handleOpenEditScore(score)}
+                              className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                              title="Edit / Calibrate"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                           {canApprove && (
                             <>
-                              <button
-                                onClick={() => handleOpenEditScore(score)}
-                                className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100"
-                                title="Edit / Calibrate"
-                              >
-                                <Edit2 className="w-3.5 h-3.5" />
-                              </button>
                               {score.status === 'submitted' && (
                                 <button
                                   onClick={() => updateScoreStatus(score.id, 'reviewed')}
