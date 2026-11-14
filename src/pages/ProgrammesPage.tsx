@@ -325,6 +325,8 @@ export const ProgrammesPage: React.FC = () => {
     setIsAddModalOpen(true);
   };
 
+  const duplicateProgramme = handleOpenCopy;
+
   const handleAddCriterion = () => {
     const id = `c_${Date.now().toString().slice(-4)}`;
     setFormData((prev) => ({

@@ -43,6 +43,8 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'active' &&
         (
+          (exists(/databases/$(database)/documents/fests/$(festId)) &&
+           get(/databases/$(database)/documents/fests/$(festId)).data.adminId == request.auth.uid) ||
           (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'fest_admin'] &&
            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.festId == festId) ||
           (exists(/databases/$(database)/documents/fest_memberships/$(request.auth.uid + '_' + festId)) &&
@@ -287,8 +289,8 @@ service cloud.firestore {
         )
       );
 
-      // Deletions allowed for admin management & profile removal
-      allow delete: if true;
+      // Deletions use existing document data
+      allow delete: if isAuthenticated() && isFestAdmin(resource.data.festId);
     }
 
     // ========================================================
@@ -296,9 +298,10 @@ service cloud.firestore {
     // ========================================================
     match /programmes/{programmeId} {
       allow read: if true; // Public competition schedule & rules
-      allow create: if true;
-      allow update: if true;
-      allow delete: if true;
+      allow create: if isSuperAdmin() || (isAuthenticated() && isFestAdmin(request.resource.data.festId));
+      allow update: if isSuperAdmin() || (isAuthenticated() && isFestAdmin(resource.data.festId) &&
+        request.resource.data.festId == resource.data.festId);
+      allow delete: if isAuthenticated() && isFestAdmin(resource.data.festId);
     }
 
     // ========================================================
@@ -591,9 +594,12 @@ service cloud.firestore {
     // ========================================================
     match /categories/{categoryId} {
       allow read: if true;
-      allow create: if true;
-      allow update: if true;
-      allow delete: if true;
+      allow create: if isSuperAdmin() || (isAuthenticated() && (request.resource.data.festId == null || isFestAdmin(request.resource.data.festId)));
+      allow update: if isSuperAdmin() || (isAuthenticated() && (
+        (resource.data.festId != null && isFestAdmin(resource.data.festId) && request.resource.data.festId == resource.data.festId) ||
+        (resource.data.festId == null && isFestAdmin(request.resource.data.festId))
+      ));
+      allow delete: if isSuperAdmin() || (isAuthenticated() && (resource.data.festId == null || isFestAdmin(resource.data.festId)));
     }
 
     match /fests/{festId}/categories/{categoryId} {

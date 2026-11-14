@@ -94,7 +94,12 @@ export const DashboardPage: React.FC = () => {
   // Category distribution
   const categoryStats = useMemo(() => {
     const map = new Map<string, { count: number; completed: number }>();
-    distinctCategories.forEach((cat) => map.set(cat.toLowerCase(), { count: 0, completed: 0 }));
+    const displayMap = new Map<string, string>();
+    distinctCategories.forEach((cat) => {
+      const key = cat.trim().toLowerCase();
+      map.set(key, { count: 0, completed: 0 });
+      displayMap.set(key, cat.trim());
+    });
 
     programmes.forEach((p) => {
       const key = (p.category || '').trim().toLowerCase();
@@ -102,10 +107,13 @@ export const DashboardPage: React.FC = () => {
       current.count += 1;
       if (p.status === 'completed') current.completed += 1;
       map.set(key, current);
+      if (!displayMap.has(key) && p.category) {
+        displayMap.set(key, p.category.trim());
+      }
     });
 
-    return Array.from(map.entries()).map(([name, data]) => ({
-      name,
+    return Array.from(map.entries()).map(([key, data]) => ({
+      name: displayMap.get(key) || key,
       count: data.count,
       completed: data.completed,
       percentage: Math.round((data.count / (programmes.length || 1)) * 100),

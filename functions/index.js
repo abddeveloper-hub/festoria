@@ -86,9 +86,24 @@ async function verifyAdminAuth(request, requiredFestId, deps = {}) {
     };
   }
 
-  const isFestAdmin =
+  let isFestAdmin =
     (userData.role === 'admin' || userData.role === 'fest_admin') &&
     userData.festId === requiredFestId;
+
+  if (!isFestAdmin && (userData.role === 'admin' || userData.role === 'fest_admin')) {
+    try {
+      const membershipDoc = await currentDb.collection('fest_memberships').doc(`${callerUid}_${requiredFestId}`).get();
+      if (membershipDoc.exists && membershipDoc.data().status === 'active' && membershipDoc.data().role === 'admin') {
+        isFestAdmin = true;
+      }
+      if (!isFestAdmin) {
+        const festDoc = await currentDb.collection('fests').doc(requiredFestId).get();
+        if (festDoc.exists && festDoc.data().adminId === callerUid) {
+          isFestAdmin = true;
+        }
+      }
+    } catch {}
+  }
 
   if (!isFestAdmin) {
     throw new HttpsError(

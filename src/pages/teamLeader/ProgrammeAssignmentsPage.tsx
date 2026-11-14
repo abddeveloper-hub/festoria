@@ -204,6 +204,27 @@ export const ProgrammeAssignmentsPage: React.FC = () => {
       }
     }
 
+    // Schedule conflict detection and time-overlap warnings
+    const otherAssignments = myTeamAssignments.filter(
+      (a) => a.participantIds.includes(participant.id) && a.programmeId !== assigningIndividualProg.id
+    );
+    for (const otherAsg of otherAssignments) {
+      const otherPrg = programmes.find((p) => p.id === otherAsg.programmeId);
+      if (
+        otherPrg &&
+        otherPrg.date === assigningIndividualProg.date &&
+        otherPrg.startTime &&
+        assigningIndividualProg.startTime &&
+        otherPrg.startTime === assigningIndividualProg.startTime
+      ) {
+        addToast(
+          'warning',
+          'Time Conflict Alert',
+          `${participant.name} is already assigned to "${otherPrg.name}" at the same scheduled time (${otherPrg.date} ${otherPrg.startTime}).`
+        );
+      }
+    }
+
     assignParticipantToProgramme({
       festId: activeFestId || 'FEST-01',
       teamId: activeTeamId,

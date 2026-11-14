@@ -532,7 +532,7 @@ export async function signInWithCredentials(
         await signOutUser();
         return {
           success: false,
-          message: 'Unauthorized: No Team Leader profile or invitation found for this account.'
+          message: 'Unauthorized: This phone number is not registered as an authorized Team Leader.'
         };
       }
 
@@ -550,7 +550,7 @@ export async function signInWithCredentials(
         await signOutUser();
         return {
           success: false,
-          message: 'Unauthorized: This account is not registered as an authorized Team Leader.'
+          message: 'Unauthorized: This phone number is not registered as an authorized Team Leader.'
         };
       }
 
@@ -1154,7 +1154,16 @@ export async function registerStaffWithCredentials(data: {
   };
 
   try {
-    await setDoc(doc(firestoreDb, 'users', uid), userProfile);
+    // Create baseline profile doc to satisfy initial creation rule, then activate staff role
+    await setDoc(doc(firestoreDb, 'users', uid), {
+      ...userProfile,
+      role: 'participant',
+    });
+    await updateDoc(doc(firestoreDb, 'users', uid), {
+      role: role,
+      status: 'active',
+      updatedAt: serverTimestamp(),
+    });
   } catch (saveErr) {
     console.error('[Firebase Auth] Failed to save staff profile:', saveErr);
   }

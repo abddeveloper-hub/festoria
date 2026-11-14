@@ -869,7 +869,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
 
   // Self-healing migration for previously created programmes/categories/teams/participants on laptop
   useEffect(() => {
-    if (!currentUser || currentUser.role === 'super_admin' || !activeFestId || activeFestId === 'FEST-01') return;
+    if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'fest_admin') || !activeFestId || activeFestId === 'FEST-01') return;
 
     // 1. Sync programmes that lack festId or have 'FEST-01' fallback
     const misalignedProgrammes = programmes.filter(
@@ -985,7 +985,9 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
         const canonical = catLookup.get(norm);
         if (canonical && p.category !== canonical) {
           const updated = { ...p, category: canonical };
-          saveProgrammeToFirestore(updated);
+          if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'fest_admin' || currentUser.role === 'super_admin')) {
+            saveProgrammeToFirestore(updated);
+          }
           return updated;
         }
         return p;
@@ -1366,6 +1368,35 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     const target = participants.find((p) => p.id === id);
     setParticipants((prev) => prev.filter((p) => p.id !== id));
     deleteParticipantFromFirestore(id).catch((err) => console.warn('[Firestore] deleteParticipant error:', err));
+
+    // Cascade: remove participant from assignments and team entries
+    setAssignments((prev: ProgrammeAssignment[]) =>
+      prev.map((asg: ProgrammeAssignment) => {
+        if (asg.participantIds.includes(id)) {
+          const updatedIds = asg.participantIds.filter((pId: string) => pId !== id);
+          const updatedNames = asg.participantNames.filter((_: string, idx: number) => asg.participantIds[idx] !== id);
+          const updatedAsg: ProgrammeAssignment = { ...asg, participantIds: updatedIds, participantNames: updatedNames };
+          saveProgrammeAssignmentToFirestore(updatedAsg).catch(() => {});
+          return updatedAsg;
+        }
+        return asg;
+      })
+    );
+
+    setTeamProgrammeEntries((prev: TeamProgrammeEntry[]) =>
+      prev.map((entry: TeamProgrammeEntry) => {
+        if (entry.memberParticipantIds.includes(id)) {
+          const updatedIds = entry.memberParticipantIds.filter((pId: string) => pId !== id);
+          const names = entry.memberNames || [];
+          const updatedNames = names.filter((_: string, idx: number) => entry.memberParticipantIds[idx] !== id);
+          const updatedEntry: TeamProgrammeEntry = { ...entry, memberParticipantIds: updatedIds, memberNames: updatedNames };
+          saveTeamProgrammeEntryToFirestore(updatedEntry).catch(() => {});
+          return updatedEntry;
+        }
+        return entry;
+      })
+    );
+
     logActivity('DELETE_PARTICIPANT', 'participant', id, `Removed participant ${target?.name || id}.`);
     addToast('info', 'Participant Removed', 'The participant record was permanently removed.');
   };
@@ -1478,7 +1509,11 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       addToast('error', 'Duplicate Programme Code', `Code ${data.code} is already in use in this festival.`);
       return false;
     }
-    const newId = `PRG-${(programmes.length + 101).toString()}`;
+    let nextNum = programmes.length + 101;
+    while (programmes.some((p) => p.id === `PRG-${nextNum}`)) {
+      nextNum++;
+    }
+    const newId = `PRG-${nextNum}`;
     const newProgramme: Programme = {
       ...data,
       festId: festTarget,
@@ -1548,7 +1583,11 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
   const duplicateProgramme = (id: string) => {
     const existing = programmes.find((p) => p.id === id);
     if (!existing) return;
-    const newId = `PRG-${(programmes.length + 101).toString()}`;
+    let nextNum = programmes.length + 101;
+    while (programmes.some((p) => p.id === `PRG-${nextNum}`)) {
+      nextNum++;
+    }
+    const newId = `PRG-${nextNum}`;
     const newCode = `${existing.code}-DUP`;
     const cloned: Programme = {
       ...existing,
