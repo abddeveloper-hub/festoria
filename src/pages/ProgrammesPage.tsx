@@ -137,12 +137,19 @@ export const ProgrammesPage: React.FC = () => {
   }, [programmes]);
 
   const distinctCategories = useMemo(() => {
-    const set = new Set<string>();
-    categories.forEach((c) => set.add(c.name));
-    programmes.forEach((p) => {
-      if (p.category) set.add(p.category);
+    const map = new Map<string, string>();
+    categories.forEach((c) => {
+      if (c.name) map.set(c.name.trim().toLowerCase(), c.name.trim());
     });
-    return Array.from(set).sort();
+    programmes.forEach((p) => {
+      if (p.category) {
+        const norm = p.category.trim().toLowerCase();
+        if (!map.has(norm)) {
+          map.set(norm, p.category.trim());
+        }
+      }
+    });
+    return Array.from(map.values()).sort();
   }, [categories, programmes]);
 
   const generalCat = useMemo(() => {
@@ -162,7 +169,7 @@ export const ProgrammesPage: React.FC = () => {
         p.venue.toLowerCase().includes(s);
       if (!matchesSearch) return false;
 
-      if (filterCategory !== 'all' && p.category !== filterCategory) return false;
+      if (filterCategory !== 'all' && (p.category || '').trim().toLowerCase() !== filterCategory.trim().toLowerCase()) return false;
       if (filterStatus !== 'all' && p.status !== filterStatus) return false;
       if (filterDate !== 'all' && p.date !== filterDate) return false;
 

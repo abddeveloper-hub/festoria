@@ -252,26 +252,27 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
     return (scheduleSlots || []).filter((s) => !s.festId || s.festId === targetFestId);
   }, [scheduleSlots, targetFestId]);
 
-  // Available categories in the schedule (preserving fest category order)
+  // Available categories in the schedule (preserving fest category order and deduplicating by case-insensitive name)
   const availableScheduleCategories = React.useMemo(() => {
-    const catsFromProgs = Array.from(new Set(publishedProgrammes.map((p) => p.category).filter(Boolean)));
-    const configuredNames = (festCategories || []).map((c) => c.name);
-    const ordered: string[] = [];
-    configuredNames.forEach((name) => {
-      if (catsFromProgs.includes(name) && !ordered.includes(name)) {
-        ordered.push(name);
+    const catMap = new Map<string, string>();
+    (festCategories || []).forEach((c) => {
+      if (c.name) catMap.set(c.name.trim().toLowerCase(), c.name.trim());
+    });
+    (publishedProgrammes || []).forEach((p) => {
+      if (p.category) {
+        const norm = p.category.trim().toLowerCase();
+        if (!catMap.has(norm)) {
+          catMap.set(norm, p.category.trim());
+        }
       }
     });
-    catsFromProgs.forEach((cat) => {
-      if (!ordered.includes(cat)) ordered.push(cat);
-    });
-    return ordered;
+    return Array.from(catMap.values());
   }, [publishedProgrammes, festCategories]);
 
   // Filtered programmes for schedule view
   const filteredScheduleProgrammes = React.useMemo(() => {
     return publishedProgrammes.filter((p) => {
-      if (scheduleCategoryFilter !== 'All' && p.category !== scheduleCategoryFilter) {
+      if (scheduleCategoryFilter !== 'All' && (p.category || '').trim().toLowerCase() !== scheduleCategoryFilter.trim().toLowerCase()) {
         return false;
       }
       if (scheduleStageFilter === 'stage') {
@@ -2613,9 +2614,9 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                 </button>
 
                 {availableScheduleCategories.map((catName) => {
-                  const count = publishedProgrammes.filter((p) => p.category === catName).length;
-                  const catConfig = festCategories?.find((c) => c.name === catName);
-                  const isSelected = scheduleCategoryFilter === catName;
+                  const count = publishedProgrammes.filter((p) => (p.category || '').trim().toLowerCase() === catName.trim().toLowerCase()).length;
+                  const catConfig = festCategories?.find((c) => (c.name || '').trim().toLowerCase() === catName.trim().toLowerCase());
+                  const isSelected = scheduleCategoryFilter.trim().toLowerCase() === catName.trim().toLowerCase();
                   const ageLabel = catConfig?.minAge !== undefined && catConfig?.maxAge !== undefined
                     ? `Ages ${catConfig.minAge}-${catConfig.maxAge}`
                     : catConfig?.minAge !== undefined
@@ -2785,9 +2786,13 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               return (
                 <div className="space-y-10">
                   {availableScheduleCategories.map((catName) => {
-                    const catProgrammes = publishedProgrammes.filter((p) => p.category === catName);
+                    const catProgrammes = publishedProgrammes.filter(
+                      (p) => (p.category || '').trim().toLowerCase() === catName.trim().toLowerCase()
+                    );
                     if (catProgrammes.length === 0) return null;
-                    const catConfig = festCategories?.find((c) => c.name === catName);
+                    const catConfig = festCategories?.find(
+                      (c) => (c.name || '').trim().toLowerCase() === catName.trim().toLowerCase()
+                    );
                     const ageLabel = catConfig?.minAge !== undefined && catConfig?.maxAge !== undefined
                       ? `Ages ${catConfig.minAge}-${catConfig.maxAge}`
                       : catConfig?.minAge !== undefined

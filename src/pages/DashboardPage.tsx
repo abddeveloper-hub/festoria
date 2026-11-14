@@ -63,7 +63,7 @@ export const DashboardPage: React.FC = () => {
       if (dashboardFilters.category !== 'all') {
         // Match participant's registered programmes category
         const registeredProgs = programmes.filter((pr) => p.registeredProgrammes.includes(pr.id));
-        if (!registeredProgs.some((pr) => pr.category === dashboardFilters.category)) {
+        if (!registeredProgs.some((pr) => (pr.category || '').trim().toLowerCase() === dashboardFilters.category.trim().toLowerCase())) {
           return false;
         }
       }
@@ -77,21 +77,31 @@ export const DashboardPage: React.FC = () => {
     return dates;
   }, [programmes]);
 
-  // Distinct categories for the filter
+  // Distinct categories for the filter (deduplicated case-insensitively)
   const distinctCategories = useMemo(() => {
-    return Array.from(new Set(programmes.map((p) => p.category))).sort();
+    const catMap = new Map<string, string>();
+    programmes.forEach((p) => {
+      if (p.category) {
+        const norm = p.category.trim().toLowerCase();
+        if (!catMap.has(norm)) {
+          catMap.set(norm, p.category.trim());
+        }
+      }
+    });
+    return Array.from(catMap.values()).sort();
   }, [programmes]);
 
   // Category distribution
   const categoryStats = useMemo(() => {
     const map = new Map<string, { count: number; completed: number }>();
-    distinctCategories.forEach((cat) => map.set(cat, { count: 0, completed: 0 }));
+    distinctCategories.forEach((cat) => map.set(cat.toLowerCase(), { count: 0, completed: 0 }));
 
     programmes.forEach((p) => {
-      const current = map.get(p.category) || { count: 0, completed: 0 };
+      const key = (p.category || '').trim().toLowerCase();
+      const current = map.get(key) || { count: 0, completed: 0 };
       current.count += 1;
       if (p.status === 'completed') current.completed += 1;
-      map.set(p.category, current);
+      map.set(key, current);
     });
 
     return Array.from(map.entries()).map(([name, data]) => ({

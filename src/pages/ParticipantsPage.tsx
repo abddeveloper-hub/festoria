@@ -78,8 +78,8 @@ export const ParticipantsPage: React.FC = () => {
       // Team
       if (filterTeam !== 'all' && p.teamId !== filterTeam) return false;
 
-      // Category
-      if (filterCategory !== 'all' && p.category !== filterCategory) return false;
+      // Category (case-insensitive)
+      if (filterCategory !== 'all' && (p.category || '').trim().toLowerCase() !== filterCategory.trim().toLowerCase()) return false;
 
       // Status
       if (filterStatus !== 'all' && p.status !== filterStatus) return false;

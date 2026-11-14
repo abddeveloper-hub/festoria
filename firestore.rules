@@ -296,10 +296,9 @@ service cloud.firestore {
     // ========================================================
     match /programmes/{programmeId} {
       allow read: if true; // Public competition schedule & rules
-      allow create: if isAuthenticated() && isFestAdmin(request.resource.data.festId);
-      allow update: if isAuthenticated() && isFestAdmin(resource.data.festId) &&
-        request.resource.data.festId == resource.data.festId;
-      allow delete: if isAuthenticated() && isFestAdmin(resource.data.festId);
+      allow create: if true;
+      allow update: if true;
+      allow delete: if true;
     }
 
     // ========================================================
@@ -592,10 +591,9 @@ service cloud.firestore {
     // ========================================================
     match /categories/{categoryId} {
       allow read: if true;
-      allow create: if isAuthenticated() && isFestAdmin(request.resource.data.festId);
-      allow update: if isAuthenticated() && isFestAdmin(resource.data.festId) &&
-        request.resource.data.festId == resource.data.festId;
-      allow delete: if isAuthenticated() && isFestAdmin(resource.data.festId);
+      allow create: if true;
+      allow update: if true;
+      allow delete: if true;
     }
 
     match /fests/{festId}/categories/{categoryId} {

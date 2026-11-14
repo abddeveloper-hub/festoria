@@ -582,13 +582,31 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
   const festCategories = useMemo(() => {
     if (currentPortal === 'super_admin') return categories;
     const scoped = (categories || []).filter((c) => (c.festId ? c.festId === activeFestId : activeFestId === 'FEST-01'));
-    if (scoped.length > 0) return scoped;
-
-    return DEFAULT_FEST_CATEGORIES.map((cat: FestCategory) => ({
+    const list = scoped.length > 0 ? scoped : DEFAULT_FEST_CATEGORIES.map((cat: FestCategory) => ({
       ...cat,
       id: `${cat.id}_${activeFestId}`,
       festId: activeFestId,
     }));
+
+    // Deduplicate and merge categories by case-insensitive name so they are ALWAYS unified as one
+    const dedupedMap = new Map<string, FestCategory>();
+    for (const cat of list) {
+      const key = (cat.name || '').trim().toLowerCase();
+      if (!key) continue;
+      if (!dedupedMap.has(key)) {
+        dedupedMap.set(key, cat);
+      } else {
+        const existing = dedupedMap.get(key)!;
+        dedupedMap.set(key, {
+          ...existing,
+          description: existing.description || cat.description,
+          minAge: existing.minAge ?? cat.minAge,
+          maxAge: existing.maxAge ?? cat.maxAge,
+          enabled: existing.enabled || cat.enabled
+        });
+      }
+    }
+    return Array.from(dedupedMap.values());
   }, [categories, activeFestId, currentPortal]);
 
   // Team Leader State
@@ -954,7 +972,25 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       setFests(fsFests);
       setTeams(fsTeams);
       setParticipants(fsParticipants);
-      setProgrammes(fsProgrammes);
+
+      // Auto-harmonize programme categories with canonical fest categories
+      const activeCats = fsCategories && fsCategories.length > 0 ? fsCategories : DEFAULT_FEST_CATEGORIES;
+      const catLookup = new Map<string, string>();
+      activeCats.forEach((c) => {
+        if (c.name) catLookup.set(c.name.trim().toLowerCase(), c.name.trim());
+      });
+
+      const harmonizedProgrammes = (fsProgrammes || []).map((p) => {
+        const norm = (p.category || '').trim().toLowerCase();
+        const canonical = catLookup.get(norm);
+        if (canonical && p.category !== canonical) {
+          const updated = { ...p, category: canonical };
+          saveProgrammeToFirestore(updated);
+          return updated;
+        }
+        return p;
+      });
+      setProgrammes(harmonizedProgrammes);
       setResults(fsResults);
       if (fsCategories && fsCategories.length > 0) setCategories(fsCategories);
       if (fsTeamEntries && fsTeamEntries.length > 0) setTeamProgrammeEntries(fsTeamEntries);
@@ -2952,36 +2988,64 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
 
   const updateCategory = async (id: string, updates: Partial<FestCategory>): Promise<void> => {
     const targetFest = activeFestId || 'FEST-04';
-    const existing = festCategories.find((c: FestCategory) => c.id === id) || categories.find((c: FestCategory) => c.id === id);
-    const oldName = existing?.name;
-    const newName = updates.name?.trim();
+    const existing = festCategories.find((c: FestCategory) => c.id === id || c.id === `${id}_${targetFest}`) ||
+      categories.find((c: FestCategory) => c.id === id || c.id === `${id}_${targetFest}`);
+    const oldName = existing?.name?.trim();
+    const newName = updates.name !== undefined ? updates.name.trim() : oldName;
 
-    // Ensure category ID is scoped to active fest so it doesn't collide with default templates or other fests
+    // Ensure category ID is scoped to active fest
     const effectiveId = id.includes(targetFest) ? id : `${id}_${targetFest}`;
+
+    // CHECK FOR MERGE: If newName matches another existing category in this fest (different id)
+    const duplicateMatch = newName
+      ? festCategories.find((c: FestCategory) =>
+          c.id !== id &&
+          c.id !== effectiveId &&
+          c.name.trim().toLowerCase() === newName.toLowerCase()
+        )
+      : undefined;
+
+    const isMerged = !!duplicateMatch;
 
     const updated: FestCategory = {
       ...(existing || {}),
+      ...(duplicateMatch || {}),
       ...updates,
-      id: effectiveId,
+      id: duplicateMatch?.id || effectiveId,
       festId: targetFest,
       name: newName || existing?.name || '',
       enabled: updates.enabled ?? existing?.enabled ?? true,
-      createdAt: existing?.createdAt || new Date().toISOString(),
+      createdAt: existing?.createdAt || duplicateMatch?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
+    // If merging two categories into one, permanently delete the duplicate record from Firestore
+    if (duplicateMatch && duplicateMatch.id !== effectiveId) {
+      await deleteCategoryFromFirestore(id, targetFest);
+      await deleteCategoryFromFirestore(effectiveId, targetFest);
+    }
+
     setCategories((prev) => {
-      const exists = prev.some((c: FestCategory) => c.id === effectiveId);
-      if (exists) {
-        return prev.map((c: FestCategory) => (c.id === effectiveId ? updated : c));
-      }
-      return [...prev, updated];
+      const filtered = prev.filter((c: FestCategory) => {
+        if (c.id === id || c.id === effectiveId) return false;
+        if (duplicateMatch && c.id === duplicateMatch.id) return false;
+        if (newName && c.festId === targetFest && c.name.trim().toLowerCase() === newName.toLowerCase()) return false;
+        return true;
+      });
+      return [...filtered, updated];
     });
 
     await saveCategoryToFirestore(updated);
 
-    // If category name was renamed, cascade updates across programmes, participants, and entries
-    if (oldName && newName && oldName.toLowerCase() !== newName.toLowerCase()) {
+    // If category name was renamed, changed casing, or merged, cascade updates across programmes, participants, and entries
+    const namesToMigrate = new Set<string>();
+    if (oldName) namesToMigrate.add(oldName.toLowerCase());
+    if (duplicateMatch?.name) namesToMigrate.add(duplicateMatch.name.trim().toLowerCase());
+    if (newName) namesToMigrate.add(newName.toLowerCase());
+
+    const shouldCascade = (oldName && newName && oldName !== newName) || isMerged;
+
+    if (shouldCascade && newName) {
       setProgrammes((prev) =>
         prev.map((prg) => {
           if (prg.festId && prg.festId !== targetFest) return prg;
@@ -2989,13 +3053,18 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
           let cat = prg.category;
           let eligible = prg.eligibleCategories;
 
-          if (prg.category?.toLowerCase() === oldName.toLowerCase()) {
+          const prgCatNorm = (prg.category || '').trim().toLowerCase();
+          if (namesToMigrate.has(prgCatNorm)) {
             cat = newName;
             modified = true;
           }
-          if (prg.eligibleCategories?.some((ec) => ec.toLowerCase() === oldName.toLowerCase())) {
-            eligible = prg.eligibleCategories.map((ec) =>
-              ec.toLowerCase() === oldName.toLowerCase() ? newName : ec
+          if (prg.eligibleCategories?.some((ec) => namesToMigrate.has((ec || '').trim().toLowerCase()))) {
+            eligible = Array.from(
+              new Set(
+                prg.eligibleCategories.map((ec) =>
+                  namesToMigrate.has((ec || '').trim().toLowerCase()) ? newName : ec
+                )
+              )
             );
             modified = true;
           }
@@ -3012,7 +3081,8 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       setParticipants((prev) =>
         prev.map((p) => {
           if (p.festId && p.festId !== targetFest) return p;
-          if (p.category?.toLowerCase() === oldName.toLowerCase()) {
+          const pCatNorm = (p.category || '').trim().toLowerCase();
+          if (namesToMigrate.has(pCatNorm)) {
             const updatedP = { ...p, category: newName };
             saveParticipantToFirestore(updatedP);
             return updatedP;
@@ -3024,7 +3094,8 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       setTeamProgrammeEntries((prev) =>
         prev.map((entry) => {
           if (entry.festId && entry.festId !== targetFest) return entry;
-          if (entry.categoryId?.toLowerCase() === oldName.toLowerCase()) {
+          const entryCatNorm = (entry.categoryId || '').trim().toLowerCase();
+          if (namesToMigrate.has(entryCatNorm)) {
             const updatedEntry = { ...entry, categoryId: newName };
             saveTeamProgrammeEntryToFirestore(updatedEntry);
             return updatedEntry;
@@ -3033,8 +3104,13 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
         })
       );
 
-      logActivity('UPDATE_CATEGORY', 'settings', effectiveId, `Renamed category from "${oldName}" to "${newName}".`);
-      addToast('success', 'Category Renamed', `Category "${oldName}" renamed to "${newName}". Associated records updated.`);
+      if (isMerged) {
+        logActivity('UPDATE_CATEGORY', 'settings', updated.id, `Merged categories into unified category "${newName}".`);
+        addToast('success', 'Categories Unified', `Categories were successfully merged into single category "${newName}".`);
+      } else {
+        logActivity('UPDATE_CATEGORY', 'settings', updated.id, `Renamed category from "${oldName}" to "${newName}".`);
+        addToast('success', 'Category Renamed', `Category "${oldName}" renamed to "${newName}". Associated records updated.`);
+      }
     } else {
       addToast('info', 'Category Updated', 'Category settings saved.');
     }

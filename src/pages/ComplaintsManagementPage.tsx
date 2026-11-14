@@ -66,7 +66,7 @@ export const ComplaintsManagementPage: React.FC = () => {
 
       if (!matchesSearch) return false;
       if (filterStatus !== 'all' && c.status !== filterStatus) return false;
-      if (filterCategory !== 'all' && c.category !== filterCategory) return false;
+      if (filterCategory !== 'all' && (c.category || '').trim().toLowerCase() !== filterCategory.trim().toLowerCase()) return false;
 
       return true;
     });
