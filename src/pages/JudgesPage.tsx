@@ -57,8 +57,8 @@ export const JudgesPage: React.FC = () => {
       const matchesSearch =
         j.name.toLowerCase().includes(s) ||
         j.id.toLowerCase().includes(s) ||
-        j.email.toLowerCase().includes(s) ||
-        j.designation.toLowerCase().includes(s);
+        (j.email || '').toLowerCase().includes(s) ||
+        (j.designation || '').toLowerCase().includes(s);
       if (!matchesSearch) return false;
 
       if (statusFilter !== 'all' && j.status !== statusFilter) return false;

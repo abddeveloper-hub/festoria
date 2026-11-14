@@ -96,9 +96,9 @@ export const TeamSchedulePage: React.FC = () => {
         if (searchQuery) {
           const q = searchQuery.toLowerCase();
           return (
-            prg.name.toLowerCase().includes(q) ||
-            prg.venue.toLowerCase().includes(q) ||
-            prg.category.toLowerCase().includes(q)
+            (prg.name || '').toLowerCase().includes(q) ||
+            (prg.venue || '').toLowerCase().includes(q) ||
+            (prg.category || '').toLowerCase().includes(q)
           );
         }
         return true;

@@ -31,8 +31,10 @@ export const PlatformParticipantsPage: React.FC = () => {
   const duplicates = useMemo(() => {
     const emailCounts: Record<string, number> = {};
     participants.forEach((p) => {
-      const email = p.email.toLowerCase();
-      emailCounts[email] = (emailCounts[email] || 0) + 1;
+      if (p.email && p.email.trim()) {
+        const email = p.email.trim().toLowerCase();
+        emailCounts[email] = (emailCounts[email] || 0) + 1;
+      }
     });
     return Object.keys(emailCounts).filter((email) => emailCounts[email] > 1);
   }, [participants]);
@@ -41,7 +43,8 @@ export const PlatformParticipantsPage: React.FC = () => {
     return participants.filter((p) => {
       const matchSearch =
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (p.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (p.chestNumber || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (p.college || '').toLowerCase().includes(searchQuery.toLowerCase());
       const matchCategory = categoryFilter === 'all' || p.category === categoryFilter;
@@ -57,9 +60,10 @@ export const PlatformParticipantsPage: React.FC = () => {
       const teamObj = teams.find((t) => t.id === p.teamId);
       return {
         Participant_ID: p.id,
+        ChestNumber: p.chestNumber || '',
         Name: p.name,
-        Email: p.email,
-        Phone: p.phone,
+        Email: p.email || '',
+        Phone: p.phone || '',
         College: p.college,
         Category: p.category,
         Team: teamObj?.name || p.teamId,
@@ -203,8 +207,15 @@ export const PlatformParticipantsPage: React.FC = () => {
                     <tr key={p.id} className="hover:bg-slate-50/70 transition-colors">
                       <td className="px-4 py-3 font-mono font-medium text-slate-900">{p.id}</td>
                       <td className="px-4 py-3">
-                        <div className="font-semibold text-slate-900">{p.name}</div>
-                        <div className="text-[11px] text-slate-500">{p.email}</div>
+                        <div className="font-semibold text-slate-900 flex items-center gap-1.5">
+                          <span>{p.name}</span>
+                          {p.chestNumber && (
+                            <span className="font-mono text-[10px] px-1 py-0.2 rounded bg-purple-50 text-purple-700 border border-purple-200">
+                              #{p.chestNumber}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-slate-500">{p.email || 'No email provided'}</div>
                       </td>
                       <td className="px-4 py-3 text-slate-700">{p.college}</td>
                       <td className="px-4 py-3">

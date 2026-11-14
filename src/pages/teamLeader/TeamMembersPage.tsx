@@ -54,7 +54,8 @@ export const TeamMembersPage: React.FC = () => {
         m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         m.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (m.chestNumber && m.chestNumber.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        m.email.toLowerCase().includes(searchQuery.toLowerCase());
+        (m.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (m.phone || '').includes(searchQuery);
       const matchesCat = categoryFilter === 'all' || m.category === categoryFilter;
       return matchesSearch && matchesCat;
     });
@@ -77,8 +78,8 @@ export const TeamMembersPage: React.FC = () => {
     setFormData({
       name: member.name,
       chestNumber: member.chestNumber || '',
-      email: member.email,
-      phone: member.phone,
+      email: member.email || '',
+      phone: member.phone || '',
       category: member.category,
     });
     setFormError('');

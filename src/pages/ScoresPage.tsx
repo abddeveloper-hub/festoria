@@ -815,10 +815,10 @@ export const ScoresPage: React.FC = () => {
                   </span>
                 </div>
 
-                {sheetPodiumTies.length > 0 && (
+                {sheetPodiumTies.length > 0 && sheetPodiumTies[0]?.length > 0 && (
                   <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-900 bg-amber-100 border border-amber-300 px-2.5 py-1 rounded shadow-xs">
                     <AlertTriangle className="w-3.5 h-3.5 text-amber-700 animate-pulse" />
-                    Tie Detected on Podium ({sheetPodiumTies[0].map((t) => t.name).join(' & ')} tied at {sheetPodiumTies[0][0].total} pts)
+                    Tie Detected on Podium ({sheetPodiumTies[0].map((t) => t.name).join(' & ')} tied at {sheetPodiumTies[0][0]?.total ?? 0} pts)
                   </span>
                 )}
               </div>

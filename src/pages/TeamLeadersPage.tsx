@@ -92,7 +92,7 @@ export const TeamLeadersPage: React.FC = () => {
       const matchesSearch =
         leader.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (leader.phone && leader.phone.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        leader.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (leader.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (leader.institution && leader.institution.toLowerCase().includes(searchQuery.toLowerCase()));
 
       const matchesStatus =
