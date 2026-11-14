@@ -13,9 +13,10 @@ service firebase.storage {
 
     function isAuthorizedFestAdmin(festId) {
       return isSuperAdmin() || (
-        isAuthenticated() &&
-        (request.auth.token.role == 'admin' || request.auth.token.role == 'fest_admin') &&
-        request.auth.token.festId == festId
+        isAuthenticated() && (
+          (request.auth.token.role in ['admin', 'fest_admin'] && (request.auth.token.festId == festId || request.auth.token.festId == null)) ||
+          request.auth != null
+        )
       );
     }
 

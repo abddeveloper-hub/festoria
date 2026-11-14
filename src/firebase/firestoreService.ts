@@ -11,7 +11,8 @@ import {
   onSnapshot,
   serverTimestamp,
 } from 'firebase/firestore';
-import { db, isFirebaseConfigured, app, getFirebaseAuth } from './config';
+import { db, isFirebaseConfigured, app, getFirebaseAuth, storage } from './config';
+import { getStorage, ref as storageRef, uploadString, getDownloadURL } from 'firebase/storage';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import {
   Fest,
@@ -1644,7 +1645,28 @@ export async function fetchPublishedFestPage(festId: string, festName?: string):
     try {
       const snap = await getDoc(doc(db, 'fest_public_pages', pageDocId));
       if (snap.exists()) {
-        return snap.data() as FestPublicPageData;
+        const remoteData = snap.data() as FestPublicPageData;
+        // Merge with local media if available in localStorage
+        try {
+          const local = localStorage.getItem(`festoria_public_page_${pageDocId}`);
+          if (local) {
+            const localData = JSON.parse(local) as FestPublicPageData;
+            return {
+              ...remoteData,
+              hero: {
+                ...remoteData.hero,
+                videoUrl: remoteData.hero.videoUrl || localData.hero?.videoUrl || '',
+                videoPosterUrl: remoteData.hero.videoPosterUrl || localData.hero?.videoPosterUrl || '',
+              },
+              logo: {
+                ...remoteData.logo,
+                logoUrl: remoteData.logo.logoUrl || localData.logo?.logoUrl || '',
+              },
+              photos: remoteData.photos && remoteData.photos.length > 0 ? remoteData.photos : (localData.photos || [])
+            };
+          }
+        } catch {}
+        return remoteData;
       }
     } catch (e) {
       console.warn('[Firestore] fetchPublishedFestPage error:', e);
@@ -1674,7 +1696,27 @@ export async function fetchDraftFestPage(festId: string, festName?: string): Pro
     try {
       const snap = await getDoc(doc(db, 'fest_public_pages', draftDocId));
       if (snap.exists()) {
-        return snap.data() as FestPublicPageData;
+        const remoteData = snap.data() as FestPublicPageData;
+        try {
+          const localDraft = localStorage.getItem(`festoria_public_page_${draftDocId}`);
+          if (localDraft) {
+            const localData = JSON.parse(localDraft) as FestPublicPageData;
+            return {
+              ...remoteData,
+              hero: {
+                ...remoteData.hero,
+                videoUrl: remoteData.hero.videoUrl || localData.hero?.videoUrl || '',
+                videoPosterUrl: remoteData.hero.videoPosterUrl || localData.hero?.videoPosterUrl || '',
+              },
+              logo: {
+                ...remoteData.logo,
+                logoUrl: remoteData.logo.logoUrl || localData.logo?.logoUrl || '',
+              },
+              photos: remoteData.photos && remoteData.photos.length > 0 ? remoteData.photos : (localData.photos || [])
+            };
+          }
+        } catch {}
+        return remoteData;
       }
     } catch (e) {
       console.warn('[Firestore] fetchDraftFestPage error:', e);
@@ -1694,6 +1736,149 @@ export async function fetchDraftFestPage(festId: string, festName?: string): Pro
 }
 
 /**
+ * Safely offloads embedded base64 DataURLs to Firebase Storage to keep Firestore document size small.
+ * If Storage is not available or upload fails, omits oversized binary data URLs from the Firestore
+ * document payload while preserving the full original resolution in localStorage, guaranteeing the
+ * Firestore document never exceeds the 1,048,576 byte hard limit.
+ */
+async function sanitizeAndCompactPublicPageForFirestore(
+  festId: string,
+  pageData: FestPublicPageData
+): Promise<FestPublicPageData> {
+  const result: FestPublicPageData = JSON.parse(JSON.stringify(pageData));
+  const firebaseStorage = storage || (app ? getStorage(app) : null);
+
+  // Helper to upload a single data URL to Firebase Storage
+  const tryUploadDataUrl = async (folder: string, dataUrl: string, filename: string): Promise<string | null> => {
+    if (!firebaseStorage || !dataUrl || !dataUrl.startsWith('data:')) return null;
+    try {
+      const timestamp = Date.now();
+      const cleanName = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const targetPath = `fests/${festId}/${folder}/${timestamp}_${cleanName}`;
+      const fileRef = storageRef(firebaseStorage, targetPath);
+      await uploadString(fileRef, dataUrl, 'data_url');
+      const downloadUrl = await getDownloadURL(fileRef);
+      return downloadUrl;
+    } catch (err) {
+      console.warn(`[Firestore] Failed to offload data URL to storage (${folder}/${filename}):`, err);
+      return null;
+    }
+  };
+
+  // 1. Process Logo
+  if (result.logo?.logoUrl?.startsWith('data:')) {
+    const uploadedLogo = await tryUploadDataUrl('logo', result.logo.logoUrl, 'fest_logo.png');
+    if (uploadedLogo) {
+      result.logo.logoUrl = uploadedLogo;
+    }
+  }
+
+  // 2. Process Hero Poster Image
+  if (result.hero?.videoPosterUrl?.startsWith('data:')) {
+    const uploadedPoster = await tryUploadDataUrl('photos', result.hero.videoPosterUrl, 'hero_poster.jpg');
+    if (uploadedPoster) {
+      result.hero.videoPosterUrl = uploadedPoster;
+    }
+  }
+
+  // 3. Process Hero Video (Omit raw base64 videos from Firestore doc because videos can be 10MB-50MB)
+  if (result.hero?.videoUrl?.startsWith('data:')) {
+    const uploadedVideo = await tryUploadDataUrl('hero', result.hero.videoUrl, 'hero_video.mp4');
+    if (uploadedVideo) {
+      result.hero.videoUrl = uploadedVideo;
+    } else {
+      console.warn('[Firestore] Base64 video exceeds Firestore 1MB doc limit. Omitted from Firestore document; preserved in localStorage.');
+      result.hero.videoUrl = '';
+    }
+  }
+
+  // 4. Process Gallery Photos
+  if (result.photos && result.photos.length > 0) {
+    const processedPhotos = [];
+    for (let i = 0; i < result.photos.length; i++) {
+      const p = result.photos[i];
+      if (p.url?.startsWith('data:')) {
+        const uploadedUrl = await tryUploadDataUrl('photos', p.url, `photo_${p.id || i}.jpg`);
+        if (uploadedUrl) {
+          processedPhotos.push({ ...p, url: uploadedUrl });
+        } else {
+          processedPhotos.push(p);
+        }
+      } else {
+        processedPhotos.push(p);
+      }
+    }
+    result.photos = processedPhotos;
+  }
+
+  // 5. Check total byte size for Firestore document safety (< 850KB)
+  const MAX_SAFE_BYTES = 850_000;
+  const estimateBytes = (data: any): number => {
+    try {
+      return new Blob([JSON.stringify(cleanFirestoreData(data))]).size;
+    } catch {
+      return JSON.stringify(data).length * 2;
+    }
+  };
+
+  let currentSize = estimateBytes(result);
+  if (currentSize > MAX_SAFE_BYTES) {
+    console.warn(`[Firestore] Public page payload size (${currentSize} bytes) approaches 1MB limit. Compacting...`);
+
+    // If logo is still large base64, omit from Firestore doc (localStorage retains it)
+    if (result.logo?.logoUrl?.startsWith('data:') && result.logo.logoUrl.length > 50_000) {
+      result.logo.logoUrl = '';
+    }
+
+    // If poster is still large base64, omit from Firestore doc
+    if (result.hero?.videoPosterUrl?.startsWith('data:') && result.hero.videoPosterUrl.length > 50_000) {
+      result.hero.videoPosterUrl = '';
+    }
+
+    // Trim photos to fit within safe bounds
+    if (result.photos && result.photos.length > 0) {
+      const sanitizedPhotos = [];
+      for (const photo of result.photos) {
+        if (photo.url?.startsWith('data:') && photo.url.length > 60_000) {
+          // Skip oversized raw base64 photo from Firestore doc
+          continue;
+        }
+        sanitizedPhotos.push(photo);
+        if (estimateBytes({ ...result, photos: sanitizedPhotos }) > MAX_SAFE_BYTES) {
+          sanitizedPhotos.pop();
+          break;
+        }
+      }
+      result.photos = sanitizedPhotos;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Emergency fallback to strip raw base64 data URLs if Firestore rejects due to 1MB limit.
+ */
+function stripOversizedMediaForFirestore(pageData: FestPublicPageData): FestPublicPageData {
+  return {
+    ...pageData,
+    hero: {
+      ...pageData.hero,
+      videoUrl: pageData.hero.videoUrl?.startsWith('data:') ? '' : pageData.hero.videoUrl,
+      videoPosterUrl: pageData.hero.videoPosterUrl?.startsWith('data:') ? '' : pageData.hero.videoPosterUrl,
+    },
+    logo: {
+      ...pageData.logo,
+      logoUrl: pageData.logo.logoUrl?.startsWith('data:') ? '' : pageData.logo.logoUrl,
+    },
+    photos: (pageData.photos || []).map((p) => ({
+      ...p,
+      url: p.url.startsWith('data:') ? '' : p.url,
+    })).filter((p) => p.url),
+  };
+}
+
+/**
  * Saves draft changes made by Fest Admin without publishing to public visitors.
  */
 export async function saveDraftFestPage(festId: string, pageData: FestPublicPageData): Promise<void> {
@@ -1706,18 +1891,25 @@ export async function saveDraftFestPage(festId: string, pageData: FestPublicPage
     updatedAt: new Date().toISOString()
   };
 
-  if (isFirebaseConfigured && db) {
-    try {
-      await setDoc(doc(db, 'fest_public_pages', draftDocId), cleanFirestoreData(updated), { merge: true });
-    } catch (e) {
-      console.warn('[Firestore] saveDraftFestPage error:', e);
-      throw e;
-    }
-  }
-
+  // Always save full original content in localStorage for instant offline access and preview
   try {
     localStorage.setItem(`festoria_public_page_${draftDocId}`, JSON.stringify(updated));
   } catch {}
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const firestoreDoc = await sanitizeAndCompactPublicPageForFirestore(cleanId, updated);
+      await setDoc(doc(db, 'fest_public_pages', draftDocId), cleanFirestoreData(firestoreDoc), { merge: true });
+    } catch (e: any) {
+      console.warn('[Firestore] saveDraftFestPage warning:', e);
+      if (e?.message?.includes('exceeds the maximum allowed size') || e?.code === 'invalid-argument') {
+        const emergencyDoc = stripOversizedMediaForFirestore(updated);
+        await setDoc(doc(db, 'fest_public_pages', draftDocId), cleanFirestoreData(emergencyDoc), { merge: true });
+      } else {
+        throw e;
+      }
+    }
+  }
 }
 
 /**
@@ -1738,26 +1930,34 @@ export async function publishFestPage(festId: string, pageData: FestPublicPageDa
     version: (pageData.version || 1) + 1
   };
 
+  // Always save full original published content in localStorage
+  try {
+    localStorage.setItem(`festoria_public_page_${publishedDocId}`, JSON.stringify(published));
+    localStorage.setItem(`festoria_public_page_${draftDocId}`, JSON.stringify(published));
+  } catch {}
+
   if (isFirebaseConfigured && db) {
     try {
-      await setDoc(doc(db, 'fest_public_pages', publishedDocId), cleanFirestoreData(published));
-      await setDoc(doc(db, 'fest_public_pages', draftDocId), cleanFirestoreData(published));
+      const firestoreDoc = await sanitizeAndCompactPublicPageForFirestore(cleanId, published);
+      await setDoc(doc(db, 'fest_public_pages', publishedDocId), cleanFirestoreData(firestoreDoc));
+      await setDoc(doc(db, 'fest_public_pages', draftDocId), cleanFirestoreData(firestoreDoc));
       try {
         await updateDoc(doc(db, 'fests', cleanId), {
           publicPagePublished: true,
           updatedAt: serverTimestamp()
         });
       } catch {}
-    } catch (e) {
-      console.warn('[Firestore] publishFestPage error:', e);
-      throw e;
+    } catch (e: any) {
+      console.warn('[Firestore] publishFestPage warning:', e);
+      if (e?.message?.includes('exceeds the maximum allowed size') || e?.code === 'invalid-argument') {
+        const emergencyDoc = stripOversizedMediaForFirestore(published);
+        await setDoc(doc(db, 'fest_public_pages', publishedDocId), cleanFirestoreData(emergencyDoc));
+        await setDoc(doc(db, 'fest_public_pages', draftDocId), cleanFirestoreData(emergencyDoc));
+      } else {
+        throw e;
+      }
     }
   }
-
-  try {
-    localStorage.setItem(`festoria_public_page_${publishedDocId}`, JSON.stringify(published));
-    localStorage.setItem(`festoria_public_page_${draftDocId}`, JSON.stringify(published));
-  } catch {}
 }
 
 // ============================================================================

@@ -169,8 +169,62 @@ export async function uploadFestMedia(
 
 /**
  * Fallback to FileReader DataURL for local offline demo execution
+ * Automatically downscales images so base64 strings stay lightweight (<100KB)
  */
 function fallbackLocalUpload(
+  file: File,
+  storagePath: string,
+  resolve: (res: UploadMediaResult) => void
+) {
+  if (typeof window !== 'undefined' && file.type.startsWith('image/')) {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      try {
+        const canvas = document.createElement('canvas');
+        const maxDim = 1200;
+        let width = img.width;
+        let height = img.height;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const mime = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+          const compressed = canvas.toDataURL(mime, 0.7);
+          resolve({
+            downloadUrl: compressed,
+            storagePath,
+            fileName: file.name,
+            fileSize: Math.round(compressed.length * 0.75),
+            contentType: mime
+          });
+          return;
+        }
+      } catch {}
+      readFileStandard(file, storagePath, resolve);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      readFileStandard(file, storagePath, resolve);
+    };
+    img.src = url;
+    return;
+  }
+  readFileStandard(file, storagePath, resolve);
+}
+
+function readFileStandard(
   file: File,
   storagePath: string,
   resolve: (res: UploadMediaResult) => void
