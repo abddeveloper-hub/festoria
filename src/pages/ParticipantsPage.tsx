@@ -55,6 +55,7 @@ export const ParticipantsPage: React.FC = () => {
   // Form state
   const [formData, setFormData] = useState({
     name: '',
+    chestNumber: '',
     email: '',
     phone: '',
     teamId: teams[0]?.id || '',
@@ -71,8 +72,9 @@ export const ParticipantsPage: React.FC = () => {
       const matchesSearch =
         p.name.toLowerCase().includes(s) ||
         p.id.toLowerCase().includes(s) ||
-        p.email.toLowerCase().includes(s) ||
-        p.phone.includes(s);
+        (p.chestNumber && p.chestNumber.toLowerCase().includes(s)) ||
+        (p.email && p.email.toLowerCase().includes(s)) ||
+        (p.phone && p.phone.includes(s));
       if (!matchesSearch) return false;
 
       // Team
@@ -106,6 +108,7 @@ export const ParticipantsPage: React.FC = () => {
     const defaultCat = categories.filter((c) => c.enabled)[0]?.name || 'Senior';
     setFormData({
       name: '',
+      chestNumber: '',
       email: '',
       phone: '',
       teamId: teams[0]?.id || '',
@@ -121,8 +124,9 @@ export const ParticipantsPage: React.FC = () => {
     setEditingParticipant(p);
     setFormData({
       name: p.name,
-      email: p.email,
-      phone: p.phone,
+      chestNumber: p.chestNumber || '',
+      email: p.email || '',
+      phone: p.phone || '',
       teamId: p.teamId,
       category: p.category,
       status: p.status,
@@ -134,16 +138,27 @@ export const ParticipantsPage: React.FC = () => {
   // Submit add or edit
   const handleSubmitForm = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.email || !formData.phone || !formData.teamId) {
-      addToast('error', 'Incomplete Form', 'Please fill all required participant fields.');
+    if (!formData.name.trim() || !formData.teamId) {
+      addToast('error', 'Incomplete Form', 'Please enter a participant name and assign a team.');
       return;
     }
 
+    const payload = {
+      name: formData.name.trim(),
+      chestNumber: formData.chestNumber.trim() || undefined,
+      email: formData.email.trim() || '',
+      phone: formData.phone.trim() || '',
+      teamId: formData.teamId,
+      category: formData.category,
+      status: formData.status,
+      registeredProgrammes: formData.registeredProgrammes,
+    };
+
     if (editingParticipant) {
-      updateParticipant(editingParticipant.id, formData);
+      updateParticipant(editingParticipant.id, payload);
       setIsAddModalOpen(false);
     } else {
-      const success = addParticipant(formData);
+      const success = addParticipant(payload);
       if (success) {
         setIsAddModalOpen(false);
       }
@@ -156,9 +171,10 @@ export const ParticipantsPage: React.FC = () => {
       const team = teams.find((t) => t.id === p.teamId);
       return {
         ID: p.id,
+        ChestNumber: p.chestNumber || '',
         Name: p.name,
-        Email: p.email,
-        Phone: p.phone,
+        Email: p.email || '',
+        Phone: p.phone || '',
         Team: team?.name || p.teamId,
         Category: p.category,
         Status: p.status,
@@ -344,7 +360,7 @@ export const ParticipantsPage: React.FC = () => {
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="bg-slate-50/70 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                <th className="py-3 px-3 w-24">ID</th>
+                <th className="py-3 px-3 w-28">ID & Chest #</th>
                 <th className="py-3 px-3">Participant Name</th>
                 <th className="py-3 px-3">Contact</th>
                 <th className="py-3 px-3">Team</th>
@@ -370,8 +386,17 @@ export const ParticipantsPage: React.FC = () => {
                       key={participant.id}
                       className="hover:bg-slate-50/60 transition-colors"
                     >
-                      <td className="py-3 px-3 font-mono font-medium text-slate-700">
-                        {participant.id}
+                      <td className="py-3 px-3">
+                        <div className="font-mono font-bold text-slate-800 text-xs">
+                          {participant.id}
+                        </div>
+                        {participant.chestNumber ? (
+                          <span className="inline-block mt-0.5 px-1.5 py-0.5 bg-purple-50 text-purple-700 border border-purple-200 rounded font-mono text-[10px] font-bold">
+                            #{participant.chestNumber}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-slate-400 font-mono italic">No chest #</span>
+                        )}
                       </td>
                       <td className="py-3 px-3">
                         <div className="font-semibold text-slate-900">
@@ -382,9 +407,19 @@ export const ParticipantsPage: React.FC = () => {
                         </div>
                       </td>
                       <td className="py-3 px-3">
-                        <div className="text-slate-700">{participant.email}</div>
+                        <div className="text-slate-700">
+                          {participant.email ? (
+                            participant.email
+                          ) : (
+                            <span className="text-slate-400 italic text-[11px]">No email</span>
+                          )}
+                        </div>
                         <div className="text-[11px] text-slate-400 font-mono">
-                          {participant.phone}
+                          {participant.phone ? (
+                            participant.phone
+                          ) : (
+                            <span className="text-slate-400 italic font-sans">No phone</span>
+                          )}
                         </div>
                       </td>
                       <td className="py-3 px-3">
@@ -518,29 +553,40 @@ export const ParticipantsPage: React.FC = () => {
 
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">
-                Email Address *
+                Chest Number (Bib / Code)
               </label>
               <input
-                type="email"
-                required
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full text-xs border border-slate-300 rounded px-3 py-1.5 focus:outline-none focus:border-slate-500"
-                placeholder="aditi@example.com"
+                type="text"
+                value={formData.chestNumber}
+                onChange={(e) => setFormData({ ...formData, chestNumber: e.target.value })}
+                className="w-full text-xs font-mono font-semibold border border-slate-300 rounded px-3 py-1.5 focus:outline-none focus:border-purple-600"
+                placeholder="e.g. 101, CH-12 (optional)"
               />
             </div>
 
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">
-                Phone Number *
+                Email Address <span className="text-slate-400 font-normal">(Optional)</span>
+              </label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="w-full text-xs border border-slate-300 rounded px-3 py-1.5 focus:outline-none focus:border-slate-500"
+                placeholder="aditi@example.com (optional)"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">
+                Phone Number <span className="text-slate-400 font-normal">(Optional)</span>
               </label>
               <input
                 type="text"
-                required
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 className="w-full text-xs border border-slate-300 rounded px-3 py-1.5 focus:outline-none focus:border-slate-500"
-                placeholder="+91 98401 23456"
+                placeholder="+91 98401 23456 (optional)"
               />
             </div>
 
@@ -696,6 +742,12 @@ export const ParticipantsPage: React.FC = () => {
                 <p className="font-mono font-bold text-slate-900">{viewingParticipant.id}</p>
               </div>
               <div>
+                <span className="text-[10px] text-slate-400 uppercase font-semibold">Chest Number</span>
+                <p className="font-mono font-bold text-purple-700">
+                  {viewingParticipant.chestNumber ? `#${viewingParticipant.chestNumber}` : 'Not assigned'}
+                </p>
+              </div>
+              <div>
                 <span className="text-[10px] text-slate-400 uppercase font-semibold">Registration Status</span>
                 <p className="mt-0.5">
                   <Badge variant={viewingParticipant.status} size="sm">
@@ -715,11 +767,11 @@ export const ParticipantsPage: React.FC = () => {
               </div>
               <div>
                 <span className="text-[10px] text-slate-400 uppercase font-semibold">Email</span>
-                <p className="text-slate-800">{viewingParticipant.email}</p>
+                <p className="text-slate-800">{viewingParticipant.email || <span className="text-slate-400 italic">Not provided</span>}</p>
               </div>
               <div>
                 <span className="text-[10px] text-slate-400 uppercase font-semibold">Phone</span>
-                <p className="font-mono text-slate-800">{viewingParticipant.phone}</p>
+                <p className="font-mono text-slate-800">{viewingParticipant.phone || <span className="text-slate-400 italic font-sans">Not provided</span>}</p>
               </div>
             </div>
 

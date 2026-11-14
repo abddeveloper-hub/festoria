@@ -201,9 +201,10 @@ export const ReportsPage: React.FC = () => {
           const team = teams.find((t) => t.id === p.teamId);
           return {
             ID: p.id,
+            ChestNumber: p.chestNumber || '',
             Name: p.name,
-            Email: p.email,
-            Phone: p.phone,
+            Email: p.email || '',
+            Phone: p.phone || '',
             Team: team?.name || p.teamId,
             Category: p.category,
             Status: p.status,
@@ -725,7 +726,7 @@ export const ReportsPage: React.FC = () => {
                         <tr key={p.id}>
                           <td className="py-2 px-3 font-mono">{p.id}</td>
                           <td className="py-2 px-3 font-semibold text-slate-900">{p.name}</td>
-                          <td className="py-2 px-3 text-slate-600">{p.email}</td>
+                          <td className="py-2 px-3 text-slate-600">{p.email || '-'}</td>
                           <td className="py-2 px-3 text-slate-600">
                             {teams.find((t) => t.id === p.teamId)?.name || p.teamId}
                           </td>

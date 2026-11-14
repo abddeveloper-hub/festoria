@@ -1309,12 +1309,31 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
 
   // Participant Management
   const addParticipant = (data: Omit<Participant, 'id' | 'createdAt'>): boolean => {
-    // Check duplicates by email
-    const exists = participants.some((p) => p.email.toLowerCase() === data.email.toLowerCase());
-    if (exists) {
-      addToast('error', 'Duplicate Participant', `A participant with email ${data.email} already exists.`);
-      return false;
+    // Check duplicates by email (only if email is provided)
+    if (data.email && data.email.trim()) {
+      const emailLower = data.email.trim().toLowerCase();
+      const exists = participants.some((p) => p.email && p.email.trim().toLowerCase() === emailLower);
+      if (exists) {
+        addToast('error', 'Duplicate Participant', `A participant with email ${data.email} already exists.`);
+        return false;
+      }
     }
+
+    // Check duplicate chest number within this fest (if provided)
+    if (data.chestNumber && data.chestNumber.trim()) {
+      const chestTrimmed = data.chestNumber.trim().toLowerCase();
+      const festTarget = data.festId || activeFestId;
+      const chestExists = participants.some(
+        (p) => (p.festId === festTarget || !p.festId) &&
+               p.chestNumber &&
+               p.chestNumber.trim().toLowerCase() === chestTrimmed
+      );
+      if (chestExists) {
+        addToast('error', 'Duplicate Chest Number', `Chest number "${data.chestNumber}" is already assigned to another participant in this fest.`);
+        return false;
+      }
+    }
+
     const newId = `PT-${(participants.length + 101).toString()}`;
     const newParticipant: Participant = {
       ...data,
@@ -1346,6 +1365,21 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
   };
 
   const updateParticipant = (id: string, updates: Partial<Participant>) => {
+    if (updates.chestNumber && updates.chestNumber.trim()) {
+      const chestTrimmed = updates.chestNumber.trim().toLowerCase();
+      const current = participants.find((p) => p.id === id);
+      const festTarget = updates.festId || current?.festId || activeFestId;
+      const chestExists = participants.some(
+        (p) => p.id !== id &&
+               (p.festId === festTarget || !p.festId) &&
+               p.chestNumber &&
+               p.chestNumber.trim().toLowerCase() === chestTrimmed
+      );
+      if (chestExists) {
+        addToast('error', 'Duplicate Chest Number', `Chest number "${updates.chestNumber}" is already assigned in this festival.`);
+        return;
+      }
+    }
     let updatedRecord: Participant | undefined;
     setParticipants((prev) =>
       prev.map((p) => {
@@ -1404,14 +1438,19 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
   const bulkImportParticipants = (newItems: Omit<Participant, 'id' | 'createdAt'>[]) => {
     let addedCount = 0;
     let duplicateCount = 0;
-    const existingEmails = new Set(participants.map((p) => p.email.toLowerCase()));
+    const existingEmails = new Set(
+      participants
+        .map((p) => (p.email || '').toLowerCase().trim())
+        .filter(Boolean)
+    );
     const toAdd: Participant[] = [];
 
     newItems.forEach((item, index) => {
-      if (existingEmails.has(item.email.toLowerCase())) {
+      const emailLower = (item.email || '').toLowerCase().trim();
+      if (emailLower && existingEmails.has(emailLower)) {
         duplicateCount++;
       } else {
-        existingEmails.add(item.email.toLowerCase());
+        if (emailLower) existingEmails.add(emailLower);
         const newId = `PT-${(participants.length + addedCount + 101).toString()}`;
         const pObj: Participant = {
           ...item,

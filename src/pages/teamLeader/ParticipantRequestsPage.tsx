@@ -460,7 +460,7 @@ export const ParticipantRequestsPage: React.FC = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500 font-medium">Email:</span>
-                  <span className="text-slate-800">{selectedParticipant.email}</span>
+                  <span className="text-slate-800">{selectedParticipant.email || 'Not provided'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500 font-medium">Category:</span>
