@@ -145,6 +145,15 @@ export const ScoresPage: React.FC = () => {
     );
   }, [activeSheetProg]);
 
+  // Synchronize sheetProgrammeId if programmes change or current selection is not in scorableProgrammes
+  useEffect(() => {
+    if (scorableProgrammes.length > 0) {
+      if (!scorableProgrammes.some((p) => p.id === sheetProgrammeId)) {
+        setSheetProgrammeId(scorableProgrammes[0].id);
+      }
+    }
+  }, [scorableProgrammes, sheetProgrammeId]);
+
   // Automatically set or synchronize judge when programme or judge changes
   useEffect(() => {
     if (isJudgeOnly && judgeId) {
@@ -156,7 +165,7 @@ export const ScoresPage: React.FC = () => {
         if (!sheetJudgeId || !activeSheetProg.assignedJudgeIds.includes(sheetJudgeId)) {
           setSheetJudgeId(activeSheetProg.assignedJudgeIds[0]);
         }
-      } else if (!sheetJudgeId && judges.length > 0) {
+      } else if ((!sheetJudgeId || !judges.some((j) => j.id === sheetJudgeId)) && judges.length > 0) {
         setSheetJudgeId(judges[0].id);
       }
     }

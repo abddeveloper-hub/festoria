@@ -14,6 +14,14 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    // Helper: Safely check user role with exists() guard to prevent missing-doc evaluation crashes
+    function hasUserRole(allowedRoles) {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in allowedRoles &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'active';
+    }
+
     // Super Admin: Requires authenticated user, existing user profile, active status, and super_admin role in Firestore.
     // Stale custom claims alone cannot grant Super Admin access.
     function isSuperAdmin() {
