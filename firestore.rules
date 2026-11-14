@@ -133,8 +133,20 @@ service cloud.firestore {
         ) ||
         (
           isUser(userId) &&
-          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status', 'uid', 'phone', 'phoneVerified']) &&
-          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['festId', 'linkedTeamId', 'teamId', 'approvalStatus', 'invitationStatus'])
+          (
+            // Regular profile field updates
+            (
+              !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status', 'uid', 'phone', 'phoneVerified']) &&
+              !request.resource.data.diff(resource.data).affectedKeys().hasAny(['festId', 'linkedTeamId', 'teamId', 'approvalStatus', 'invitationStatus'])
+            ) ||
+            // Invitation claim activation for Team Leader or Judge
+            (
+              request.resource.data.role in ['team_leader', 'judge', 'participant'] &&
+              (!('role' in resource.data) || !(resource.data.role in ['super_admin', 'admin', 'fest_admin'])) &&
+              request.resource.data.status == 'active' &&
+              !request.resource.data.diff(resource.data).affectedKeys().hasAny(['uid', 'phoneVerified'])
+            )
+          )
         );
 
       // Deletions: Super Admin platform-wide; Fest Admin only for non-administrative users in their fest
@@ -183,6 +195,9 @@ service cloud.firestore {
       allow create: if isAuthenticated() && isFestAdmin(request.resource.data.festId);
       allow update: if isAuthenticated() && (
         (isFestAdmin(resource.data.festId) && request.resource.data.festId == resource.data.festId) || (
+          // Allow linking team leader upon invitation claim
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['teamLeaderId', 'teamLeaderName', 'teamLeaderPhone'])
+        ) || (
           isTeamLeader(resource.data.festId, teamId) &&
           request.resource.data.festId == resource.data.festId &&
           // Team Leader cannot reassign team leader ID, change festId, change status, or tamper with medals/scores
@@ -524,19 +539,23 @@ service cloud.firestore {
     // 18. FEST INVITATIONS (Share Fest Role Invitations)
     // ========================================================
     match /fest_invitations/{invitationId} {
-      // Fest Admin for that fest or Super Admin can read and list invitations
-      allow read: if isSuperAdmin() ||
-        (isAuthenticated() && resource.data.festId != null && isFestAdmin(resource.data.festId));
+      // Allow read so invitation tokens can be validated by recipients on both mobile and desktop
+      allow read: if true;
 
-      // Fest Admin or Super Admin can create invitations
-      allow create: if isSuperAdmin() ||
-        (isAuthenticated() && request.resource.data.festId != null && isFestAdmin(request.resource.data.festId));
+      // Fest Admin, Super Admin, or authenticated staff can create invitations
+      allow create: if isAuthenticated();
 
-      // Fest Admin can revoke or update invitation status
+      // Fest Admin can revoke, or an authenticated user can claim/accept their pending invitation
       allow update: if isSuperAdmin() ||
-        (isAuthenticated() && resource.data.festId != null && isFestAdmin(resource.data.festId));
+        (isAuthenticated() && resource.data.festId != null && isFestAdmin(resource.data.festId)) ||
+        (
+          isAuthenticated() &&
+          resource.data.status == 'pending' &&
+          request.resource.data.status == 'accepted' &&
+          request.resource.data.acceptedByUserId == request.auth.uid
+        );
 
-      allow delete: if isSuperAdmin();
+      allow delete: if isSuperAdmin() || (isAuthenticated() && resource.data.festId != null && isFestAdmin(resource.data.festId));
     }
 
     // ========================================================

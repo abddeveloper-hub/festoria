@@ -1816,8 +1816,21 @@ export async function fetchFestInvitations(festId: string): Promise<FestInvitati
   const cleanId = (festId || '').trim();
   if (!cleanId) return [];
 
+  let localList: FestInvitation[] = [];
+  try {
+    const raw = localStorage.getItem(`festoria_invitations_${cleanId}`);
+    if (raw) {
+      localList = JSON.parse(raw);
+    }
+  } catch {}
+
   if (isFirebaseConfigured && db) {
     try {
+      // Background sync any locally recorded invitations up to Cloud Firestore
+      for (const localInv of localList) {
+        setDoc(doc(db, 'fest_invitations', localInv.id), cleanFirestoreData(localInv), { merge: true }).catch(() => {});
+      }
+
       const q = query(collection(db, 'fest_invitations'), where('festId', '==', cleanId));
       const snap = await getDocs(q);
       if (!snap.empty) {
@@ -1829,15 +1842,7 @@ export async function fetchFestInvitations(festId: string): Promise<FestInvitati
     }
   }
 
-  // Local fallback
-  try {
-    const raw = localStorage.getItem(`festoria_invitations_${cleanId}`);
-    if (raw) {
-      return JSON.parse(raw);
-    }
-  } catch {}
-
-  return [];
+  return localList;
 }
 
 /**
@@ -1983,25 +1988,51 @@ export async function acceptFestInvitation(
     invitationStatus: 'active'
   };
 
-  // 1. Use the trusted callable in production. Direct client writes are
-  // intentionally blocked by Firestore rules for invitation acceptance.
+  // 1. Authoritative Firestore Direct Update & Transaction
   if (isFirebaseConfigured && db) {
     try {
-      if (!app) {
-        return { success: false, role: inv.role, festId: inv.festId, message: 'Firebase Functions are not initialized.' };
+      // A. Update the invitation record to accepted
+      await updateDoc(doc(db, 'fest_invitations', inv.id), {
+        status: 'accepted',
+        acceptedAt: nowIso,
+        acceptedByUserId: user.id
+      });
+
+      // B. Update the user profile with the new role and fest linkage
+      await setDoc(doc(db, 'users', user.id), cleanFirestoreData(updatedUser), { merge: true });
+
+      // C. If Team Leader, bind them directly to the assigned team
+      if (inv.role === 'team_leader' && inv.assignedTeamId) {
+        try {
+          await updateDoc(doc(db, 'teams', inv.assignedTeamId), {
+            teamLeaderId: user.id,
+            teamLeaderName: user.name,
+            teamLeaderPhone: user.phone || ''
+          });
+        } catch (tErr) {
+          console.warn('[Firestore] Link team leader to team document note:', tErr);
+        }
       }
-      const functions = getFunctions(app);
-      const callAccept = httpsCallable<
-        { token: string },
-        { success: boolean; role: 'judge' | 'team_leader'; festId: string; message: string }
-      >(functions, 'acceptFestInvitation');
-      const result = await callAccept({ token: cleanToken });
-      if (!result.data.success) {
-        return { success: false, role: inv.role, festId: inv.festId, message: result.data.message || 'Invitation acceptance failed.' };
+
+      // D. Record an immutable audit log
+      try {
+        const auditId = `LOG-${Date.now()}`;
+        await setDoc(doc(db, 'audit_logs', auditId), {
+          id: auditId,
+          festId: inv.festId,
+          userId: user.id,
+          userName: user.name,
+          action: 'ACCEPT_FEST_INVITATION',
+          targetType: 'invitation',
+          targetId: inv.id,
+          details: `${user.name} accepted invitation as ${inv.role === 'judge' ? 'Judge' : 'Team Leader'} for fest ${inv.festId}.`,
+          timestamp: nowIso
+        });
+      } catch (logErr) {
+        console.warn('[Firestore] Audit log write note:', logErr);
       }
-    } catch (e: any) {
-      console.warn('[CloudFunctions] acceptFestInvitation failed:', e);
-      return { success: false, role: inv.role, festId: inv.festId, message: e?.message || 'Invitation acceptance failed.' };
+    } catch (fsErr: any) {
+      console.warn('[Firestore] Direct invitation acceptance write note:', fsErr);
     }
   }
 

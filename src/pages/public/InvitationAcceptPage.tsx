@@ -59,6 +59,15 @@ export const InvitationAcceptPage: React.FC<InvitationAcceptPageProps> = ({ toke
     if (!extractedToken && typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       extractedToken = params.get('token') || params.get('t') || '';
+
+      // Also support hash parameters if token was attached after hash routing (e.g. /#/?token=... or /#/invite?token=...)
+      if (!extractedToken && window.location.hash.includes('token=')) {
+        const hashQuery = window.location.hash.includes('?')
+          ? window.location.hash.split('?')[1]
+          : window.location.hash.replace(/^#\/?/, '');
+        const hashParams = new URLSearchParams(hashQuery);
+        extractedToken = hashParams.get('token') || hashParams.get('t') || '';
+      }
     }
     setToken(extractedToken);
 
@@ -178,6 +187,14 @@ export const InvitationAcceptPage: React.FC<InvitationAcceptPageProps> = ({ toke
       });
 
       if (!regRes.success || !regRes.user) {
+        // If an account with this phone/email already exists, attempt automatic sign-in with the provided password
+        if (regRes.message?.includes('already registered') || regRes.message?.includes('already exists')) {
+          const authRes = await signInWithCredentials({ identifier: identifier.trim(), password });
+          if (authRes.success && authRes.user) {
+            await handleClaim(authRes.user);
+            return;
+          }
+        }
         setFormError(regRes.message || 'Registration failed.');
         return;
       }
