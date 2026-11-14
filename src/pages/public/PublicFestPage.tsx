@@ -41,7 +41,10 @@ import {
   Menu,
   Crown,
   FileText,
-  Send
+  Send,
+  Filter,
+  Check,
+  SlidersHorizontal
 } from 'lucide-react';
 
 interface PublicFestPageProps {
@@ -66,7 +69,8 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
     categories: festCategories,
     leaderboard,
     getCategoryScoreboard,
-    addToast
+    addToast,
+    scheduleSlots
   } = useFest();
 
   // Contact Message form state
@@ -167,6 +171,11 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
   const [activeCategory, setActiveCategory] = useState('All');
   const [selectedPhoto, setSelectedPhoto] = useState<FestPhotoItem | null>(null);
 
+  // Timetable & Schedule filters
+  const [scheduleCategoryFilter, setScheduleCategoryFilter] = useState('All');
+  const [scheduleStageFilter, setScheduleStageFilter] = useState<'all' | 'stage' | 'off_stage'>('all');
+  const [scheduleSearchQuery, setScheduleSearchQuery] = useState('');
+
   // Load published data if not preview
   useEffect(() => {
     if (previewData) {
@@ -237,6 +246,52 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
   const publishedResults = results.filter((r) => r.published);
   const publicAnnouncements = announcements.filter((a) => a.isPublic);
   const publishedProgrammes = programmes.filter((p) => p.status !== 'draft');
+
+  // Schedule slots scoped to this festival
+  const festScheduleSlots = React.useMemo(() => {
+    return (scheduleSlots || []).filter((s) => !s.festId || s.festId === targetFestId);
+  }, [scheduleSlots, targetFestId]);
+
+  // Available categories in the schedule (preserving fest category order)
+  const availableScheduleCategories = React.useMemo(() => {
+    const catsFromProgs = Array.from(new Set(publishedProgrammes.map((p) => p.category).filter(Boolean)));
+    const configuredNames = (festCategories || []).map((c) => c.name);
+    const ordered: string[] = [];
+    configuredNames.forEach((name) => {
+      if (catsFromProgs.includes(name) && !ordered.includes(name)) {
+        ordered.push(name);
+      }
+    });
+    catsFromProgs.forEach((cat) => {
+      if (!ordered.includes(cat)) ordered.push(cat);
+    });
+    return ordered;
+  }, [publishedProgrammes, festCategories]);
+
+  // Filtered programmes for schedule view
+  const filteredScheduleProgrammes = React.useMemo(() => {
+    return publishedProgrammes.filter((p) => {
+      if (scheduleCategoryFilter !== 'All' && p.category !== scheduleCategoryFilter) {
+        return false;
+      }
+      if (scheduleStageFilter === 'stage') {
+        if (p.stageType === 'off_stage') return false;
+      } else if (scheduleStageFilter === 'off_stage') {
+        if (p.stageType !== 'off_stage') return false;
+      }
+      if (scheduleSearchQuery.trim()) {
+        const q = scheduleSearchQuery.trim().toLowerCase();
+        const matchesName = (p.name || '').toLowerCase().includes(q);
+        const matchesCode = (p.code || '').toLowerCase().includes(q);
+        const matchesVenue = (p.venue || '').toLowerCase().includes(q);
+        const matchesCat = (p.category || '').toLowerCase().includes(q);
+        if (!matchesName && !matchesCode && !matchesVenue && !matchesCat) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [publishedProgrammes, scheduleCategoryFilter, scheduleStageFilter, scheduleSearchQuery]);
 
   // Participants scoped to this festival
   const festParticipants = React.useMemo(() => {
@@ -2434,42 +2489,383 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       {/* 7. TIMETABLE / SCHEDULE TAB                                          */}
       {/* ==================================================================== */}
       {activeTabSection === 'schedule' && (
-        <section className="py-12 max-w-7xl mx-auto px-4 sm:px-8 space-y-6">
-          <div className="border-b border-[#e2e8f0] pb-4">
-            <h3 className="text-2xl font-extrabold tracking-tight text-[#0f172a] font-display">
-              Festival Timetable & Stages
-            </h3>
-            <p className="text-xs text-[#64748b] mt-1">
-              Official schedule for stage events, contests, and ceremonies.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {publishedProgrammes.map((p) => (
-              <div
-                key={p.id}
-                className="bg-white border border-[#e2e8f0] rounded-2xl p-4 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04)] flex items-start gap-3.5 hover:border-[#99f6e4] transition-colors"
-              >
-                <div className="w-10 h-10 rounded-xl bg-[#f0fdfa] border border-[#ccfbf1] text-[#0d9488] flex items-center justify-center font-bold text-xs shrink-0">
-                  <Clock className="w-4 h-4 text-[#0d9488]" />
+        <section className="py-10 max-w-7xl mx-auto px-4 sm:px-8 space-y-8 pb-32">
+          {/* Header & Overview Stats */}
+          <div className="bg-gradient-to-br from-[#f8fafc] via-white to-[#f0fdfa] border border-[#e2e8f0] rounded-3xl p-6 sm:p-8 shadow-xs">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div>
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0d9488]/10 text-[#0d9488] font-bold text-xs uppercase tracking-wider mb-2">
+                  <Clock className="w-3.5 h-3.5" />
+                  Official Festival Programme
                 </div>
-                <div className="flex-1">
-                  <span className="text-[10px] font-bold text-[#0d9488] uppercase tracking-wider">
-                    {p.category}
-                  </span>
-                  <h4 className="text-sm font-bold text-[#0f172a] mt-0.5">{p.name}</h4>
-                  <div className="flex items-center gap-3 text-xs text-[#64748b] mt-2">
-                    <span className="flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5 text-[#0d9488]" />
-                      {p.venue || 'Main Stage'}
-                    </span>
-                    <span>•</span>
-                    <span>Max {p.maxParticipantsPerTeam || 1} per house</span>
+                <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#0f172a] font-display">
+                  Festival Timetable & Stages
+                </h3>
+                <p className="text-sm text-[#64748b] mt-1 max-w-2xl">
+                  Explore all competition stages, venues, timings, and rules organized by age division and category.
+                </p>
+              </div>
+
+              {/* Quick Stat Badges */}
+              <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
+                <div className="bg-white border border-[#e2e8f0] rounded-2xl px-4 py-2.5 shadow-2xs">
+                  <div className="text-xs font-semibold text-[#64748b]">Total Events</div>
+                  <div className="text-xl font-black text-[#0f172a] font-mono">{publishedProgrammes.length}</div>
+                </div>
+                <div className="bg-white border border-[#e2e8f0] rounded-2xl px-4 py-2.5 shadow-2xs">
+                  <div className="text-xs font-semibold text-[#64748b]">Divisions</div>
+                  <div className="text-xl font-black text-[#0d9488] font-mono">{availableScheduleCategories.length}</div>
+                </div>
+                <div className="bg-white border border-[#e2e8f0] rounded-2xl px-4 py-2.5 shadow-2xs">
+                  <div className="text-xs font-semibold text-[#64748b]">On-Stage</div>
+                  <div className="text-xl font-black text-teal-700 font-mono">
+                    {publishedProgrammes.filter((p) => p.stageType !== 'off_stage').length}
+                  </div>
+                </div>
+                <div className="bg-white border border-[#e2e8f0] rounded-2xl px-4 py-2.5 shadow-2xs">
+                  <div className="text-xs font-semibold text-[#64748b]">Off-Stage</div>
+                  <div className="text-xl font-black text-amber-700 font-mono">
+                    {publishedProgrammes.filter((p) => p.stageType === 'off_stage').length}
                   </div>
                 </div>
               </div>
-            ))}
+            </div>
           </div>
+
+          {/* Interactive Filtering & Search Control Toolbar */}
+          <div className="bg-white border border-[#e2e8f0] rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              {/* Search Bar */}
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-[#94a3b8] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search by event name, code (e.g. LOZ-01), venue..."
+                  value={scheduleSearchQuery}
+                  onChange={(e) => setScheduleSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-9 py-2.5 text-sm bg-[#f8fafc] border border-[#e2e8f0] rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0d9488] focus:border-transparent transition-all"
+                />
+                {scheduleSearchQuery && (
+                  <button
+                    onClick={() => setScheduleSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#94a3b8] hover:text-[#0f172a]"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Stage Type Toggle */}
+              <div className="flex items-center gap-1 bg-[#f1f5f9] p-1 rounded-xl shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setScheduleStageFilter('all')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    scheduleStageFilter === 'all'
+                      ? 'bg-white text-[#0f172a] shadow-xs'
+                      : 'text-[#64748b] hover:text-[#0f172a]'
+                  }`}
+                >
+                  All ({publishedProgrammes.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScheduleStageFilter('stage')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    scheduleStageFilter === 'stage'
+                      ? 'bg-white text-teal-800 shadow-xs'
+                      : 'text-[#64748b] hover:text-[#0f172a]'
+                  }`}
+                >
+                  🎭 On-Stage ({publishedProgrammes.filter((p) => p.stageType !== 'off_stage').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScheduleStageFilter('off_stage')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    scheduleStageFilter === 'off_stage'
+                      ? 'bg-white text-amber-800 shadow-xs'
+                      : 'text-[#64748b] hover:text-[#0f172a]'
+                  }`}
+                >
+                  🎨 Off-Stage ({publishedProgrammes.filter((p) => p.stageType === 'off_stage').length})
+                </button>
+              </div>
+            </div>
+
+            {/* Category Division Pills */}
+            <div className="pt-2 border-t border-[#f1f5f9]">
+              <div className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <SlidersHorizontal className="w-3.5 h-3.5 text-[#0d9488]" />
+                Filter by Category Division:
+              </div>
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+                <button
+                  type="button"
+                  onClick={() => setScheduleCategoryFilter('All')}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0 ${
+                    scheduleCategoryFilter === 'All'
+                      ? 'bg-[#0f172a] text-white shadow-xs'
+                      : 'bg-[#f8fafc] text-[#475569] border border-[#e2e8f0] hover:bg-slate-100'
+                  }`}
+                >
+                  All Divisions ({publishedProgrammes.length})
+                </button>
+
+                {availableScheduleCategories.map((catName) => {
+                  const count = publishedProgrammes.filter((p) => p.category === catName).length;
+                  const catConfig = festCategories?.find((c) => c.name === catName);
+                  const isSelected = scheduleCategoryFilter === catName;
+                  const ageLabel = catConfig?.minAge !== undefined && catConfig?.maxAge !== undefined
+                    ? `Ages ${catConfig.minAge}-${catConfig.maxAge}`
+                    : catConfig?.minAge !== undefined
+                    ? `Ages ${catConfig.minAge}+`
+                    : catConfig?.maxAge !== undefined
+                    ? `Up to age ${catConfig.maxAge}`
+                    : catConfig?.description;
+
+                  return (
+                    <button
+                      key={catName}
+                      type="button"
+                      onClick={() => setScheduleCategoryFilter(catName)}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 ${
+                        isSelected
+                          ? 'bg-[#0d9488] text-white shadow-xs'
+                          : 'bg-[#f8fafc] text-[#475569] border border-[#e2e8f0] hover:bg-slate-100'
+                      }`}
+                    >
+                      <span>{catName}</span>
+                      {ageLabel && (
+                        <span className={`text-[10px] font-normal ${isSelected ? 'text-teal-100' : 'text-[#94a3b8]'}`}>
+                          ({ageLabel})
+                        </span>
+                      )}
+                      <span
+                        className={`text-[10px] font-black px-1.5 py-0.2 rounded-full ${
+                          isSelected ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+                        }`}
+                      >
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Active Filter Clear Bar */}
+            {(scheduleCategoryFilter !== 'All' || scheduleStageFilter !== 'all' || scheduleSearchQuery.trim()) && (
+              <div className="pt-2 border-t border-[#f1f5f9] flex items-center justify-between text-xs text-[#64748b]">
+                <span>
+                  Showing <strong className="text-[#0f172a]">{filteredScheduleProgrammes.length}</strong> of{' '}
+                  <strong className="text-[#0f172a]">{publishedProgrammes.length}</strong> programmes
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setScheduleCategoryFilter('All');
+                    setScheduleStageFilter('all');
+                    setScheduleSearchQuery('');
+                  }}
+                  className="font-bold text-[#0d9488] hover:text-[#0f766e] hover:underline"
+                >
+                  Reset all filters
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Helper Card Renderer */}
+          {(() => {
+            const renderCard = (p: typeof publishedProgrammes[0]) => {
+              const slot = festScheduleSlots.find((s) => s.programmeId === p.id);
+              const startTime = slot?.startTime || p.startTime;
+              const endTime = slot?.endTime || p.endTime;
+              const slotDate = slot?.date || p.date;
+              const timeDisplay =
+                startTime && endTime ? `${startTime} - ${endTime}` : startTime ? `From ${startTime}` : 'Schedule TBA';
+              const isOffStage = p.stageType === 'off_stage';
+              const isTeam = p.type === 'team' || p.programmeType === 'team';
+
+              return (
+                <div
+                  key={p.id}
+                  className="bg-white border border-[#e2e8f0] hover:border-[#0d9488]/40 hover:shadow-md transition-all duration-200 rounded-2xl p-5 flex flex-col justify-between group"
+                >
+                  <div className="space-y-3">
+                    {/* Header badge row */}
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-mono text-xs font-bold px-2.5 py-0.5 rounded-md bg-[#0f172a] text-white tracking-wider shadow-2xs">
+                          {p.code}
+                        </span>
+                        {isOffStage ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                            🎨 Off-Stage
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-teal-50 text-teal-800 border border-teal-200">
+                            🎭 On-Stage
+                          </span>
+                        )}
+                        <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                          {isTeam ? '👥 Team' : '👤 Individual'}
+                        </span>
+                      </div>
+                      {p.status === 'ongoing' ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 animate-pulse">
+                          LIVE NOW
+                        </span>
+                      ) : p.status === 'completed' ? (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
+                          Concluded
+                        </span>
+                      ) : null}
+                    </div>
+
+                    {/* Programme Title */}
+                    <div>
+                      <h4 className="text-base font-bold text-[#0f172a] group-hover:text-[#0d9488] transition-colors leading-snug">
+                        {p.name}
+                      </h4>
+                      <p className="text-xs font-medium text-[#0d9488] mt-0.5">{p.category}</p>
+                    </div>
+
+                    {/* Details: Venue & Timing */}
+                    <div className="space-y-2 pt-1 border-t border-[#f1f5f9]">
+                      <div className="flex items-center gap-2 text-xs text-[#334155]">
+                        <MapPin className="w-4 h-4 text-[#0d9488] shrink-0" />
+                        <span className="font-medium truncate">{p.venue || slot?.venue || 'Auditorium / Main Hall'}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-xs text-[#334155]">
+                        <Clock className="w-4 h-4 text-[#0284c7] shrink-0" />
+                        <span className="font-medium">
+                          {slotDate ? `${slotDate} • ` : ''}
+                          {timeDisplay}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Footer info: Limits */}
+                  <div className="mt-4 pt-3 border-t border-[#f8fafc] flex items-center justify-between text-[11px] text-[#64748b]">
+                    <span>
+                      {isTeam
+                        ? `Min ${p.minTeamMembers || 2} - Max ${p.maxTeamMembers || 6} / house`
+                        : `Max ${p.maxParticipantsPerTeam || 1} participant / house`}
+                    </span>
+                    {p.rules && (
+                      <span className="text-[#0d9488] font-medium" title={p.rules}>
+                        Rules available
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            };
+
+            // CASE 1: When no filter is active, display cleanly structured by Category Sections!
+            if (scheduleCategoryFilter === 'All' && !scheduleSearchQuery.trim() && scheduleStageFilter === 'all') {
+              if (publishedProgrammes.length === 0) {
+                return (
+                  <div className="bg-white border border-[#e2e8f0] rounded-3xl p-12 text-center max-w-lg mx-auto">
+                    <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 mx-auto flex items-center justify-center mb-3">
+                      <Clock className="w-6 h-6" />
+                    </div>
+                    <h4 className="text-base font-bold text-[#0f172a]">No Programmes Published Yet</h4>
+                    <p className="text-xs text-[#64748b] mt-1">
+                      The official festival timetable is currently being finalized by the organizing committee.
+                    </p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-10">
+                  {availableScheduleCategories.map((catName) => {
+                    const catProgrammes = publishedProgrammes.filter((p) => p.category === catName);
+                    if (catProgrammes.length === 0) return null;
+                    const catConfig = festCategories?.find((c) => c.name === catName);
+                    const ageLabel = catConfig?.minAge !== undefined && catConfig?.maxAge !== undefined
+                      ? `Ages ${catConfig.minAge}-${catConfig.maxAge}`
+                      : catConfig?.minAge !== undefined
+                      ? `Ages ${catConfig.minAge}+`
+                      : catConfig?.maxAge !== undefined
+                      ? `Up to age ${catConfig.maxAge}`
+                      : catConfig?.description;
+
+                    return (
+                      <div key={catName} className="space-y-4">
+                        {/* Category Section Header Banner */}
+                        <div className="flex items-center justify-between gap-4 pb-3 border-b-2 border-[#0d9488]/20">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-[#0d9488]/10 text-[#0d9488] flex items-center justify-center font-black text-sm">
+                              {catName.charAt(0)}
+                            </div>
+                            <div>
+                              <h4 className="text-xl font-extrabold text-[#0f172a] tracking-tight">{catName}</h4>
+                              {ageLabel && (
+                                <p className="text-xs text-[#64748b]">Age Division: {ageLabel}</p>
+                              )}
+                            </div>
+                          </div>
+                          <span className="text-xs font-bold px-3 py-1 rounded-full bg-[#f1f5f9] text-[#334155] border border-[#e2e8f0]">
+                            {catProgrammes.length} {catProgrammes.length === 1 ? 'Competition' : 'Competitions'}
+                          </span>
+                        </div>
+
+                        {/* Category Programme Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {catProgrammes.map(renderCard)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            }
+
+            // CASE 2: Filters or search query are active
+            if (filteredScheduleProgrammes.length === 0) {
+              return (
+                <div className="bg-white border border-[#e2e8f0] rounded-3xl p-12 text-center max-w-lg mx-auto">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-500 mx-auto flex items-center justify-center mb-3">
+                    <Search className="w-6 h-6" />
+                  </div>
+                  <h4 className="text-base font-bold text-[#0f172a]">No Matching Programmes Found</h4>
+                  <p className="text-xs text-[#64748b] mt-1">
+                    Try adjusting your search keywords, category division, or stage filter.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setScheduleCategoryFilter('All');
+                      setScheduleStageFilter('all');
+                      setScheduleSearchQuery('');
+                    }}
+                    className="mt-4 px-4 py-2 bg-[#0d9488] text-white rounded-xl text-xs font-bold hover:bg-[#0f766e] transition-colors"
+                  >
+                    Clear All Filters
+                  </button>
+                </div>
+              );
+            }
+
+            return (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between text-xs text-[#64748b]">
+                  <span className="font-semibold text-[#0f172a]">
+                    Showing {filteredScheduleProgrammes.length} filtered results:
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredScheduleProgrammes.map(renderCard)}
+                </div>
+              </div>
+            );
+          })()}
         </section>
       )}
 

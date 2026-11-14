@@ -8,7 +8,8 @@ import {
 } from '../../firebase/firestoreService';
 import {
   signInWithCredentials,
-  registerParticipantWithCredentials
+  registerParticipantWithCredentials,
+  registerStaffWithCredentials
 } from '../../firebase/authService';
 import {
   ShieldCheck,
@@ -155,6 +156,10 @@ export const InvitationAcceptPage: React.FC<InvitationAcceptPageProps> = ({ toke
   // Register & Claim
   const handleRegisterAndClaim = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!invitation) {
+      setFormError('Invitation is not loaded. Please refresh the page.');
+      return;
+    }
     if (!name.trim() || !identifier.trim() || !password) {
       setFormError('Please fill in all required registration fields.');
       return;
@@ -176,14 +181,16 @@ export const InvitationAcceptPage: React.FC<InvitationAcceptPageProps> = ({ toke
       const email = isEmail ? identifier.trim() : `${identifier.replace(/[^0-9]/g, '')}@festoria.app`;
       const phone = !isEmail ? identifier.trim() : '+919876543210';
 
-      const regRes = await registerParticipantWithCredentials({
+      const regRes = await registerStaffWithCredentials({
         name: name.trim(),
         email,
         phone,
         password,
         confirmPassword,
-        college: invitation?.assignedTeamName || 'University',
-        festId: invitation?.festId || 'FEST-01'
+        role: invitation.role,
+        festId: invitation.festId,
+        linkedTeamId: invitation.role === 'team_leader' ? invitation.assignedTeamId : undefined,
+        linkedJudgeId: invitation.role === 'judge' ? invitation.assignedJudgeId : undefined
       });
 
       if (!regRes.success || !regRes.user) {

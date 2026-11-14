@@ -1040,6 +1040,136 @@ export async function registerOrganizerWithCredentials(data: {
 }
 
 /**
+ * Register a Staff account (Team Leader or Judge) without creating student participant records.
+ */
+export async function registerStaffWithCredentials(data: {
+  name: string;
+  email: string;
+  phone: string;
+  password: string;
+  confirmPassword?: string;
+  role: 'team_leader' | 'judge';
+  festId: string;
+  linkedTeamId?: string;
+  linkedJudgeId?: string;
+}): Promise<RegistrationResult> {
+  const { name, email, phone, password, confirmPassword, role, festId, linkedTeamId, linkedJudgeId } = data;
+
+  if (!name || name.trim().length < 2) {
+    return { success: false, message: 'Please enter your full name.' };
+  }
+  if (!email || !isEmailIdentifier(email)) {
+    return { success: false, message: 'Please enter a valid email address.' };
+  }
+  const cleanEmail = email.trim().toLowerCase();
+
+  const normalizedPhone = normalizePhoneNumber(phone);
+  if (!normalizedPhone || normalizedPhone.length < 10) {
+    return { success: false, message: 'Please enter a valid 10-digit mobile number.' };
+  }
+
+  if (!password || password.length < 6) {
+    return { success: false, message: 'Password must be at least 6 characters.' };
+  }
+  if (confirmPassword && password !== confirmPassword) {
+    return { success: false, message: 'Passwords do not match.' };
+  }
+
+  const firebaseAuth = auth || getFirebaseAuth();
+  const firestoreDb = db || getFirebaseDb();
+
+  if (!isFirebaseConfigured || !firebaseAuth || !firestoreDb) {
+    return { success: false, message: 'Authentication service unavailable.' };
+  }
+
+  // Check duplicate phone
+  try {
+    const qPhone = query(collection(firestoreDb, 'users'), where('phone', '==', normalizedPhone));
+    const snapPhone = await getDocs(qPhone);
+    if (!snapPhone.empty) {
+      return { success: false, message: 'An account with this mobile number already exists. Please sign in.' };
+    }
+  } catch {}
+
+  let uid: string;
+  try {
+    const cred = await createUserWithEmailAndPassword(firebaseAuth, cleanEmail, password);
+    uid = cred.user.uid;
+    try {
+      await updateProfile(cred.user, { displayName: name.trim() });
+    } catch {}
+  } catch (err: any) {
+    if (err.code === 'auth/unauthorized-domain' || err.message?.includes('unauthorized-domain')) {
+      const localUid = 'LOCAL-STF-' + Date.now().toString(36);
+      const localUserProfile: User = {
+        id: localUid,
+        name: name.trim(),
+        email: cleanEmail,
+        phone: normalizedPhone,
+        phoneVerified: true,
+        emailVerified: false,
+        role: role,
+        status: 'active',
+        festId: festId,
+        linkedTeamId: linkedTeamId,
+        linkedJudgeId: linkedJudgeId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      StorageService.saveUsers([...StorageService.getUsers(), localUserProfile]);
+      StorageService.setCurrentUser(localUserProfile);
+      return {
+        success: true,
+        message: 'Account created successfully in demo mode.',
+        user: localUserProfile
+      };
+    }
+    if (err.code === 'auth/operation-not-allowed' || err.message?.includes('operation-not-allowed')) {
+      return {
+        success: false,
+        message: 'Email/Password registration is disabled in your Firebase Console.'
+      };
+    }
+    if (err.code === 'auth/email-already-in-use') {
+      return { success: false, message: 'An account with this email address already exists. Please sign in instead.' };
+    }
+    return { success: false, message: err.message || 'Registration failed.' };
+  }
+
+  const nowIso = new Date().toISOString();
+  const userProfile: User = {
+    id: uid,
+    name: name.trim(),
+    email: cleanEmail,
+    phone: normalizedPhone,
+    phoneVerified: true,
+    emailVerified: false,
+    role: role,
+    status: 'active',
+    festId: festId,
+    linkedTeamId: linkedTeamId,
+    linkedJudgeId: linkedJudgeId,
+    createdAt: nowIso,
+    updatedAt: nowIso
+  };
+
+  try {
+    await setDoc(doc(firestoreDb, 'users', uid), userProfile);
+  } catch (saveErr) {
+    console.error('[Firebase Auth] Failed to save staff profile:', saveErr);
+  }
+
+  StorageService.setCurrentUser(userProfile);
+
+  return {
+    success: true,
+    message: `${role === 'judge' ? 'Official Judge' : 'Team Leader'} account created successfully.`,
+    userId: uid,
+    user: userProfile
+  };
+}
+
+/**
  * Send Password Reset instructions via Email or Registered Mobile Number.
  * Never exposes full account email when looked up by phone number.
  */

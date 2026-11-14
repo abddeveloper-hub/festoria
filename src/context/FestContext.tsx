@@ -66,6 +66,7 @@ import {
   fetchUsersFromFirestore,
   deleteUserFromFirestore,
   saveParticipantToFirestore,
+  deleteParticipantFromFirestore,
   saveTeamToFirestore,
   deleteTeamFromFirestore,
   saveUserToFirestore,
@@ -1328,8 +1329,9 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
   const deleteParticipant = (id: string) => {
     const target = participants.find((p) => p.id === id);
     setParticipants((prev) => prev.filter((p) => p.id !== id));
+    deleteParticipantFromFirestore(id).catch((err) => console.warn('[Firestore] deleteParticipant error:', err));
     logActivity('DELETE_PARTICIPANT', 'participant', id, `Removed participant ${target?.name || id}.`);
-    addToast('info', 'Participant Removed', 'The participant record was removed.');
+    addToast('info', 'Participant Removed', 'The participant record was permanently removed.');
   };
 
   const bulkImportParticipants = (newItems: Omit<Participant, 'id' | 'createdAt'>[]) => {

@@ -533,6 +533,25 @@ export async function saveParticipantToFirestore(participant: Participant): Prom
   }
 }
 
+export async function deleteParticipantFromFirestore(participantId: string): Promise<void> {
+  const participants = StorageService.getParticipants();
+  StorageService.saveParticipants(participants.filter((p) => p.id !== participantId));
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent('festoria_participants_changed', { detail: { participantId } })
+    );
+  }
+
+  if (isFirebaseConfigured && db) {
+    try {
+      await deleteDoc(doc(db, 'participants', participantId));
+    } catch (e) {
+      console.warn('[Firestore] deleteParticipantFromFirestore error:', e);
+    }
+  }
+}
+
 /**
  * Real-time listener for pending/roster participants for a specific team.
  * Returns an unsubscribe cleanup callback.
@@ -2083,6 +2102,26 @@ export async function acceptFestInvitation(
           });
         } catch (jErr) {
           console.warn('[Firestore] Link judge to judge document note:', jErr);
+        }
+      }
+
+      // C3. Purge any stray participant records so Team Leaders and Judges never appear in the student participant directory
+      if (inv.role === 'team_leader' || inv.role === 'judge') {
+        try {
+          const qPart = query(collection(db, 'participants'), where('userId', '==', user.id));
+          const snapPart = await getDocs(qPart);
+          for (const pDoc of snapPart.docs) {
+            await deleteDoc(doc(db, 'participants', pDoc.id));
+          }
+          if (user.email) {
+            const qEmail = query(collection(db, 'participants'), where('email', '==', user.email.toLowerCase()));
+            const snapEmail = await getDocs(qEmail);
+            for (const pDoc of snapEmail.docs) {
+              await deleteDoc(doc(db, 'participants', pDoc.id));
+            }
+          }
+        } catch (cleanupErr) {
+          console.warn('[Firestore] Stray participant cleanup note:', cleanupErr);
         }
       }
 

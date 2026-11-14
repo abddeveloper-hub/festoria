@@ -601,34 +601,64 @@ export const ParticipantsPage: React.FC = () => {
 
           {/* Registered Programmes multi-select checkboxes */}
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1.5">
-              Assigned Programmes ({formData.registeredProgrammes.length} selected)
-            </label>
-            <div className="max-h-40 overflow-y-auto border border-slate-200 rounded p-2.5 space-y-1.5 bg-slate-50/50">
-              {programmes.map((prog) => {
-                const checked = formData.registeredProgrammes.includes(prog.id);
-                return (
-                  <label
-                    key={prog.id}
-                    className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer hover:text-slate-900"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => {
-                        const newProgList = checked
-                          ? formData.registeredProgrammes.filter((id) => id !== prog.id)
-                          : [...formData.registeredProgrammes, prog.id];
-                        setFormData({ ...formData, registeredProgrammes: newProgList });
-                      }}
-                      className="rounded border-slate-300 text-slate-900 focus:ring-0"
-                    />
-                    <span className="font-mono text-[11px] text-slate-500">{prog.code}</span>
-                    <span>{prog.name}</span>
-                    <span className="text-[10px] text-slate-400 font-mono">({prog.category})</span>
-                  </label>
-                );
-              })}
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-medium text-slate-700">
+                Assigned Programmes ({formData.registeredProgrammes.length} selected)
+              </label>
+              {formData.category && (
+                <span className="text-[10px] text-slate-500 font-normal">
+                  Showing programmes for: <strong className="text-slate-800">{formData.category}</strong>
+                </span>
+              )}
+            </div>
+            <div className="max-h-48 overflow-y-auto border border-slate-200 rounded p-2.5 space-y-1 bg-slate-50/50">
+              {(() => {
+                const availableProgrammes = programmes.filter((prog) => {
+                  if (!formData.category) return true;
+                  const pCat = (prog.category || '').toLowerCase().trim();
+                  const fCat = (formData.category || '').toLowerCase().trim();
+                  // Show only programmes allotted to this category, general events, or already checked
+                  return (
+                    pCat === fCat ||
+                    pCat === 'general' ||
+                    pCat.startsWith('general') ||
+                    formData.registeredProgrammes.includes(prog.id)
+                  );
+                });
+
+                if (availableProgrammes.length === 0) {
+                  return (
+                    <div className="py-4 text-center text-xs text-slate-400 italic">
+                      No competition programmes allotted to category "{formData.category}".
+                    </div>
+                  );
+                }
+
+                return availableProgrammes.map((prog) => {
+                  const checked = formData.registeredProgrammes.includes(prog.id);
+                  return (
+                    <label
+                      key={prog.id}
+                      className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer hover:text-slate-900 hover:bg-slate-100/60 p-1 rounded transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {
+                          const newProgList = checked
+                            ? formData.registeredProgrammes.filter((id) => id !== prog.id)
+                            : [...formData.registeredProgrammes, prog.id];
+                          setFormData({ ...formData, registeredProgrammes: newProgList });
+                        }}
+                        className="rounded border-slate-300 text-slate-900 focus:ring-0"
+                      />
+                      <span className="font-mono text-[11px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">{prog.code}</span>
+                      <span className="font-medium text-slate-800">{prog.name}</span>
+                      <span className="text-[10px] text-slate-400 font-mono ml-auto">({prog.category})</span>
+                    </label>
+                  );
+                });
+              })()}
             </div>
           </div>
 
