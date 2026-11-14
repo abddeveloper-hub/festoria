@@ -19,6 +19,7 @@ import {
   Eye,
   Edit2,
   Trash2,
+  Copy,
   MapPin,
   Clock,
   Users,
@@ -69,6 +70,7 @@ export const ProgrammesPage: React.FC = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [editingProgramme, setEditingProgramme] = useState<Programme | null>(null);
+  const [copiedFromTitle, setCopiedFromTitle] = useState<string | null>(null);
   const [viewingProgramme, setViewingProgramme] = useState<Programme | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -179,6 +181,7 @@ export const ProgrammesPage: React.FC = () => {
 
   const handleOpenAdd = () => {
     setEditingProgramme(null);
+    setCopiedFromTitle(null);
     setCurrentStep(1);
     setLimitWarning(null);
     setConfirmLimitReduction(false);
@@ -219,6 +222,7 @@ export const ProgrammesPage: React.FC = () => {
 
   const handleOpenEdit = (p: Programme) => {
     setEditingProgramme(p);
+    setCopiedFromTitle(null);
     setCurrentStep(1);
     setLimitWarning(null);
     setConfirmLimitReduction(false);
@@ -249,6 +253,67 @@ export const ProgrammesPage: React.FC = () => {
       criteria: p.criteria.map((c) => ({ ...c })),
       registeredParticipantIds: [...p.registeredParticipantIds],
       registeredTeamIds: [...p.registeredTeamIds],
+    });
+    setIsAddModalOpen(true);
+  };
+
+  const handleOpenCopy = (p: Programme) => {
+    setEditingProgramme(null);
+    setCopiedFromTitle(p.name);
+    setCurrentStep(1);
+    setLimitWarning(null);
+    setConfirmLimitReduction(false);
+
+    // Auto-generate next unique code based on copied programme code
+    const baseCode = p.code.replace(/-COPY(\d*)$/i, '').trim();
+    let suggestedCode = `${baseCode}-COPY`;
+    let counter = 1;
+    while (programmes.some((item) => item.code.trim().toUpperCase() === suggestedCode.toUpperCase())) {
+      counter++;
+      suggestedCode = `${baseCode}-COPY${counter}`;
+    }
+
+    const isTeam = p.type === 'group' || p.type === 'team' || p.programmeType === 'team';
+
+    // Clone scoring criteria with fresh unique IDs
+    const clonedCriteria = p.criteria && p.criteria.length > 0
+      ? p.criteria.map((c, idx) => ({
+          id: `c_${Date.now().toString().slice(-4)}_${idx}`,
+          name: c.name,
+          maxMarks: c.maxMarks,
+        }))
+      : [
+          { id: 'c1', name: 'Content & Originality', maxMarks: 40 },
+          { id: 'c2', name: 'Technical Precision', maxMarks: 35 },
+          { id: 'c3', name: 'Presentation & Timing', maxMarks: 25 },
+        ];
+
+    setFormData({
+      code: suggestedCode,
+      name: `${p.name} (Copy)`,
+      description: p.description || '',
+      rules: p.rules || '',
+      category: p.category,
+      type: isTeam ? 'team' : 'individual',
+      stageType: p.stageType || 'stage',
+      eligibleCategories: p.eligibleCategories?.length ? [...p.eligibleCategories] : [p.category],
+      assignedJudgeIds: [...p.assignedJudgeIds],
+      maxParticipantsPerTeam: p.maxParticipantsPerTeam || 2,
+      minTeamMembers: p.minTeamMembers || 3,
+      maxTeamMembers: p.maxTeamMembers || 8,
+      maxEntriesPerTeam: p.maxEntriesPerTeam || 1,
+      allowMultiTeamProgrammeParticipation: p.allowMultiTeamProgrammeParticipation ?? true,
+      allowMultiEntriesPerParticipant: p.allowMultiEntriesPerParticipant ?? false,
+      venue: p.venue || 'Auditorium Hall A',
+      stage: p.stage || (p.stageType === 'off_stage' ? 'Off-Stage' : 'Stage 1'),
+      date: p.date,
+      startTime: p.startTime,
+      endTime: p.endTime,
+      maxCapacity: p.maxCapacity || 16,
+      status: 'scheduled',
+      criteria: clonedCriteria,
+      registeredParticipantIds: [],
+      registeredTeamIds: [],
     });
     setIsAddModalOpen(true);
   };
@@ -363,12 +428,20 @@ export const ProgrammesPage: React.FC = () => {
     if (editingProgramme) {
       updateProgramme(editingProgramme.id, payload);
       addToast('success', 'Programme Updated', `Saved configurations for ${payload.name}.`);
+      setIsAddModalOpen(false);
+      setCopiedFromTitle(null);
     } else {
-      addProgramme(payload);
-      addToast('success', 'Programme Created', `Added competition ${payload.name}.`);
+      const ok = addProgramme(payload);
+      if (ok) {
+        if (copiedFromTitle) {
+          addToast('success', 'Programme Duplicated', `Created "${payload.name}" copied from ${copiedFromTitle}.`);
+        } else {
+          addToast('success', 'Programme Created', `Added competition ${payload.name}.`);
+        }
+        setIsAddModalOpen(false);
+        setCopiedFromTitle(null);
+      }
     }
-
-    setIsAddModalOpen(false);
   };
 
   const handleCreateCustomCategory = async (e: React.FormEvent) => {
@@ -679,6 +752,13 @@ export const ProgrammesPage: React.FC = () => {
                 {canManage && (
                   <div className="flex items-center gap-1">
                     <button
+                      onClick={() => handleOpenCopy(prog)}
+                      className="p-1 rounded text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"
+                      title="Duplicate / Copy Programme"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                    </button>
+                    <button
                       onClick={() => handleOpenEdit(prog)}
                       className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100"
                       title="Edit Programme"
@@ -701,15 +781,43 @@ export const ProgrammesPage: React.FC = () => {
       </div>
 
       {/* =========================================================================
-          UPGRADED 7-SECTION PROGRAMME CREATION & EDIT MODAL
+          UPGRADED 6-SECTION PROGRAMME CREATION, EDIT & DUPLICATE MODAL
           ========================================================================= */}
       <Modal
         isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        title={editingProgramme ? `Edit Programme: ${editingProgramme.name}` : 'Create New Competition Programme'}
+        onClose={() => {
+          setIsAddModalOpen(false);
+          setCopiedFromTitle(null);
+        }}
+        title={
+          editingProgramme
+            ? `Edit Programme: ${editingProgramme.name}`
+            : copiedFromTitle
+            ? `Duplicate Programme: ${copiedFromTitle}`
+            : 'Create New Competition Programme'
+        }
         maxWidth="2xl"
       >
         <div className="space-y-4">
+          {/* Duplicate Notice Banner */}
+          {copiedFromTitle && !editingProgramme && (
+            <div className="p-3 bg-indigo-50/90 border border-indigo-200 rounded-lg flex items-center justify-between text-indigo-950 text-xs shadow-xs">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 flex-shrink-0">
+                  <Copy className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="font-bold flex items-center gap-1.5">
+                    <span>Duplicating from:</span>
+                    <span className="text-indigo-800 underline underline-offset-2">{copiedFromTitle}</span>
+                  </div>
+                  <div className="text-[11px] text-indigo-700 mt-0.5">
+                    Function settings, stage mode, venue, rubric criteria, and participation limits have been pre-filled. Customize any fields below and publish.
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           {/* 6-Step Navigation Header */}
           <div className="grid grid-cols-6 gap-1 pb-3 border-b border-slate-200">
             {[
@@ -1398,7 +1506,11 @@ export const ProgrammesPage: React.FC = () => {
                     onClick={() => handleSaveProgramme()}
                     className="px-4 py-1.5 text-xs text-white bg-slate-900 rounded hover:bg-slate-800 font-bold"
                   >
-                    {editingProgramme ? 'Save Changes' : 'Publish Programme'}
+                    {editingProgramme
+                      ? 'Save Changes'
+                      : copiedFromTitle
+                      ? 'Publish Copied Programme'
+                      : 'Publish Programme'}
                   </button>
                 )}
               </div>
@@ -1791,15 +1903,30 @@ export const ProgrammesPage: React.FC = () => {
             </div>
 
             <div className="pt-3 border-t border-slate-200 flex justify-between items-center">
-              <button
-                onClick={() => {
-                  setViewingProgramme(null);
-                  navigateToTabWithFilter('scores', { programmeId: viewingProgramme.id });
-                }}
-                className="text-xs font-semibold text-slate-800 hover:underline flex items-center gap-1"
-              >
-                Go to Scoring Sheet &rarr;
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setViewingProgramme(null);
+                    navigateToTabWithFilter('scores', { programmeId: viewingProgramme.id });
+                  }}
+                  className="text-xs font-semibold text-slate-800 hover:underline flex items-center gap-1"
+                >
+                  Go to Scoring Sheet &rarr;
+                </button>
+                {canManage && (
+                  <button
+                    onClick={() => {
+                      const toCopy = viewingProgramme;
+                      setViewingProgramme(null);
+                      handleOpenCopy(toCopy);
+                    }}
+                    className="px-2.5 py-1 text-xs text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded font-semibold inline-flex items-center gap-1 transition-colors"
+                    title="Duplicate this programme and customize"
+                  >
+                    <Copy className="w-3.5 h-3.5" /> Duplicate / Copy
+                  </button>
+                )}
+              </div>
 
               <button
                 onClick={() => setViewingProgramme(null)}
