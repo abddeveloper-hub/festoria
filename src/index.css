@@ -10,7 +10,7 @@
   font-family: var(--font-display);
 }
 
-/* 1. Global Overflow & Windows Scrollbar Shift Guard */
+/* 1. Global Overflow & Mobile Fixed Size Guard */
 html,
 body {
   font-family: var(--font-sans);
@@ -19,11 +19,13 @@ body {
   margin: 0;
   padding: 0;
   width: 100%;
+  max-width: 100%;
   min-height: 100vh;
   min-height: 100dvh;
   overflow-x: hidden;
-  scrollbar-gutter: stable;
   -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;
 }
 
 #root {
@@ -71,11 +73,19 @@ table {
   max-width: 100%;
 }
 
-/* 4. Responsive inputs & form controls */
+/* 4. Responsive inputs & form controls (16px on mobile prevents iOS camera zoom) */
 input,
 select,
 textarea {
   max-width: 100%;
+}
+
+@media screen and (max-width: 768px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
 }
 
 /* 5. Touch target utility class when explicit 44px height is desired */

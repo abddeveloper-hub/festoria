@@ -349,18 +349,18 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
   const categories = ['All', ...Array.from(new Set(allPhotos.map((p) => p.category || 'General')))];
 
   return (
-    <div className="min-h-screen min-h-dvh bg-[#faf8ff] text-slate-800 flex flex-col font-sans selection:bg-[#0d9488] selection:text-white">
+    <div className="min-h-screen min-h-dvh w-full max-w-full overflow-x-hidden bg-[#faf8ff] text-slate-800 flex flex-col font-sans selection:bg-[#0d9488] selection:text-white">
       {/* ==================================================================== */}
       {/* 1. PUBLIC TOP NAVIGATION                                             */}
       {/* ==================================================================== */}
-      <nav className="sticky top-0 z-40 bg-[#faf8ff]/95 backdrop-blur-md border-b border-[#e2e8f0] px-3.5 sm:px-8 py-2.5 sm:py-3.5 flex items-center justify-between gap-2 shadow-2xs">
+      <nav className="sticky top-0 z-40 bg-[#faf8ff]/95 backdrop-blur-md border-b border-[#e2e8f0] px-3.5 sm:px-8 py-2.5 sm:py-3.5 flex items-center justify-between gap-2 shadow-2xs w-full max-w-full">
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
           {pageData.logo.logoUrl ? (
             <img
               src={pageData.logo.logoUrl}
               alt={festName}
               style={{ width: `${pageData.logo.widthPx || 120}px` }}
-              className="h-8 sm:h-9 object-contain shrink-0"
+              className="h-8 sm:h-9 max-w-[110px] sm:max-w-none object-contain shrink-0"
             />
           ) : (
             <img
@@ -397,17 +397,17 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
       {/* Subview Navigation Breadcrumb (When viewing a specific section) */}
       {activeTabSection !== 'overview' && (
-        <div className="bg-[#f0fdfa]/90 border-b border-[#ccfbf1] py-3 px-4 sm:px-8 sticky top-[59px] z-30 backdrop-blur-md">
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <div className="bg-[#f0fdfa]/90 border-b border-[#ccfbf1] py-2.5 sm:py-3 px-3.5 sm:px-8 sticky top-[59px] z-30 backdrop-blur-md w-full max-w-full">
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 min-w-0">
             <button
               type="button"
               onClick={() => setActiveTabSection('overview')}
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0f766e] hover:text-[#0d9488] transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0f766e] hover:text-[#0d9488] transition-colors cursor-pointer shrink-0"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-4 h-4 shrink-0" />
               <span>Back to Festival Overview</span>
             </button>
-            <span className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider truncate text-right">
               {activeTabSection === 'student_search' ? 'Student Directory' : activeTabSection.replace('_', ' ')}
             </span>
           </div>
@@ -422,8 +422,8 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
           {/* ================================================================ */}
           {/* A. FEATURED MEDIA CAROUSEL / SHOWCASE BANNER                     */}
           {/* ================================================================ */}
-          <section className="relative px-3 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-6 max-w-7xl mx-auto w-full">
-            <div className="relative w-full rounded-3xl overflow-hidden shadow-[0_15px_40px_-10px_rgba(15,23,42,0.12)] border border-[#e2e8f0] bg-gradient-to-br from-[#06332e] via-[#00685f] to-[#044c69] text-white min-h-[460px] sm:min-h-[520px] flex flex-col justify-between p-6 sm:p-10">
+          <section className="relative px-3 sm:px-6 lg:px-8 pt-3 sm:pt-6 pb-6 max-w-7xl mx-auto w-full">
+            <div className="relative w-full rounded-3xl overflow-hidden shadow-[0_15px_40px_-10px_rgba(15,23,42,0.12)] border border-[#e2e8f0] bg-gradient-to-br from-[#06332e] via-[#00685f] to-[#044c69] text-white min-h-[440px] sm:min-h-[520px] flex flex-col justify-between p-4 sm:p-8 lg:p-10">
               
               {/* Carousel Background Layer: Video / Photos / Radial Compass Placeholder */}
               {pageData.hero.videoUrl && !videoFailed ? (
@@ -462,11 +462,11 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               ) : (
                 /* Concentric Radial Compass Placeholder Illustration as in the reference model */
                 <div className="absolute inset-0 z-0 flex items-center justify-center opacity-30 pointer-events-none overflow-hidden">
-                  <div className="relative w-[340px] sm:w-[460px] h-[340px] sm:h-[460px] rounded-full border border-white/20 flex items-center justify-center">
-                    <div className="w-[260px] sm:w-[350px] h-[260px] sm:h-[350px] rounded-full border border-white/25 flex items-center justify-center">
-                      <div className="w-[180px] sm:w-[240px] h-[180px] sm:h-[240px] rounded-full border border-white/30 flex items-center justify-center">
-                        <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center">
-                          <ImageIcon className="w-10 h-10 text-white/80" />
+                  <div className="relative w-[240px] sm:w-[460px] h-[240px] sm:h-[460px] rounded-full border border-white/20 flex items-center justify-center">
+                    <div className="w-[180px] sm:w-[350px] h-[180px] sm:h-[350px] rounded-full border border-white/25 flex items-center justify-center">
+                      <div className="w-[120px] sm:w-[240px] h-[120px] sm:h-[240px] rounded-full border border-white/30 flex items-center justify-center">
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center">
+                          <ImageIcon className="w-8 h-8 sm:w-10 sm:h-10 text-white/80" />
                         </div>
                       </div>
                     </div>
@@ -494,17 +494,17 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                     src={pageData.logo.logoUrl}
                     alt="Fest Logo"
                     style={{ width: `${pageData.logo.widthPx || 120}px` }}
-                    className="h-9 object-contain drop-shadow-md"
+                    className="h-9 max-w-[120px] object-contain drop-shadow-md"
                   />
                 ) : (
-                  <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/25 text-[#89f5e7] text-xs font-semibold tracking-wide uppercase shadow-sm">
-                    <Sparkles className="w-3.5 h-3.5 text-[#6ffbbe]" />
-                    <span>{fest ? `${fest.name} · ${fest.institution || ''}` : (settings.festEdition || 'Annual Inter-Collegiate Fest')}</span>
+                  <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/25 text-[#89f5e7] text-xs font-semibold tracking-wide uppercase shadow-sm truncate max-w-[75%]">
+                    <Sparkles className="w-3.5 h-3.5 text-[#6ffbbe] shrink-0" />
+                    <span className="truncate">{fest ? `${fest.name} · ${fest.institution || ''}` : (settings.festEdition || 'Annual Inter-Collegiate Fest')}</span>
                   </div>
                 )}
 
                 {/* Top Right Slide Counter Badge (Matching Model 1/1) */}
-                <div className="px-3 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/20 text-white font-mono text-xs font-bold shadow-sm">
+                <div className="px-3 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/20 text-white font-mono text-xs font-bold shadow-sm shrink-0">
                   {mainFeaturedPhotos.length > 0 ? `${(currentSlideIndex % mainFeaturedPhotos.length) + 1}/${mainFeaturedPhotos.length}` : '1/1'}
                 </div>
               </div>
@@ -513,23 +513,23 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               <button
                 type="button"
                 onClick={() => setCurrentSlideIndex((prev) => (prev > 0 ? prev - 1 : (mainFeaturedPhotos.length > 0 ? mainFeaturedPhotos.length - 1 : 0)))}
-                className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/30 hover:bg-black/60 backdrop-blur-md border border-white/20 text-white flex items-center justify-center transition-all cursor-pointer shadow-md"
+                className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-black/30 hover:bg-black/60 backdrop-blur-md border border-white/20 text-white flex items-center justify-center transition-all cursor-pointer shadow-md"
                 aria-label="Previous slide"
               >
-                <ChevronLeft className="w-5 h-5" />
+                <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
               <button
                 type="button"
                 onClick={() => setCurrentSlideIndex((prev) => (mainFeaturedPhotos.length > 0 ? (prev + 1) % mainFeaturedPhotos.length : 0))}
-                className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/30 hover:bg-black/60 backdrop-blur-md border border-white/20 text-white flex items-center justify-center transition-all cursor-pointer shadow-md"
+                className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-black/30 hover:bg-black/60 backdrop-blur-md border border-white/20 text-white flex items-center justify-center transition-all cursor-pointer shadow-md"
                 aria-label="Next slide"
               >
-                <ChevronRight className="w-5 h-5" />
+                <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
 
               {/* Center Hero Information Overlay */}
-              <div className="relative z-20 max-w-4xl mx-auto text-center space-y-4 my-auto py-6">
-                <h2 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight drop-shadow-md font-display">
+              <div className="relative z-20 max-w-4xl mx-auto text-center space-y-4 my-auto py-4 sm:py-6 w-full min-w-0">
+                <h2 className="text-2xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight drop-shadow-md font-display break-words">
                   {pageData.hero.heading && !pageData.hero.heading.includes('Celebrate Passion') ? pageData.hero.heading : `Welcome to ${festName}`}
                 </h2>
 
@@ -538,45 +538,45 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                 </p>
 
                 {/* Dates & Venue Info Pills */}
-                <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-4 pt-1 text-xs font-medium text-white/90">
-                  <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full border border-white/20">
-                    <Calendar className="w-4 h-4 text-[#89f5e7]" />
-                    <span>{fest?.startDate || settings.startDate} to {fest?.endDate || settings.endDate}</span>
+                <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 pt-1 text-xs font-medium text-white/90 max-w-full">
+                  <div className="flex items-center gap-1.5 sm:gap-2 bg-white/10 backdrop-blur-md px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border border-white/20 truncate max-w-full">
+                    <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#89f5e7] shrink-0" />
+                    <span className="truncate">{fest?.startDate || settings.startDate} to {fest?.endDate || settings.endDate}</span>
                   </div>
-                  <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full border border-white/20">
-                    <MapPin className="w-4 h-4 text-[#89f5e7]" />
-                    <span>{fest ? `${fest.venue || ''}${fest.institution ? `, ${fest.institution}` : ''}` : (settings.venue || 'Grand University Campus')}</span>
+                  <div className="flex items-center gap-1.5 sm:gap-2 bg-white/10 backdrop-blur-md px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border border-white/20 truncate max-w-full">
+                    <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#89f5e7] shrink-0" />
+                    <span className="truncate">{fest ? `${fest.venue || ''}${fest.institution ? `, ${fest.institution}` : ''}` : (settings.venue || 'Grand University Campus')}</span>
                   </div>
                 </div>
 
                 {/* Dynamic Countdown Clock / Status Indicator */}
-                <div className="pt-2">
+                <div className="pt-2 max-w-full overflow-hidden">
                   {countdown.status === 'upcoming' && (
                     <div className="space-y-2">
-                      <div className="flex items-center justify-center gap-1.5 sm:gap-2.5">
-                        <div className="bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl px-3.5 py-2 sm:px-4 sm:py-2.5 text-center min-w-[58px] sm:min-w-[68px] shadow-lg">
-                          <span className="font-mono font-black text-xl sm:text-2xl text-white block leading-none">
+                      <div className="flex items-center justify-center gap-1 sm:gap-2.5 max-w-full">
+                        <div className="bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl px-2.5 py-1.5 sm:px-4 sm:py-2.5 text-center min-w-[48px] sm:min-w-[68px] shadow-lg">
+                          <span className="font-mono font-black text-lg sm:text-2xl text-white block leading-none">
                             {countdown.days}
                           </span>
                           <span className="text-[9px] uppercase font-bold text-teal-100 tracking-wider">Days</span>
                         </div>
-                        <span className="text-white/60 font-black text-lg leading-none">:</span>
-                        <div className="bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl px-3.5 py-2 sm:px-4 sm:py-2.5 text-center min-w-[58px] sm:min-w-[68px] shadow-lg">
-                          <span className="font-mono font-black text-xl sm:text-2xl text-white block leading-none">
+                        <span className="text-white/60 font-black text-base sm:text-lg leading-none">:</span>
+                        <div className="bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl px-2.5 py-1.5 sm:px-4 sm:py-2.5 text-center min-w-[48px] sm:min-w-[68px] shadow-lg">
+                          <span className="font-mono font-black text-lg sm:text-2xl text-white block leading-none">
                             {String(countdown.hours).padStart(2, '0')}
                           </span>
                           <span className="text-[9px] uppercase font-bold text-teal-100 tracking-wider">Hours</span>
                         </div>
-                        <span className="text-white/60 font-black text-lg leading-none">:</span>
-                        <div className="bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl px-3.5 py-2 sm:px-4 sm:py-2.5 text-center min-w-[58px] sm:min-w-[68px] shadow-lg">
-                          <span className="font-mono font-black text-xl sm:text-2xl text-white block leading-none">
+                        <span className="text-white/60 font-black text-base sm:text-lg leading-none">:</span>
+                        <div className="bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl px-2.5 py-1.5 sm:px-4 sm:py-2.5 text-center min-w-[48px] sm:min-w-[68px] shadow-lg">
+                          <span className="font-mono font-black text-lg sm:text-2xl text-white block leading-none">
                             {String(countdown.minutes).padStart(2, '0')}
                           </span>
                           <span className="text-[9px] uppercase font-bold text-teal-100 tracking-wider">Mins</span>
                         </div>
-                        <span className="text-white/60 font-black text-lg leading-none">:</span>
-                        <div className="bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl px-3.5 py-2 sm:px-4 sm:py-2.5 text-center min-w-[58px] sm:min-w-[68px] shadow-lg">
-                          <span className="font-mono font-black text-xl sm:text-2xl text-[#6ffbbe] block leading-none">
+                        <span className="text-white/60 font-black text-base sm:text-lg leading-none">:</span>
+                        <div className="bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl px-2.5 py-1.5 sm:px-4 sm:py-2.5 text-center min-w-[48px] sm:min-w-[68px] shadow-lg">
+                          <span className="font-mono font-black text-lg sm:text-2xl text-[#6ffbbe] block leading-none">
                             {String(countdown.seconds).padStart(2, '0')}
                           </span>
                           <span className="text-[9px] uppercase font-bold text-[#6ffbbe] tracking-wider">Secs</span>
@@ -586,29 +586,29 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                   )}
 
                   {countdown.status === 'live' && (
-                    <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[#10b981]/25 backdrop-blur-md border border-[#10b981]/60 text-[#6ffbbe] text-xs font-bold uppercase tracking-wider shadow-lg">
-                      <span className="relative flex h-2.5 w-2.5">
+                    <div className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 rounded-full bg-[#10b981]/25 backdrop-blur-md border border-[#10b981]/60 text-[#6ffbbe] text-xs font-bold uppercase tracking-wider shadow-lg max-w-full">
+                      <span className="relative flex h-2.5 w-2.5 shrink-0">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#10b981] opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#10b981]"></span>
                       </span>
-                      <span>Festival Is Live · Competitions in Progress</span>
+                      <span className="truncate">Festival Is Live · Competitions in Progress</span>
                     </div>
                   )}
 
                   {countdown.status === 'concluded' && (
-                    <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-amber-500/20 backdrop-blur-md border border-amber-400/40 text-amber-200 text-xs font-bold uppercase tracking-wider shadow-md">
-                      <Trophy className="w-4 h-4 text-amber-300" />
-                      <span>Festival Concluded · Official Ratified Standings</span>
+                    <div className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 rounded-full bg-amber-500/20 backdrop-blur-md border border-amber-400/40 text-amber-200 text-xs font-bold uppercase tracking-wider shadow-md max-w-full">
+                      <Trophy className="w-4 h-4 text-amber-300 shrink-0" />
+                      <span className="truncate">Festival Concluded · Official Ratified Standings</span>
                     </div>
                   )}
                 </div>
 
                 {/* Call To Action Buttons */}
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2 w-full sm:w-auto">
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 sm:gap-3 pt-2 w-full sm:w-auto">
                   <button
                     type="button"
                     onClick={() => openAuth('participant', 'register')}
-                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-full text-xs sm:text-sm font-bold shadow-[0_4px_14px_rgba(13,148,136,0.35)] hover:shadow-[0_6px_20px_rgba(13,148,136,0.45)] hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 sm:py-3 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-full text-xs sm:text-sm font-bold shadow-[0_4px_14px_rgba(13,148,136,0.35)] hover:shadow-[0_6px_20px_rgba(13,148,136,0.45)] active:scale-[0.98] transition-all cursor-pointer"
                   >
                     <span>{pageData.hero.primaryCtaText || 'Register Now'}</span>
                     <ArrowRight className="w-4 h-4" />
@@ -617,7 +617,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                   <button
                     type="button"
                     onClick={() => setActiveTabSection('schedule')}
-                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-white/15 backdrop-blur-md border border-white/25 text-white rounded-full text-xs sm:text-sm font-semibold hover:bg-white/25 active:scale-[0.98] transition-all cursor-pointer"
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 sm:py-3 bg-white/15 backdrop-blur-md border border-white/25 text-white rounded-full text-xs sm:text-sm font-semibold hover:bg-white/25 active:scale-[0.98] transition-all cursor-pointer"
                   >
                     <span>{pageData.hero.secondaryCtaText || 'View Schedule'}</span>
                     <ChevronRight className="w-4 h-4 text-teal-200" />
@@ -625,8 +625,8 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                 </div>
 
                 {/* Quick Chest Number Student Search Bar */}
-                <div className="w-full max-w-lg mx-auto pt-4 text-left">
-                  <div className="relative bg-white/95 backdrop-blur-md rounded-2xl p-2.5 shadow-[0_8px_20px_-4px_rgba(13,148,136,0.15)] border border-[#99f6e4] space-y-1.5">
+                <div className="w-full max-w-lg mx-auto pt-3 sm:pt-4 text-left">
+                  <div className="relative bg-white/95 backdrop-blur-md rounded-2xl p-2 sm:p-2.5 shadow-[0_8px_20px_-4px_rgba(13,148,136,0.15)] border border-[#99f6e4] space-y-1.5">
                     <div className="flex items-center gap-2">
                       <div className="pl-2 text-[#0d9488]">
                         <Search className="w-4 h-4 text-[#0d9488]" />
@@ -641,7 +641,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                           }
                         }}
                         placeholder="Search student by Chest Number (e.g. 104) or Name..."
-                        className="flex-1 bg-transparent border-0 focus:outline-none text-[#0f172a] placeholder:text-slate-400 text-xs sm:text-sm py-1.5 px-1 font-medium"
+                        className="flex-1 bg-transparent border-0 focus:outline-none text-[#0f172a] placeholder:text-slate-400 text-base sm:text-sm py-1.5 px-1 font-medium"
                       />
                       {studentSearchQuery && (
                         <button
@@ -819,11 +819,11 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
           {/* ================================================================ */}
           {/* C. ABOUT {FESTNAME} SECTION (MATCHING REFERENCE MODEL)           */}
           {/* ================================================================ */}
-          <section className="py-16 bg-[#faf8ff] border-b border-[#e2e8f0]">
+          <section className="py-10 sm:py-16 bg-[#faf8ff] border-b border-[#e2e8f0] w-full max-w-full">
             <div className="max-w-7xl mx-auto px-4 sm:px-8">
               {/* Centered Heading with Decorative Gradient Underline */}
-              <div className="text-center max-w-2xl mx-auto mb-12">
-                <h3 className="text-3xl sm:text-4xl font-extrabold text-[#0f172a] tracking-tight font-display">
+              <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-12">
+                <h3 className="text-2xl sm:text-4xl font-extrabold text-[#0f172a] tracking-tight font-display break-words">
                   About <span className="bg-gradient-to-r from-[#00685f] via-[#0d9488] to-[#006398] bg-clip-text text-transparent">{festName}</span>
                 </h3>
                 <div className="w-20 h-1 bg-gradient-to-r from-[#00685f] to-[#006398] rounded-full mx-auto mt-2.5"></div>
@@ -910,12 +910,12 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
           {/* ================================================================ */}
           {/* D. CHAMPIONSHIP STANDINGS (3D PODIUM) & CAMPUS GATEWAYS          */}
           {/* ================================================================ */}
-          <section className="py-12 max-w-7xl mx-auto px-4 sm:px-8 space-y-8">
+          <section className="py-8 sm:py-12 max-w-7xl mx-auto px-3.5 sm:px-8 space-y-6 sm:space-y-8 w-full max-w-full">
             
             {/* Bento Row 1: Official Portals Gateway & Highlights */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-6 items-stretch">
               {/* Official Festival Brief Card */}
-              <div className="lg:col-span-2 bg-white rounded-3xl border border-[#e2e8f0] p-6 sm:p-8 shadow-[0_4px_16px_-4px_rgba(15,23,42,0.05)] flex flex-col justify-between">
+              <div className="lg:col-span-2 bg-white rounded-3xl border border-[#e2e8f0] p-4 sm:p-8 shadow-[0_4px_16px_-4px_rgba(15,23,42,0.05)] flex flex-col justify-between">
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f0fdfa] border border-[#99f6e4] text-[#0f766e] text-xs font-bold uppercase tracking-wider">
@@ -927,7 +927,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                     </span>
                   </div>
 
-                  <h3 className="text-2xl sm:text-3xl font-extrabold text-[#0f172a] tracking-tight leading-tight font-display">
+                  <h3 className="text-xl sm:text-3xl font-extrabold text-[#0f172a] tracking-tight leading-tight font-display break-words">
                     {pageData.content.welcomeTitle || `Welcome to ${festName}`}
                   </h3>
                   
@@ -949,7 +949,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               </div>
 
               {/* Bento Card 2: Official Portals Gateway */}
-              <div className="bg-gradient-to-br from-[#06332e] via-[#00685f] to-[#044c69] text-white rounded-3xl p-6 sm:p-7 shadow-xl border border-teal-700/40 flex flex-col justify-between">
+              <div className="bg-gradient-to-br from-[#06332e] via-[#00685f] to-[#044c69] text-white rounded-3xl p-4 sm:p-7 shadow-xl border border-teal-700/40 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-[#89f5e7] bg-white/15 border border-white/25 px-2.5 py-0.5 rounded-full">
@@ -1020,7 +1020,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
             </div>
 
             {/* Bento Row 2: 3D Stepped Championship Podium (Olympic Style) */}
-            <div className="bg-white border border-[#e2e8f0] rounded-3xl p-6 sm:p-8 space-y-6 shadow-[0_4px_16px_-4px_rgba(15,23,42,0.05)]">
+            <div className="bg-white border border-[#e2e8f0] rounded-3xl p-4 sm:p-8 space-y-6 shadow-[0_4px_16px_-4px_rgba(15,23,42,0.05)] w-full max-w-full">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2">
@@ -1038,11 +1038,11 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                 </div>
 
                 {/* Switcher: Top Teams vs Top Students */}
-                <div className="flex items-center gap-1.5 p-1 bg-[#f0fdfa] rounded-full border border-[#ccfbf1] shadow-2xs self-start sm:self-auto">
+                <div className="flex items-center gap-1.5 p-1 bg-[#f0fdfa] rounded-full border border-[#ccfbf1] shadow-2xs self-start sm:self-auto max-w-full overflow-x-auto scrollbar-none shrink-0">
                   <button
                     type="button"
                     onClick={() => setOverviewLeaderboardToggle('team')}
-                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                       overviewLeaderboardToggle === 'team'
                         ? 'bg-[#0d9488] text-white shadow-xs'
                         : 'text-[#0f766e] hover:text-[#0d9488]'
@@ -1053,7 +1053,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                   <button
                     type="button"
                     onClick={() => setOverviewLeaderboardToggle('individual')}
-                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                       overviewLeaderboardToggle === 'individual'
                         ? 'bg-[#0d9488] text-white shadow-xs'
                         : 'text-[#0f766e] hover:text-[#0d9488]'
@@ -1075,7 +1075,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 items-end pt-4">
                       {/* Step 2: Silver / 2nd Place (Left) */}
                       {leaderboard[1] && (
-                        <div className="order-2 md:order-1 bg-white border-2 border-[#e2e8f0] rounded-3xl p-5 md:pt-7 md:pb-6 flex flex-col justify-between shadow-[0_4px_14px_rgba(15,23,42,0.05)] relative min-h-[220px]">
+                        <div className="order-2 md:order-1 bg-white border-2 border-[#e2e8f0] rounded-3xl p-4 sm:p-5 md:pt-7 md:pb-6 flex flex-col justify-between shadow-[0_4px_14px_rgba(15,23,42,0.05)] relative min-h-[220px]">
                           <div>
                             <div className="flex items-center justify-between mb-3">
                               <span className="text-xs font-black bg-[#f1f5f9] text-[#334155] px-3 py-1 rounded-full shadow-2xs flex items-center gap-1.5 border border-[#e2e8f0]">
@@ -1099,8 +1099,8 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
                       {/* Step 1: Gold / 1st Place Champion (Center - Elevated) */}
                       {leaderboard[0] && (
-                        <div className="order-1 md:order-2 bg-gradient-to-b from-[#f0fdfa] via-white to-white border-2 border-[#0d9488] rounded-3xl p-6 md:pt-9 md:pb-7 flex flex-col justify-between shadow-[0_12px_30px_rgba(13,148,136,0.15)] relative ring-4 ring-[#0d9488]/20 md:-translate-y-3 z-10 min-h-[250px]">
-                          <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#0d9488] text-white font-black text-[11px] px-4 py-1 rounded-full shadow-md flex items-center gap-1.5 uppercase tracking-wider">
+                        <div className="order-1 md:order-2 bg-gradient-to-b from-[#f0fdfa] via-white to-white border-2 border-[#0d9488] rounded-3xl p-5 sm:p-6 md:pt-9 md:pb-7 flex flex-col justify-between shadow-[0_12px_30px_rgba(13,148,136,0.15)] relative ring-2 md:ring-4 ring-[#0d9488]/20 md:-translate-y-3 z-10 min-h-[250px]">
+                          <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#0d9488] text-white font-black text-[11px] px-4 py-1 rounded-full shadow-md flex items-center gap-1.5 uppercase tracking-wider whitespace-nowrap">
                             <Crown className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
                             <span>Championship Leader</span>
                           </div>
@@ -1166,7 +1166,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                             setSelectedStudentForModal(topIndividualContestants[1].participant);
                             setActiveTabSection('student_search');
                           }}
-                          className="order-2 md:order-1 bg-white border-2 border-[#e2e8f0] rounded-3xl p-5 md:pt-7 md:pb-6 flex flex-col justify-between shadow-[0_4px_14px_rgba(15,23,42,0.05)] relative min-h-[220px] cursor-pointer hover:border-[#99f6e4] transition-all"
+                          className="order-2 md:order-1 bg-white border-2 border-[#e2e8f0] rounded-3xl p-4 sm:p-5 md:pt-7 md:pb-6 flex flex-col justify-between shadow-[0_4px_14px_rgba(15,23,42,0.05)] relative min-h-[220px] cursor-pointer hover:border-[#99f6e4] transition-all"
                         >
                           <div>
                             <div className="flex items-center justify-between mb-3">
@@ -1197,9 +1197,9 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                             setSelectedStudentForModal(topIndividualContestants[0].participant);
                             setActiveTabSection('student_search');
                           }}
-                          className="order-1 md:order-2 bg-gradient-to-b from-[#f0fdfa] via-white to-white border-2 border-[#0d9488] rounded-3xl p-6 md:pt-9 md:pb-7 flex flex-col justify-between shadow-[0_12px_30px_rgba(13,148,136,0.15)] relative ring-4 ring-[#0d9488]/20 md:-translate-y-3 z-10 min-h-[250px] cursor-pointer hover:border-[#0f766e] transition-all"
+                          className="order-1 md:order-2 bg-gradient-to-b from-[#f0fdfa] via-white to-white border-2 border-[#0d9488] rounded-3xl p-5 sm:p-6 md:pt-9 md:pb-7 flex flex-col justify-between shadow-[0_12px_30px_rgba(13,148,136,0.15)] relative ring-2 md:ring-4 ring-[#0d9488]/20 md:-translate-y-3 z-10 min-h-[250px] cursor-pointer hover:border-[#0f766e] transition-all"
                         >
-                          <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#0d9488] text-white font-black text-[11px] px-4 py-1 rounded-full shadow-md flex items-center gap-1.5 uppercase tracking-wider">
+                          <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#0d9488] text-white font-black text-[11px] px-4 py-1 rounded-full shadow-md flex items-center gap-1.5 uppercase tracking-wider whitespace-nowrap">
                             <Crown className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
                             <span>Golden Performer</span>
                           </div>
@@ -1276,7 +1276,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
               
               {/* Bento Card 4: Upcoming Schedule Highlights */}
-              <div className="lg:col-span-2 bg-white rounded-3xl border border-[#e2e8f0] p-6 sm:p-7 shadow-[0_4px_16px_-4px_rgba(15,23,42,0.05)] flex flex-col justify-between">
+              <div className="lg:col-span-2 bg-white rounded-3xl border border-[#e2e8f0] p-4 sm:p-7 shadow-[0_4px_16px_-4px_rgba(15,23,42,0.05)] flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-4">
                     <div>
@@ -1349,7 +1349,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               </div>
 
               {/* Bento Card 5: Festival Campus & Stage Locations */}
-              <div className="bg-gradient-to-br from-[#06332e] via-[#00685f] to-[#044c69] text-white rounded-3xl p-6 sm:p-7 shadow-xl border border-teal-700/40 flex flex-col justify-between">
+              <div className="bg-gradient-to-br from-[#06332e] via-[#00685f] to-[#044c69] text-white rounded-3xl p-4 sm:p-7 shadow-xl border border-teal-700/40 flex flex-col justify-between">
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-[#89f5e7] bg-white/15 border border-white/25 px-2.5 py-0.5 rounded-full">
                     Festival Grounds
@@ -1505,7 +1505,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       {/* 4B. OFFICIAL LEADERBOARD TAB (TEAM & INDIVIDUAL)                     */}
       {/* ==================================================================== */}
       {activeTabSection === 'leaderboard' && (
-        <section className="py-12 max-w-7xl mx-auto px-4 sm:px-8 space-y-8">
+        <section className="py-8 sm:py-12 max-w-7xl mx-auto px-3.5 sm:px-8 space-y-6 sm:space-y-8 w-full max-w-full overflow-hidden">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#e2e8f0] pb-5">
             <div>
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f0fdfa] border border-[#99f6e4] text-[#0f766e] text-xs font-bold uppercase tracking-wider">
@@ -1520,11 +1520,11 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
             </div>
 
             {/* Main Leaderboard Switcher: Team vs Individual */}
-            <div className="flex items-center gap-1.5 p-1 bg-[#f0fdfa] rounded-full border border-[#ccfbf1] self-start sm:self-auto shadow-2xs">
+            <div className="flex items-center gap-1.5 p-1 bg-[#f0fdfa] rounded-full border border-[#ccfbf1] self-start sm:self-auto shadow-2xs max-w-full overflow-x-auto scrollbar-none shrink-0">
               <button
                 type="button"
                 onClick={() => setLeaderboardType('team')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                   leaderboardType === 'team'
                     ? 'bg-[#0d9488] text-white shadow-xs'
                     : 'text-[#0f766e] hover:text-[#0d9488]'
@@ -1537,7 +1537,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               <button
                 type="button"
                 onClick={() => setLeaderboardType('individual')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                   leaderboardType === 'individual'
                     ? 'bg-[#0d9488] text-white shadow-xs'
                     : 'text-[#0f766e] hover:text-[#0d9488]'
@@ -1632,8 +1632,8 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                   </span>
                   <span className="font-mono text-[11px] text-[#0f766e] font-bold">Live Ratified</span>
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
+                <div className="overflow-x-auto w-full max-w-full">
+                  <table className="w-full text-left text-xs min-w-[560px]">
                     <thead>
                       <tr className="border-b border-[#e2e8f0] text-[#64748b] uppercase tracking-wider text-[11px] bg-[#faf8ff]">
                         <th className="py-3 px-4 text-center w-16">Rank</th>
@@ -1821,8 +1821,8 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                     Tie-breaker: Points &gt; 1st &gt; 2nd &gt; Marks
                   </span>
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
+                <div className="overflow-x-auto w-full max-w-full">
+                  <table className="w-full text-left text-xs min-w-[560px]">
                     <thead>
                       <tr className="border-b border-[#e2e8f0] text-[#64748b] uppercase tracking-wider text-[11px] bg-[#faf8ff]">
                         <th className="py-3 px-3 text-center w-16">Rank</th>
@@ -1906,14 +1906,14 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       {/* 4C. OFFICIAL STUDENT LOOKUP & SEARCH TAB                             */}
       {/* ==================================================================== */}
       {activeTabSection === 'student_search' && (
-        <section className="py-12 max-w-7xl mx-auto px-4 sm:px-8 space-y-8">
+        <section className="py-8 sm:py-12 max-w-7xl mx-auto px-3.5 sm:px-8 space-y-6 sm:space-y-8 w-full max-w-full overflow-hidden">
           <div className="border-b border-[#e2e8f0] pb-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f0fdfa] border border-[#99f6e4] text-[#0f766e] text-xs font-bold uppercase tracking-wider">
                   Official Student Directory & Live Search
                 </span>
-                <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#0f172a] mt-2 font-display">
+                <h3 className="text-xl sm:text-3xl font-extrabold tracking-tight text-[#0f172a] mt-2 font-display break-words">
                   Student & Contestant Lookup
                 </h3>
                 <p className="text-xs sm:text-sm text-[#64748b] mt-1">
@@ -1929,7 +1929,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
             </div>
 
             {/* Search Input Bar */}
-            <div className="mt-6 max-w-2xl">
+            <div className="mt-5 sm:mt-6 max-w-2xl w-full">
               <div className="relative flex items-center bg-white border-2 border-[#e2e8f0] focus-within:border-[#0d9488] focus-within:ring-3 focus-within:ring-[#0d9488]/15 rounded-2xl shadow-xs transition-colors">
                 <div className="pl-4 text-[#0d9488]">
                   <Search className="w-5 h-5 text-[#0d9488]" />
@@ -1939,7 +1939,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                   value={studentSearchQuery}
                   onChange={(e) => setStudentSearchQuery(e.target.value)}
                   placeholder="Search by Chest Number (e.g. 104, PT-104) or Student Name..."
-                  className="w-full pl-3 pr-10 py-3.5 text-sm sm:text-base text-[#0f172a] bg-transparent focus:outline-none placeholder:text-[#64748b] font-medium"
+                  className="w-full pl-3 pr-10 py-3 text-base text-[#0f172a] bg-transparent focus:outline-none placeholder:text-[#64748b] font-medium"
                   autoFocus
                 />
                 {studentSearchQuery && (
@@ -2106,7 +2106,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       {/* 5. PHOTO GALLERY TAB                                                 */}
       {/* ==================================================================== */}
       {activeTabSection === 'gallery' && (
-        <section className="py-12 max-w-7xl mx-auto px-4 sm:px-8 space-y-6">
+        <section className="py-8 sm:py-12 max-w-7xl mx-auto px-3.5 sm:px-8 space-y-6 w-full max-w-full overflow-hidden">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#e2e8f0] pb-4">
             <div>
               <h3 className="text-2xl font-extrabold tracking-tight text-[#0f172a] font-display">
@@ -2177,7 +2177,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       {/* 6. RESULTS TAB                                                       */}
       {/* ==================================================================== */}
       {activeTabSection === 'results' && (
-        <section className="py-12 max-w-7xl mx-auto px-4 sm:px-8 space-y-6">
+        <section className="py-8 sm:py-12 max-w-7xl mx-auto px-3.5 sm:px-8 space-y-6 w-full max-w-full overflow-hidden">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#e2e8f0] pb-4">
             <div>
               <h3 className="text-2xl font-extrabold tracking-tight text-[#0f172a] font-display">
@@ -2189,11 +2189,11 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
             </div>
 
             {/* Sub-Tabs: Programmes vs Team Leaderboard vs Individual Scoreboards */}
-            <div className="flex items-center gap-1.5 p-1 bg-[#f0fdfa] rounded-full border border-[#ccfbf1] text-xs font-semibold">
+            <div className="flex items-center gap-1.5 p-1 bg-[#f0fdfa] rounded-full border border-[#ccfbf1] text-xs font-semibold max-w-full overflow-x-auto scrollbar-none shrink-0">
               <button
                 type="button"
                 onClick={() => setResultsSubTab('programmes')}
-                className={`px-3.5 py-1.5 rounded-full transition-colors cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-full transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
                   resultsSubTab === 'programmes'
                     ? 'bg-[#0d9488] text-white shadow-2xs font-bold'
                     : 'text-[#0f766e] hover:text-[#0d9488]'
@@ -2204,7 +2204,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               <button
                 type="button"
                 onClick={() => setResultsSubTab('team_scoreboard')}
-                className={`px-3.5 py-1.5 rounded-full transition-colors cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-full transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
                   resultsSubTab === 'team_scoreboard'
                     ? 'bg-[#0d9488] text-white shadow-2xs font-bold'
                     : 'text-[#0f766e] hover:text-[#0d9488]'
@@ -2215,7 +2215,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               <button
                 type="button"
                 onClick={() => setResultsSubTab('category_scoreboards')}
-                className={`px-3.5 py-1.5 rounded-full transition-colors cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-full transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
                   resultsSubTab === 'category_scoreboards'
                     ? 'bg-[#0d9488] text-white shadow-2xs font-bold'
                     : 'text-[#0f766e] hover:text-[#0d9488]'
@@ -2316,8 +2316,8 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                 </span>
                 <span className="font-mono text-[11px] text-[#0f766e] font-bold">Live Ratified Standings</span>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
+              <div className="overflow-x-auto w-full max-w-full">
+                <table className="w-full text-left text-xs min-w-[560px]">
                   <thead>
                     <tr className="border-b border-[#e2e8f0] text-[#64748b] uppercase tracking-wider text-[11px] bg-[#faf8ff]">
                       <th className="py-3 px-4 text-center w-16">Rank</th>
@@ -2417,8 +2417,8 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
                 return (
                   <div className="bg-white border border-[#e2e8f0] rounded-2xl overflow-hidden shadow-xs">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs">
+                    <div className="overflow-x-auto w-full max-w-full">
+                      <table className="w-full text-left text-xs min-w-[560px]">
                         <thead>
                           <tr className="border-b border-[#e2e8f0] text-[#64748b] uppercase tracking-wider text-[11px] bg-[#faf8ff]">
                             <th className="py-3 px-3 text-center w-16">Rank</th>
@@ -2490,7 +2490,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       {/* 7. TIMETABLE / SCHEDULE TAB                                          */}
       {/* ==================================================================== */}
       {activeTabSection === 'schedule' && (
-        <section className="py-10 max-w-7xl mx-auto px-4 sm:px-8 space-y-8 pb-32">
+        <section className="py-8 sm:py-10 max-w-7xl mx-auto px-3.5 sm:px-8 space-y-6 sm:space-y-8 pb-32 w-full max-w-full overflow-hidden">
           {/* Header & Overview Stats */}
           <div className="bg-gradient-to-br from-[#f8fafc] via-white to-[#f0fdfa] border border-[#e2e8f0] rounded-3xl p-6 sm:p-8 shadow-xs">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -2557,11 +2557,11 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               </div>
 
               {/* Stage Type Toggle */}
-              <div className="flex items-center gap-1 bg-[#f1f5f9] p-1 rounded-xl shrink-0">
+              <div className="flex items-center gap-1 bg-[#f1f5f9] p-1 rounded-xl max-w-full overflow-x-auto scrollbar-none shrink-0">
                 <button
                   type="button"
                   onClick={() => setScheduleStageFilter('all')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
                     scheduleStageFilter === 'all'
                       ? 'bg-white text-[#0f172a] shadow-xs'
                       : 'text-[#64748b] hover:text-[#0f172a]'
@@ -2572,7 +2572,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                 <button
                   type="button"
                   onClick={() => setScheduleStageFilter('stage')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
                     scheduleStageFilter === 'stage'
                       ? 'bg-white text-teal-800 shadow-xs'
                       : 'text-[#64748b] hover:text-[#0f172a]'
@@ -2583,7 +2583,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                 <button
                   type="button"
                   onClick={() => setScheduleStageFilter('off_stage')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
                     scheduleStageFilter === 'off_stage'
                       ? 'bg-white text-amber-800 shadow-xs'
                       : 'text-[#64748b] hover:text-[#0f172a]'
@@ -2878,7 +2878,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       {/* 8. TEAMS TAB                                                         */}
       {/* ==================================================================== */}
       {activeTabSection === 'teams' && (
-        <section className="py-12 max-w-7xl mx-auto px-4 sm:px-8 space-y-6">
+        <section className="py-8 sm:py-12 max-w-7xl mx-auto px-3.5 sm:px-8 space-y-6 w-full max-w-full overflow-hidden">
           <div className="border-b border-[#e2e8f0] pb-4">
             <h3 className="text-2xl font-extrabold tracking-tight text-[#0f172a] font-display">
               Participating Houses & Teams
@@ -2916,7 +2916,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       {/* 9. BULLETINS / ANNOUNCEMENTS TAB                                     */}
       {/* ==================================================================== */}
       {activeTabSection === 'bulletin' && (
-        <section className="py-12 max-w-7xl mx-auto px-4 sm:px-8 space-y-6">
+        <section className="py-8 sm:py-12 max-w-7xl mx-auto px-3.5 sm:px-8 space-y-6 w-full max-w-full overflow-hidden">
           <div className="border-b border-[#e2e8f0] pb-4">
             <h3 className="text-2xl font-extrabold tracking-tight text-[#0f172a] font-display">
               Official Bulletins & Notices
@@ -2999,17 +2999,17 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       {/* ==================================================================== */}
       {/* FLOATING BOTTOM NAVIGATION PILL DOCK (MATCHING REFERENCE MODEL)      */}
       {/* ==================================================================== */}
-      <aside aria-label="Quick festival navigation" className="fixed bottom-5 inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
-        <div className="pointer-events-auto bg-white/95 backdrop-blur-xl border border-[#e2e8f0] rounded-full px-2 sm:px-3 py-1.5 shadow-[0_12px_36px_-6px_rgba(15,23,42,0.18)] flex items-center gap-1 sm:gap-1.5 ring-1 ring-black/5">
+      <aside aria-label="Quick festival navigation" className="fixed bottom-4 sm:bottom-5 inset-x-0 z-40 flex justify-center px-2 sm:px-4 pointer-events-none w-full max-w-full">
+        <div className="pointer-events-auto bg-white/95 backdrop-blur-xl border border-[#e2e8f0] rounded-full px-1.5 sm:px-3 py-1.5 shadow-[0_12px_36px_-6px_rgba(15,23,42,0.18)] flex items-center gap-1 sm:gap-1.5 ring-1 ring-black/5 max-w-[calc(100vw-1rem)] sm:max-w-max overflow-x-auto scrollbar-none shrink-0">
           {/* Brand Monogram */}
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#00685f] to-[#0d9488] flex items-center justify-center text-white font-extrabold text-xs shrink-0 select-none shadow-xs ml-1 mr-0.5">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-[#00685f] to-[#0d9488] flex items-center justify-center text-white font-extrabold text-xs shrink-0 select-none shadow-xs ml-0.5 sm:ml-1 mr-0.5">
             <span>{festName.charAt(0) || 'F'}</span>
           </div>
 
           <button
             type="button"
             onClick={() => setActiveTabSection('overview')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
               activeTabSection === 'overview'
                 ? 'bg-[#0d9488] text-white shadow-xs'
                 : 'text-[#334155] hover:text-[#0d9488] hover:bg-[#f0fdfa]'
@@ -3022,7 +3022,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
           <button
             type="button"
             onClick={() => setActiveTabSection('schedule')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
               activeTabSection === 'schedule'
                 ? 'bg-[#0d9488] text-white shadow-xs'
                 : 'text-[#334155] hover:text-[#0d9488] hover:bg-[#f0fdfa]'
@@ -3035,7 +3035,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
           <button
             type="button"
             onClick={() => setActiveTabSection('results')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
               activeTabSection === 'results'
                 ? 'bg-[#0d9488] text-white shadow-xs'
                 : 'text-[#334155] hover:text-[#0d9488] hover:bg-[#f0fdfa]'
@@ -3048,7 +3048,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
           <button
             type="button"
             onClick={() => setActiveTabSection('student_search')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
               activeTabSection === 'student_search'
                 ? 'bg-[#0d9488] text-white shadow-xs'
                 : 'text-[#334155] hover:text-[#0d9488] hover:bg-[#f0fdfa]'
@@ -3061,7 +3061,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
           <button
             type="button"
             onClick={() => setActiveTabSection('bulletin')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+            className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
               activeTabSection === 'bulletin'
                 ? 'bg-[#0d9488] text-white shadow-xs'
                 : 'text-[#334155] hover:text-[#0d9488] hover:bg-[#f0fdfa]'
@@ -3074,7 +3074,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
           <button
             type="button"
             onClick={() => setActiveTabSection('gallery')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+            className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
               activeTabSection === 'gallery'
                 ? 'bg-[#0d9488] text-white shadow-xs'
                 : 'text-[#334155] hover:text-[#0d9488] hover:bg-[#f0fdfa]'
@@ -3089,7 +3089,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       {/* ==================================================================== */}
       {/* 10. DARK FESTIVAL FOOTER (MATCHING REFERENCE MODEL)                  */}
       {/* ==================================================================== */}
-      <footer className="mt-auto bg-[#0b1120] text-slate-300 pt-16 pb-28 border-t border-slate-800">
+      <footer className="mt-auto bg-[#0b1120] text-slate-300 pt-12 sm:pt-16 pb-28 border-t border-slate-800 w-full max-w-full overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10 pb-12 border-b border-slate-800">
             {/* Col 1: Fest Brand & Copyright */}
@@ -3200,7 +3200,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               </div>
               <span>Powered by Festoria Festival Operating System</span>
             </div>
-            <div className="flex items-center gap-6">
+            <div className="flex flex-wrap items-center justify-center sm:justify-end gap-4 sm:gap-6">
               <a href="#" className="hover:text-slate-300 transition-colors">Privacy Policy</a>
               <a href="#" className="hover:text-slate-300 transition-colors">Terms and Conditions</a>
               <a href="#contact" className="hover:text-slate-300 transition-colors">Contact Us</a>
@@ -3357,7 +3357,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                       src={pageData.logo.logoUrl}
                       alt={festName}
                       style={{ width: `${pageData.logo.widthPx || 100}px` }}
-                      className="h-8 object-contain"
+                      className="h-8 max-w-[100px] object-contain shrink-0"
                     />
                   ) : (
                     <img
