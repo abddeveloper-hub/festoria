@@ -147,6 +147,45 @@ export const ScoresPage: React.FC = () => {
     });
   }, [results, resultsFilterProgramme, resultsSearch, programmes, teams, participants]);
 
+  // Grouped results by programme for unified event record view in 'results' tab
+  const groupedResultsByProgramme = useMemo(() => {
+    const map = new Map<string, typeof results>();
+    filteredResults.forEach((r) => {
+      const key = r.programmeId || 'unassigned';
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(r);
+    });
+
+    const groups: {
+      programme: (typeof programmes)[0] | undefined;
+      programmeId: string;
+      results: typeof results;
+      totalPoints: number;
+      isPublished: boolean;
+    }[] = [];
+
+    map.forEach((resList, progId) => {
+      const prog = programmes.find((p) => p.id === progId);
+      const sorted = [...resList].sort((a, b) => a.rank - b.rank);
+      const totalPoints = sorted.reduce((sum, r) => sum + (r.pointsAwarded || 0), 0);
+      const isPublished = prog?.resultPublished || sorted.some((r) => r.published);
+
+      groups.push({
+        programme: prog,
+        programmeId: progId,
+        results: sorted,
+        totalPoints,
+        isPublished,
+      });
+    });
+
+    return groups.sort((a, b) => {
+      const nameA = a.programme?.name || '';
+      const nameB = b.programme?.name || '';
+      return nameA.localeCompare(nameB);
+    });
+  }, [filteredResults, programmes]);
+
   // Programmes available for scoring (restricted for judges to assigned events)
   const scorableProgrammes = useMemo(() => {
     if (isJudgeOnly && judgeId) {
@@ -1242,112 +1281,229 @@ export const ScoresPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Results Data Table */}
-          <div className="bg-white border border-slate-200 rounded-lg shadow-xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs min-w-[650px]">
-                <thead>
-                  <tr className="bg-slate-50/70 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                    <th className="py-3 px-3 text-center w-16">Rank</th>
-                    <th className="py-3 px-3">Programme</th>
-                    <th className="py-3 px-3">Competitor / Entry</th>
-                    <th className="py-3 px-3">House / Team</th>
-                    <th className="py-3 px-2 text-center">Score / Marks</th>
-                    <th className="py-3 px-2 text-center">Points Awarded</th>
-                    <th className="py-3 px-3">Published At</th>
-                    <th className="py-3 px-3 text-right">Delete Option</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredResults.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="py-12 text-center text-slate-400">
-                        <Trophy className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                        No added results matching the current filter.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredResults.map((res) => {
-                      const prog = programmes.find((p) => p.id === res.programmeId);
-                      const team = teams.find((t) => t.id === res.teamId);
-                      const participant = res.participantId ? participants.find((p) => p.id === res.participantId) : undefined;
-                      const entryName = res.participantName || participant?.name || res.entryName || 'Competitor';
-
-                      return (
-                        <tr key={res.id} className="hover:bg-slate-50/60 transition-colors">
-                          <td className="py-3 px-3 text-center">
-                            <span
-                              className={`inline-flex items-center justify-center w-7 h-7 rounded-full font-mono text-xs font-bold ${
-                                res.rank === 1
-                                  ? 'bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs'
-                                  : res.rank === 2
-                                  ? 'bg-slate-200 text-slate-900 border border-slate-300'
-                                  : res.rank === 3
-                                  ? 'bg-orange-100 text-orange-900 border border-orange-200'
-                                  : 'bg-slate-100 text-slate-600'
-                              }`}
-                            >
-                              {res.rank === 1 ? '🥇 1' : res.rank === 2 ? '🥈 2' : res.rank === 3 ? '🥉 3' : `#${res.rank}`}
-                            </span>
-                          </td>
-
-                          <td className="py-3 px-3">
-                            <div className="font-semibold text-slate-900">{prog?.name || res.programmeId}</div>
-                            <div className="text-[10px] text-slate-500 font-mono">
-                              {prog?.code} • {res.category || prog?.category} • {res.isTeamProgramme ? 'Team' : 'Solo'}
-                            </div>
-                          </td>
-
-                          <td className="py-3 px-3">
-                            <div className="font-medium text-slate-900">{entryName}</div>
-                            {participant && (
-                              <div className="text-[10px] text-slate-500 font-mono">
-                                {participant.chestNumber ? `Chest #${participant.chestNumber} • ` : ''}
-                                {participant.category}
-                              </div>
-                            )}
-                          </td>
-
-                          <td className="py-3 px-3">
-                            <div className="font-medium text-slate-800">{team?.name || res.teamName || 'Independent'}</div>
-                            <div className="text-[10px] text-slate-400 font-mono">{team?.code}</div>
-                          </td>
-
-                          <td className="py-3 px-2 text-center font-mono font-bold text-slate-900 text-sm">
-                            {res.finalScore}
-                          </td>
-
-                          <td className="py-3 px-2 text-center">
-                            <span className="font-mono font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full text-xs">
-                              +{res.pointsAwarded} pts
-                            </span>
-                          </td>
-
-                          <td className="py-3 px-3 font-mono text-[11px] text-slate-500">
-                            {res.publishedAt || 'Published'}
-                          </td>
-
-                          <td className="py-3 px-3 text-right">
-                            {canApprove && (
-                              <button
-                                type="button"
-                                onClick={() => setConfirmDeleteResultId(res.id)}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-600 hover:text-white hover:bg-rose-600 bg-rose-50 border border-rose-200 rounded transition-colors shadow-2xs cursor-pointer"
-                                title="Delete this added result entry"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                                <span>Delete</span>
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
+          {/* Results Data Grouped By Event/Programme */}
+          {groupedResultsByProgramme.length === 0 ? (
+            <div className="bg-white border border-slate-200 rounded-lg p-12 text-center text-slate-400">
+              <Trophy className="w-10 h-10 mx-auto mb-2 text-slate-300" />
+              <h4 className="text-sm font-bold text-slate-700">No Score Records Found</h4>
+              <p className="text-xs text-slate-500 mt-1">No added or published results match your current search and filter criteria.</p>
             </div>
-          </div>
+          ) : (
+            <div className="space-y-4">
+              {groupedResultsByProgramme.map((group) => {
+                const prog = group.programme;
+                const progName = prog?.name || group.programmeId;
+                const isTeam = prog?.type === 'team' || prog?.type === 'group' || prog?.programmeType === 'team' || group.results[0]?.isTeamProgramme;
+
+                return (
+                  <div
+                    key={group.programmeId}
+                    className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden transition-all hover:border-slate-300"
+                  >
+                    {/* Event Header Banner with Status, Pool Points, and Event Actions */}
+                    <div className="p-3.5 sm:p-4 bg-slate-50/90 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {prog?.code && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-200 text-slate-800">
+                              {prog.code}
+                            </span>
+                          )}
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                              isTeam
+                                ? 'bg-sky-50 text-sky-700 border border-sky-200'
+                                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            }`}
+                          >
+                            {isTeam ? 'Team Programme' : 'Solo / Individual'}
+                          </span>
+                          {prog?.category && (
+                            <span className="px-2 py-0.5 rounded text-[10px] bg-purple-50 text-purple-700 border border-purple-200 font-medium">
+                              {prog.category}
+                            </span>
+                          )}
+                          {prog?.venue && (
+                            <span className="text-[11px] text-slate-500 hidden sm:inline">
+                              • {prog.venue} {prog.stage ? `(${prog.stage})` : ''}
+                            </span>
+                          )}
+                        </div>
+
+                        <h3 className="text-base font-bold text-slate-900 leading-snug">
+                          {progName}
+                        </h3>
+                      </div>
+
+                      {/* Right Side: Points, Status Badges, and Unified Event Controls */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded font-mono text-xs font-bold">
+                          {group.totalPoints} pts awarded
+                        </div>
+
+                        {group.isPublished ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-100/70 border border-emerald-300 px-2.5 py-1 rounded">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Published
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded">
+                            <Clock className="w-3.5 h-3.5" /> Draft / Unratified
+                          </span>
+                        )}
+
+                        {/* Edit in Fast Score Sheet button */}
+                        {prog && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSheetProgrammeId(prog.id);
+                              setActiveTab('sheet');
+                            }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded transition-colors shadow-2xs cursor-pointer"
+                            title="Open event in score sheet to review marks or re-evaluate"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                            <span>Score Sheet</span>
+                          </button>
+                        )}
+
+                        {/* Delete all results for this programme */}
+                        {canApprove && (
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteProgrammeResultsId(group.programmeId)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded transition-colors shadow-2xs cursor-pointer"
+                            title="Delete all results and retract publication for this event"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            <span>Delete Results</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Unified Winners Table for this Event (Rank #1, #2, #3 consolidated together) */}
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs min-w-[620px]">
+                        <thead>
+                          <tr className="bg-slate-50/50 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                            <th className="py-2.5 px-4 text-center w-20">Rank</th>
+                            <th className="py-2.5 px-4">Contestant / Squad Entry</th>
+                            <th className="py-2.5 px-4">House / Team</th>
+                            <th className="py-2.5 px-3 text-center">Score / Marks</th>
+                            <th className="py-2.5 px-3 text-center">Points Awarded</th>
+                            <th className="py-2.5 px-3">Ratified At</th>
+                            <th className="py-2.5 px-4 text-right">Delete</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {group.results.map((res) => {
+                            const team = teams.find((t) => t.id === res.teamId);
+                            const participant = res.participantId
+                              ? participants.find((p) => p.id === res.participantId)
+                              : undefined;
+                            const entryName =
+                              res.participantName || participant?.name || res.entryName || 'Competitor';
+                            const isGold = res.rank === 1;
+                            const isSilver = res.rank === 2;
+                            const isBronze = res.rank === 3;
+
+                            return (
+                              <tr
+                                key={res.id}
+                                className={`hover:bg-slate-50/70 transition-colors ${
+                                  isGold
+                                    ? 'bg-amber-50/30'
+                                    : isSilver
+                                    ? 'bg-slate-50/30'
+                                    : isBronze
+                                    ? 'bg-orange-50/20'
+                                    : ''
+                                }`}
+                              >
+                                <td className="py-3 px-4 text-center">
+                                  <span
+                                    className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full font-mono text-xs font-bold ${
+                                      isGold
+                                        ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                        : isSilver
+                                        ? 'bg-slate-200 text-slate-900 border border-slate-300'
+                                        : isBronze
+                                        ? 'bg-orange-100 text-orange-900 border border-orange-200'
+                                        : 'bg-slate-100 text-slate-600'
+                                    }`}
+                                  >
+                                    {isGold
+                                      ? '🥇 1st'
+                                      : isSilver
+                                      ? '🥈 2nd'
+                                      : isBronze
+                                      ? '🥉 3rd'
+                                      : `#${res.rank}`}
+                                  </span>
+                                </td>
+
+                                <td className="py-3 px-4">
+                                  <div className="font-bold text-slate-900 text-xs sm:text-sm">{entryName}</div>
+                                  {participant && (
+                                    <div className="text-[10px] text-slate-500 font-mono mt-0.5 flex items-center gap-1.5">
+                                      {participant.chestNumber ? (
+                                        <span className="font-bold text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded border border-purple-200">
+                                          Chest #{participant.chestNumber}
+                                        </span>
+                                      ) : null}
+                                      <span>{participant.category}</span>
+                                    </div>
+                                  )}
+                                </td>
+
+                                <td className="py-3 px-4">
+                                  <div className="font-semibold text-slate-800">
+                                    {team?.name || res.teamName || 'Independent'}
+                                  </div>
+                                  <div className="text-[10px] text-slate-400 font-mono">{team?.code}</div>
+                                </td>
+
+                                <td className="py-3 px-3 text-center font-mono font-bold text-slate-900 text-sm">
+                                  {res.finalScore}
+                                </td>
+
+                                <td className="py-3 px-3 text-center">
+                                  <span className="font-mono font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full text-xs">
+                                    +{res.pointsAwarded} pts
+                                  </span>
+                                </td>
+
+                                <td className="py-3 px-3 font-mono text-[11px] text-slate-500">
+                                  {res.publishedAt
+                                    ? res.publishedAt.slice(0, 16).replace('T', ' ')
+                                    : 'Ratified'}
+                                </td>
+
+                                <td className="py-3 px-4 text-right">
+                                  {canApprove && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setConfirmDeleteResultId(res.id)}
+                                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-600 hover:text-white hover:bg-rose-600 bg-rose-50 border border-rose-200 rounded transition-colors shadow-2xs cursor-pointer"
+                                      title="Delete this individual result entry"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                      <span>Delete</span>
+                                    </button>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

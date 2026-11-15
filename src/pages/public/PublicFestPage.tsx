@@ -5,7 +5,9 @@ import { FESTORIA_LOGO, handleLogoError } from '../../utils/logo';
 import {
   FestPublicPageData,
   FestPhotoItem,
-  Role
+  Role,
+  Programme,
+  ApprovedResult
 } from '../../types';
 import {
   fetchPublishedFestPage,
@@ -114,6 +116,8 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
   const [resultsSubTab, setResultsSubTab] = useState<'programmes' | 'team_scoreboard' | 'category_scoreboards'>('programmes');
   const [selectedPublicCategory, setSelectedPublicCategory] = useState<string>('Senior');
+  const [publicResultsSearch, setPublicResultsSearch] = useState('');
+  const [publicResultsFilterCat, setPublicResultsFilterCat] = useState('all');
 
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authRole, setAuthRole] = useState<Role | 'participant' | 'auto'>('participant');
@@ -310,6 +314,74 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       return chest.includes(q) || id.includes(q) || name.includes(q);
     });
   }, [festParticipants, studentSearchQuery]);
+
+  // Grouped published results by event/programme for consolidated results display
+  const groupedPublishedResults = React.useMemo(() => {
+    const map = new Map<string, ApprovedResult[]>();
+    publishedResults.forEach((r) => {
+      const key = r.programmeId || r.programmeName || 'other';
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(r);
+    });
+
+    const groups: {
+      programme: Programme | undefined;
+      programmeId: string;
+      programmeName: string;
+      category?: string;
+      isTeam: boolean;
+      results: ApprovedResult[];
+      publishedAt?: string;
+      totalPointsAwarded: number;
+    }[] = [];
+
+    map.forEach((resList, progId) => {
+      const prog = programmes.find((p) => p.id === progId);
+      const sorted = [...resList].sort((a, b) => a.rank - b.rank);
+      const first = sorted[0];
+      const isTeam = first.isTeamProgramme || prog?.type === 'team' || prog?.type === 'group' || prog?.programmeType === 'team';
+      const totalPts = sorted.reduce((sum, r) => sum + (r.pointsAwarded || 0), 0);
+
+      groups.push({
+        programme: prog,
+        programmeId: progId,
+        programmeName: prog?.name || first.programmeName || 'Programme Event',
+        category: prog?.category || first.category,
+        isTeam,
+        results: sorted,
+        publishedAt: first.publishedAt,
+        totalPointsAwarded: totalPts,
+      });
+    });
+
+    return groups.filter((g) => {
+      const matchesCat =
+        publicResultsFilterCat === 'all' ||
+        (g.category && g.category.toLowerCase() === publicResultsFilterCat.toLowerCase());
+      const query = publicResultsSearch.toLowerCase().trim();
+      const matchesSearch =
+        !query ||
+        g.programmeName.toLowerCase().includes(query) ||
+        (g.programme?.code && g.programme.code.toLowerCase().includes(query)) ||
+        g.results.some(
+          (r) =>
+            (r.participantName && r.participantName.toLowerCase().includes(query)) ||
+            (r.entryName && r.entryName.toLowerCase().includes(query)) ||
+            (r.teamName && r.teamName.toLowerCase().includes(query))
+        );
+      return matchesCat && matchesSearch;
+    });
+  }, [publishedResults, programmes, publicResultsSearch, publicResultsFilterCat]);
+
+  const availableResultCategories = React.useMemo(() => {
+    const catSet = new Set<string>();
+    publishedResults.forEach((r) => {
+      if (r.category) catSet.add(r.category.trim());
+      const prog = programmes.find((p) => p.id === r.programmeId);
+      if (prog?.category) catSet.add(prog.category.trim());
+    });
+    return Array.from(catSet);
+  }, [publishedResults, programmes]);
 
   // Compute student stats helper
   const getStudentStats = (participantId: string) => {
@@ -2174,313 +2246,281 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       )}
 
       {/* ==================================================================== */}
-      {/* 6. RESULTS TAB                                                       */}
+      {/* 6. DEDICATED OFFICIAL PUBLISHED RESULTS (GROUPED BY EVENT)           */}
       {/* ==================================================================== */}
       {activeTabSection === 'results' && (
         <section className="py-8 sm:py-12 max-w-7xl mx-auto px-3.5 sm:px-8 space-y-6 w-full max-w-full overflow-hidden">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#e2e8f0] pb-4">
+          {/* Results Header */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#e2e8f0] pb-5">
             <div>
-              <h3 className="text-2xl font-extrabold tracking-tight text-[#0f172a] font-display">
-                Official Festival Results & Standings
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0d9488]/10 text-[#0d9488] font-bold text-xs uppercase tracking-wider mb-2">
+                <Trophy className="w-3.5 h-3.5" />
+                Live Ratified Standings
+              </div>
+              <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#0f172a] font-display">
+                Official Published Results
               </h3>
-              <p className="text-xs text-[#64748b] mt-1">
-                Ratified results, championship team standings, and category individual scoreboards.
+              <p className="text-xs sm:text-sm text-[#64748b] mt-1">
+                Official podium winners and ratified scores consolidated by competition event.
               </p>
             </div>
 
-            {/* Sub-Tabs: Programmes vs Team Leaderboard vs Individual Scoreboards */}
-            <div className="flex items-center gap-1.5 p-1 bg-[#f0fdfa] rounded-full border border-[#ccfbf1] text-xs font-semibold max-w-full overflow-x-auto scrollbar-none shrink-0">
-              <button
-                type="button"
-                onClick={() => setResultsSubTab('programmes')}
-                className={`px-3.5 py-1.5 rounded-full transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
-                  resultsSubTab === 'programmes'
-                    ? 'bg-[#0d9488] text-white shadow-2xs font-bold'
-                    : 'text-[#0f766e] hover:text-[#0d9488]'
-                }`}
-              >
-                Event Results
-              </button>
-              <button
-                type="button"
-                onClick={() => setResultsSubTab('team_scoreboard')}
-                className={`px-3.5 py-1.5 rounded-full transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
-                  resultsSubTab === 'team_scoreboard'
-                    ? 'bg-[#0d9488] text-white shadow-2xs font-bold'
-                    : 'text-[#0f766e] hover:text-[#0d9488]'
-                }`}
-              >
-                Team Scoreboard
-              </button>
-              <button
-                type="button"
-                onClick={() => setResultsSubTab('category_scoreboards')}
-                className={`px-3.5 py-1.5 rounded-full transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
-                  resultsSubTab === 'category_scoreboards'
-                    ? 'bg-[#0d9488] text-white shadow-2xs font-bold'
-                    : 'text-[#0f766e] hover:text-[#0d9488]'
-                }`}
-              >
-                Individual Scoreboards
-              </button>
+            {/* Quick Metrics */}
+            <div className="flex items-center gap-3">
+              <div className="px-4 py-2 bg-[#f0fdfa] border border-[#ccfbf1] rounded-2xl text-center">
+                <span className="text-[10px] text-[#0f766e] font-semibold uppercase tracking-wider block">Events Published</span>
+                <span className="font-mono font-black text-lg text-[#0f172a]">{new Set(publishedResults.map(r => r.programmeId)).size}</span>
+              </div>
+              <div className="px-4 py-2 bg-amber-50/70 border border-amber-200 rounded-2xl text-center">
+                <span className="text-[10px] text-amber-800 font-semibold uppercase tracking-wider block">Total Winners</span>
+                <span className="font-mono font-black text-lg text-amber-900">{publishedResults.length}</span>
+              </div>
             </div>
           </div>
 
-          {/* VIEW 1: PROGRAMME RESULTS */}
-          {resultsSubTab === 'programmes' && (
-            <div>
-              {publishedResults.length === 0 ? (
-                <div className="p-12 text-center border border-[#e2e8f0] rounded-2xl bg-[#faf8ff] text-xs text-[#64748b]">
-                  No results have been published yet. Please check back as programmes conclude.
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {publishedResults.map((r) => {
-                    const prog = programmes.find((p) => p.id === r.programmeId);
-                    const isTeam = r.isTeamProgramme || prog?.programmeType === 'team';
-                    return (
-                      <div
-                        key={r.id}
-                        className="bg-white border border-[#e2e8f0] rounded-2xl p-5 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04)] flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-[#99f6e4] transition-colors"
-                      >
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase ${
-                              r.rank === 1
-                                ? 'bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4]'
-                                : r.rank === 2
-                                ? 'bg-slate-200 text-slate-800'
-                                : r.rank === 3
-                                ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                                : 'bg-slate-100 text-slate-700'
-                            }`}>
-                              Rank #{r.rank}
-                            </span>
-                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
-                              isTeam
-                                ? 'bg-[#f0f9ff] text-[#0284c7] border border-[#bae6fd]'
-                                : 'bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1]'
-                            }`}>
-                              {isTeam ? 'Team Programme' : 'Individual'}
-                            </span>
-                            {r.category && (
-                              <span className="px-2.5 py-0.5 rounded-full text-[10px] bg-[#faf8ff] text-[#64748b] border border-[#e2e8f0] font-medium">
-                                {r.category}
-                              </span>
-                            )}
-                          </div>
-
-                          <h4 className="text-base font-bold text-[#0f172a]">
-                            {r.programmeName || prog?.name || 'Programme Event'}
-                          </h4>
-
-                          <p className="text-xs text-[#334155]">
-                            {isTeam ? (
-                              <>
-                                Winning Entry: <strong className="text-[#0284c7] font-bold">{r.entryName || 'Squad Entry'}</strong>
-                                {' '}• Representing <strong className="text-[#0f172a]">{r.teamName}</strong>
-                              </>
-                            ) : (
-                              <>
-                                Winner: <strong className="text-[#0f172a] font-bold">{r.participantName || 'Contestant'}</strong>
-                                {' '}• <span className="text-[#334155]">{r.teamName}</span>
-                              </>
-                            )}
-                          </p>
-                        </div>
-
-                        <div className="text-left sm:text-right shrink-0">
-                          <div className="text-base font-mono font-bold text-[#0f172a]">
-                            +{r.pointsAwarded} pts
-                          </div>
-                          {r.publishedAt && (
-                            <span className="text-[11px] text-[#64748b]">
-                              Ratified {r.publishedAt.slice(0, 10)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+          {/* Search & Category Filter Controls */}
+          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 p-3 bg-white border border-[#e2e8f0] rounded-2xl shadow-xs">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search event name, winner, chest number, or team..."
+                value={publicResultsSearch}
+                onChange={(e) => setPublicResultsSearch(e.target.value)}
+                className="w-full pl-9 pr-8 py-2 text-xs sm:text-sm bg-transparent border-0 focus:outline-none text-[#0f172a] placeholder:text-slate-400 font-medium"
+              />
+              {publicResultsSearch && (
+                <button
+                  type="button"
+                  onClick={() => setPublicResultsSearch('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
               )}
             </div>
-          )}
 
-          {/* VIEW 2: TEAM SCOREBOARD */}
-          {resultsSubTab === 'team_scoreboard' && (
-            <div className="bg-white border border-[#e2e8f0] rounded-2xl overflow-hidden shadow-xs">
-              <div className="p-4 bg-[#f0fdfa] border-b border-[#ccfbf1] text-xs text-[#0f766e] flex items-center justify-between">
-                <span>
-                  Official House Championship Standings. Points from both Individual and Team Programmes accrue to the team.
-                </span>
-                <span className="font-mono text-[11px] text-[#0f766e] font-bold">Live Ratified Standings</span>
-              </div>
-              <div className="overflow-x-auto w-full max-w-full">
-                <table className="w-full text-left text-xs min-w-[560px]">
-                  <thead>
-                    <tr className="border-b border-[#e2e8f0] text-[#64748b] uppercase tracking-wider text-[11px] bg-[#faf8ff]">
-                      <th className="py-3 px-4 text-center w-16">Rank</th>
-                      <th className="py-3 px-4">House / Team</th>
-                      <th className="py-3 px-4">Institution</th>
-                      <th className="py-3 px-3 text-center">🥇 Gold</th>
-                      <th className="py-3 px-3 text-center">🥈 Silver</th>
-                      <th className="py-3 px-3 text-center">🥉 Bronze</th>
-                      <th className="py-3 px-4 text-right">Ratified Points</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#f1f5f9]">
-                    {leaderboard.map((entry) => (
-                      <tr key={entry.team.id} className="hover:bg-[#f0fdfa]/60 transition-colors">
-                        <td className="py-3.5 px-4 text-center font-mono font-bold">
-                          <span
-                            className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${
-                              entry.rank === 1
-                                ? 'bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4]'
-                                : entry.rank === 2
-                                ? 'bg-slate-200 text-slate-900'
-                                : entry.rank === 3
-                                ? 'bg-amber-100 text-amber-900 border border-amber-200'
-                                : 'bg-slate-100 text-slate-600'
-                            }`}
-                          >
-                            #{entry.rank}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <div className="font-bold text-[#0f172a]">{entry.team.name}</div>
-                          <div className="font-mono text-[10px] text-[#64748b]">{entry.team.code}</div>
-                        </td>
-                        <td className="py-3.5 px-4 text-[#334155]">
-                          {entry.team.institution || 'Collegiate House'}
-                        </td>
-                        <td className="py-3.5 px-3 text-center font-mono font-bold text-amber-700">
-                          {entry.firstPlaceCount}
-                        </td>
-                        <td className="py-3.5 px-3 text-center font-mono font-bold text-slate-500">
-                          {entry.secondPlaceCount}
-                        </td>
-                        <td className="py-3.5 px-3 text-center font-mono font-bold text-amber-800">
-                          {entry.thirdPlaceCount}
-                        </td>
-                        <td className="py-3.5 px-4 text-right font-mono font-bold text-base text-[#0f172a]">
-                          {entry.totalPoints} pts
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* VIEW 3: INDIVIDUAL CATEGORY SCOREBOARDS */}
-          {resultsSubTab === 'category_scoreboards' && (
-            <div className="space-y-4">
-              {/* Category Pills */}
-              <div className="flex flex-wrap items-center gap-2 pb-2 border-b border-[#e2e8f0]">
-                <span className="text-xs font-semibold text-[#64748b] mr-1">Category:</span>
-                {festCategories.map((c) => (
+            {availableResultCategories.length > 0 && (
+              <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setPublicResultsFilterCat('all')}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
+                    publicResultsFilterCat === 'all'
+                      ? 'bg-[#0d9488] text-white shadow-xs font-bold'
+                      : 'bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1] hover:bg-[#ccfbf1]'
+                  }`}
+                >
+                  All Categories
+                </button>
+                {availableResultCategories.map((cat) => (
                   <button
-                    key={c.id}
+                    key={cat}
                     type="button"
-                    onClick={() => setSelectedPublicCategory(c.name)}
-                    className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
-                      selectedPublicCategory.toLowerCase() === c.name.toLowerCase()
+                    onClick={() => setPublicResultsFilterCat(cat)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
+                      publicResultsFilterCat.toLowerCase() === cat.toLowerCase()
                         ? 'bg-[#0d9488] text-white shadow-xs font-bold'
                         : 'bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1] hover:bg-[#ccfbf1]'
                     }`}
                   >
-                    {c.name} {c.isGeneral ? '(General / Any Age)' : ''}
+                    {cat}
                   </button>
                 ))}
               </div>
+            )}
+          </div>
 
-              <div className="p-3.5 bg-[#f0fdfa] border border-[#ccfbf1] rounded-2xl text-xs text-[#0f766e] flex items-center justify-between">
-                <span>
-                  Official individual rankings for <strong>{selectedPublicCategory} Category</strong>. Individual scores are attributed solely to individual competitors. Team programme scores are kept separate.
-                </span>
-                <span className="font-mono text-[#0f766e] text-[11px] font-bold">
-                  Tie-breaker: Points &gt; 1st &gt; 2nd &gt; Marks
-                </span>
+          {/* Grouped Event Results List */}
+          {groupedPublishedResults.length === 0 ? (
+            <div className="p-12 text-center border border-[#e2e8f0] rounded-3xl bg-white shadow-xs">
+              <div className="w-12 h-12 rounded-full bg-[#f0fdfa] border border-[#ccfbf1] text-[#0d9488] flex items-center justify-center mx-auto mb-3">
+                <Trophy className="w-6 h-6 text-[#0d9488]" />
               </div>
-
-              {(() => {
-                const scoreboard = getCategoryScoreboard(selectedPublicCategory);
-                if (scoreboard.length === 0) {
-                  return (
-                    <div className="py-12 text-center text-[#64748b] bg-white border border-[#e2e8f0] rounded-2xl">
-                      No participants registered or scored in {selectedPublicCategory} category.
-                    </div>
-                  );
-                }
+              <h4 className="text-base font-bold text-[#0f172a]">No Results Found</h4>
+              <p className="text-xs text-[#64748b] mt-1 max-w-sm mx-auto">
+                {publicResultsSearch || publicResultsFilterCat !== 'all'
+                  ? 'No published event results match your search and filter criteria.'
+                  : 'Official results have not been ratified and published yet. Please check back as events conclude.'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {groupedPublishedResults.map((group) => {
+                const isTeam = group.isTeam;
+                const topResults = group.results.slice(0, 3);
+                const extraResults = group.results.slice(3);
 
                 return (
-                  <div className="bg-white border border-[#e2e8f0] rounded-2xl overflow-hidden shadow-xs">
-                    <div className="overflow-x-auto w-full max-w-full">
-                      <table className="w-full text-left text-xs min-w-[560px]">
-                        <thead>
-                          <tr className="border-b border-[#e2e8f0] text-[#64748b] uppercase tracking-wider text-[11px] bg-[#faf8ff]">
-                            <th className="py-3 px-3 text-center w-16">Rank</th>
-                            <th className="py-3 px-4">Contestant</th>
-                            <th className="py-3 px-4">House / Team</th>
-                            <th className="py-3 px-3">Category</th>
-                            <th className="py-3 px-2 text-center">🥇 1st</th>
-                            <th className="py-3 px-2 text-center">🥈 2nd</th>
-                            <th className="py-3 px-2 text-center">🥉 3rd</th>
-                            <th className="py-3 px-2 text-center">Total Marks</th>
-                            <th className="py-3 px-4 text-right">Individual Points</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[#f1f5f9]">
-                          {scoreboard.map((entry) => (
-                            <tr key={entry.participant.id} className="hover:bg-[#f0fdfa]/60 transition-colors">
-                              <td className="py-3 px-3 text-center font-mono font-bold">
-                                {entry.totalPoints > 0 ? (
-                                  <span className="inline-flex items-center gap-1">
-                                    {entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : ''}
-                                    #{entry.rank}
+                  <div
+                    key={group.programmeId}
+                    className="bg-white border border-[#e2e8f0] rounded-3xl shadow-[0_2px_12px_-2px_rgba(15,23,42,0.06)] overflow-hidden transition-all hover:border-[#99f6e4]"
+                  >
+                    {/* Unified Event Header */}
+                    <div className="p-4 sm:p-5 bg-gradient-to-r from-[#f0fdfa]/90 via-white to-[#faf8ff] border-b border-[#e2e8f0] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {group.programme?.code && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4]">
+                              {group.programme.code}
+                            </span>
+                          )}
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                              isTeam
+                                ? 'bg-[#f0f9ff] text-[#0284c7] border border-[#bae6fd]'
+                                : 'bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1]'
+                            }`}
+                          >
+                            {isTeam ? 'Team Event' : 'Individual'}
+                          </span>
+                          {group.category && (
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] bg-slate-100 text-slate-700 font-medium">
+                              {group.category}
+                            </span>
+                          )}
+                          {group.programme?.venue && (
+                            <span className="text-[11px] text-slate-500 hidden sm:inline flex items-center gap-1">
+                              <MapPin className="w-3 h-3 inline text-slate-400" />
+                              {group.programme.venue} {group.programme.stage ? `(${group.programme.stage})` : ''}
+                            </span>
+                          )}
+                        </div>
+
+                        <h4 className="text-lg sm:text-xl font-extrabold text-[#0f172a] font-display">
+                          {group.programmeName}
+                        </h4>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-xs font-semibold text-[#0f766e] shrink-0">
+                        <span className="inline-flex items-center gap-1.5 bg-[#ccfbf1]/70 px-3 py-1 rounded-full text-[11px] font-bold text-[#0f766e] border border-[#99f6e4]">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-[#0d9488]" />
+                          Official Ratified
+                        </span>
+                        {group.totalPointsAwarded > 0 && (
+                          <span className="font-mono text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-full">
+                            {group.totalPointsAwarded} pts pool
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Consolidated Winners Container (Rank #1, #2, #3 together in one card) */}
+                    <div className="p-4 sm:p-5">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                        {topResults.map((r) => {
+                          const participant = r.participantId
+                            ? festParticipants.find((p) => p.id === r.participantId)
+                            : undefined;
+                          const chestNumber = participant?.chestNumber;
+                          const isGold = r.rank === 1;
+                          const isSilver = r.rank === 2;
+                          const isBronze = r.rank === 3;
+
+                          return (
+                            <div
+                              key={r.id}
+                              className={`rounded-2xl p-4 border transition-all flex flex-col justify-between ${
+                                isGold
+                                  ? 'bg-gradient-to-b from-amber-50/70 to-amber-50/20 border-amber-200 ring-1 ring-amber-400/20'
+                                  : isSilver
+                                  ? 'bg-gradient-to-b from-slate-50 to-white border-slate-200'
+                                  : isBronze
+                                  ? 'bg-gradient-to-b from-orange-50/60 to-white border-orange-200'
+                                  : 'bg-white border-slate-200'
+                              }`}
+                            >
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <span
+                                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-mono font-bold ${
+                                      isGold
+                                        ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                        : isSilver
+                                        ? 'bg-slate-200 text-slate-800 border border-slate-300'
+                                        : isBronze
+                                        ? 'bg-orange-100 text-orange-900 border border-orange-200'
+                                        : 'bg-slate-100 text-slate-700'
+                                    }`}
+                                  >
+                                    {isGold
+                                      ? '🥇 1st Place'
+                                      : isSilver
+                                      ? '🥈 2nd Place'
+                                      : isBronze
+                                      ? '🥉 3rd Place'
+                                      : `Rank #${r.rank}`}
                                   </span>
-                                ) : (
-                                  <span className="text-[#64748b] font-normal">-</span>
-                                )}
-                              </td>
-                              <td className="py-3 px-4">
-                                <div className="font-bold text-[#0f172a]">{entry.participant.name}</div>
-                                <div className="font-mono text-[10px] text-[#64748b]">{entry.participant.id}</div>
-                              </td>
-                              <td className="py-3 px-4">
-                                <div className="font-semibold text-[#0f172a]">{entry.team?.name || 'Independent'}</div>
-                                <div className="text-[10px] text-[#64748b]">{entry.team?.institution}</div>
-                              </td>
-                              <td className="py-3 px-3">
-                                <span className="px-2.5 py-0.5 rounded-full bg-[#f0fdfa] border border-[#ccfbf1] text-[#0f766e] font-medium">
-                                  {entry.category}
+
+                                  <span className="font-mono font-bold text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                                    +{r.pointsAwarded} pts
+                                  </span>
+                                </div>
+
+                                <div>
+                                  <div className="font-extrabold text-sm sm:text-base text-slate-900 leading-tight">
+                                    {isTeam
+                                      ? r.entryName || 'Squad Entry'
+                                      : r.participantName || participant?.name || 'Contestant'}
+                                  </div>
+
+                                  {chestNumber && (
+                                    <div className="mt-1">
+                                      <span className="inline-block font-mono text-[10px] font-bold text-[#0f766e] bg-[#ccfbf1] border border-[#99f6e4] px-1.5 py-0.5 rounded">
+                                        Chest #{chestNumber}
+                                      </span>
+                                    </div>
+                                  )}
+
+                                  <div className="text-xs text-slate-600 mt-1.5 flex items-center gap-1.5 font-medium">
+                                    <Users className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                    <span className="truncate">{r.teamName || 'House / Team'}</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {r.finalScore !== undefined && r.finalScore > 0 && (
+                                <div className="mt-3 pt-2.5 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-slate-500 font-mono">
+                                  <span>Final Score</span>
+                                  <span className="font-bold text-slate-800">{r.finalScore} marks</span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Additional Positions beyond Rank 3 (if applicable) */}
+                      {extraResults.length > 0 && (
+                        <div className="mt-4 pt-3 border-t border-slate-100">
+                          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-2">
+                            Additional Positions
+                          </span>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {extraResults.map((r) => (
+                              <div
+                                key={r.id}
+                                className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200 text-xs"
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="font-mono font-bold text-slate-500 text-[11px]">#{r.rank}</span>
+                                  <span className="font-semibold text-slate-800 truncate">
+                                    {r.participantName || r.entryName}
+                                  </span>
+                                  <span className="text-slate-400 text-[10px] truncate">({r.teamName})</span>
+                                </div>
+                                <span className="font-mono font-bold text-emerald-700 shrink-0">
+                                  +{r.pointsAwarded} pts
                                 </span>
-                              </td>
-                              <td className="py-3 px-2 text-center font-mono font-bold text-amber-700">
-                                {entry.firstPlaceCount}
-                              </td>
-                              <td className="py-3 px-2 text-center font-mono font-bold text-slate-500">
-                                {entry.secondPlaceCount}
-                              </td>
-                              <td className="py-3 px-2 text-center font-mono font-bold text-amber-800">
-                                {entry.thirdPlaceCount}
-                              </td>
-                              <td className="py-3 px-2 text-center font-mono text-[#334155]">
-                                {entry.totalMarks}
-                              </td>
-                              <td className="py-3 px-4 text-right font-mono font-bold text-[#0f172a] text-sm">
-                                {entry.totalPoints} pts
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
-              })()}
+              })}
             </div>
           )}
         </section>
@@ -2490,7 +2530,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       {/* 7. TIMETABLE / SCHEDULE TAB                                          */}
       {/* ==================================================================== */}
       {activeTabSection === 'schedule' && (
-        <section className="py-8 sm:py-10 max-w-7xl mx-auto px-3.5 sm:px-8 space-y-6 sm:space-y-8 pb-32 w-full max-w-full overflow-hidden">
+        <section className="py-8 sm:py-10 max-w-7xl mx-auto px-3.5 sm:px-8 space-y-6 sm:space-y-8 pb-8 sm:pb-12 w-full max-w-full overflow-hidden">
           {/* Header & Overview Stats */}
           <div className="bg-gradient-to-br from-[#f8fafc] via-white to-[#f0fdfa] border border-[#e2e8f0] rounded-3xl p-6 sm:p-8 shadow-xs">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -2997,99 +3037,9 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       )}
 
       {/* ==================================================================== */}
-      {/* FLOATING BOTTOM NAVIGATION PILL DOCK (MATCHING REFERENCE MODEL)      */}
-      {/* ==================================================================== */}
-      <aside aria-label="Quick festival navigation" className="fixed bottom-4 sm:bottom-5 inset-x-0 z-40 flex justify-center px-2 sm:px-4 pointer-events-none w-full max-w-full">
-        <div className="pointer-events-auto bg-white/95 backdrop-blur-xl border border-[#e2e8f0] rounded-full px-1.5 sm:px-3 py-1.5 shadow-[0_12px_36px_-6px_rgba(15,23,42,0.18)] flex items-center gap-1 sm:gap-1.5 ring-1 ring-black/5 max-w-[calc(100vw-1rem)] sm:max-w-max overflow-x-auto scrollbar-none shrink-0">
-          {/* Brand Monogram */}
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-[#00685f] to-[#0d9488] flex items-center justify-center text-white font-extrabold text-xs shrink-0 select-none shadow-xs ml-0.5 sm:ml-1 mr-0.5">
-            <span>{festName.charAt(0) || 'F'}</span>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setActiveTabSection('overview')}
-            className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              activeTabSection === 'overview'
-                ? 'bg-[#0d9488] text-white shadow-xs'
-                : 'text-[#334155] hover:text-[#0d9488] hover:bg-[#f0fdfa]'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Home</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTabSection('schedule')}
-            className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              activeTabSection === 'schedule'
-                ? 'bg-[#0d9488] text-white shadow-xs'
-                : 'text-[#334155] hover:text-[#0d9488] hover:bg-[#f0fdfa]'
-            }`}
-          >
-            <Calendar className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Schedules</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTabSection('results')}
-            className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              activeTabSection === 'results'
-                ? 'bg-[#0d9488] text-white shadow-xs'
-                : 'text-[#334155] hover:text-[#0d9488] hover:bg-[#f0fdfa]'
-            }`}
-          >
-            <Trophy className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Results</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTabSection('student_search')}
-            className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              activeTabSection === 'student_search'
-                ? 'bg-[#0d9488] text-white shadow-xs'
-                : 'text-[#334155] hover:text-[#0d9488] hover:bg-[#f0fdfa]'
-            }`}
-          >
-            <Search className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">My Result</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTabSection('bulletin')}
-            className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              activeTabSection === 'bulletin'
-                ? 'bg-[#0d9488] text-white shadow-xs'
-                : 'text-[#334155] hover:text-[#0d9488] hover:bg-[#f0fdfa]'
-            }`}
-          >
-            <FileText className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">Downloads</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTabSection('gallery')}
-            className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              activeTabSection === 'gallery'
-                ? 'bg-[#0d9488] text-white shadow-xs'
-                : 'text-[#334155] hover:text-[#0d9488] hover:bg-[#f0fdfa]'
-            }`}
-          >
-            <ImageIcon className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">Wall</span>
-          </button>
-        </div>
-      </aside>
-
-      {/* ==================================================================== */}
       {/* 10. DARK FESTIVAL FOOTER (MATCHING REFERENCE MODEL)                  */}
       {/* ==================================================================== */}
-      <footer className="mt-auto bg-[#0b1120] text-slate-300 pt-12 sm:pt-16 pb-28 border-t border-slate-800 w-full max-w-full overflow-hidden">
+      <footer className="mt-auto bg-[#0b1120] text-slate-300 pt-12 sm:pt-16 pb-12 sm:pb-16 border-t border-slate-800 w-full max-w-full overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10 pb-12 border-b border-slate-800">
             {/* Col 1: Fest Brand & Copyright */}
@@ -3496,17 +3446,6 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                       </div>
                       <ChevronRight className="w-4 h-4 text-slate-400" />
                     </button>
-
-                    <a
-                      href={getAppUrl('admin.html')}
-                      className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-full text-xs font-semibold text-[#334155] hover:bg-[#f0fdfa] hover:text-[#0d9488] transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <User className="w-4 h-4 text-[#0d9488]" />
-                        <span>Fest Admin Console</span>
-                      </div>
-                      <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
-                    </a>
 
                     <a
                       href={getAppUrl()}
