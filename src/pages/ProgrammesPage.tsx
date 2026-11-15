@@ -53,6 +53,7 @@ export const ProgrammesPage: React.FC = () => {
     updateProgramme,
     deleteProgramme,
     publishProgrammeResults,
+    deleteProgrammeResults,
     hasPermission,
     addToast,
     navigateToTabWithFilter,
@@ -73,6 +74,7 @@ export const ProgrammesPage: React.FC = () => {
   const [copiedFromTitle, setCopiedFromTitle] = useState<string | null>(null);
   const [viewingProgramme, setViewingProgramme] = useState<Programme | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteResultsId, setConfirmDeleteResultsId] = useState<string | null>(null);
 
   // Form Step: 1 to 6
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -740,9 +742,24 @@ export const ProgrammesPage: React.FC = () => {
                     {prog.criteria.length} criteria ({totalMarks} pts)
                   </span>
                   {prog.resultPublished ? (
-                    <span className="inline-flex items-center gap-1 text-emerald-700 font-medium text-[10px]">
-                      <CheckCircle2 className="w-3 h-3" /> Results Live
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="inline-flex items-center gap-1 text-emerald-700 font-medium text-[10px]">
+                        <CheckCircle2 className="w-3 h-3" /> Results Live
+                      </span>
+                      {canManage && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConfirmDeleteResultsId(prog.id);
+                          }}
+                          className="text-[10px] text-rose-600 hover:text-rose-800 hover:underline font-semibold"
+                          title="Delete added results for this programme"
+                        >
+                          Delete Results
+                        </button>
+                      )}
+                    </div>
                   ) : (
                     <span className="text-slate-400 text-[10px]">Unpublished</span>
                   )}
@@ -1935,6 +1952,17 @@ export const ProgrammesPage: React.FC = () => {
                     <Copy className="w-3.5 h-3.5" /> Duplicate / Copy
                   </button>
                 )}
+                {canManage && viewingProgramme.resultPublished && (
+                  <button
+                    onClick={() => {
+                      setConfirmDeleteResultsId(viewingProgramme.id);
+                    }}
+                    className="px-2.5 py-1 text-xs text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded font-semibold inline-flex items-center gap-1 transition-colors"
+                    title="Delete and retract published results for this programme"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Delete Results
+                  </button>
+                )}
               </div>
 
               <button
@@ -1957,6 +1985,25 @@ export const ProgrammesPage: React.FC = () => {
         }}
         title="Delete Programme"
         message="Are you sure you want to delete this programme? All registrations and associated schedule slots will be permanently unlinked."
+      />
+
+      {/* Delete Programme Results Confirmation */}
+      <ConfirmDialog
+        isOpen={!!confirmDeleteResultsId}
+        onClose={() => setConfirmDeleteResultsId(null)}
+        onConfirm={async () => {
+          if (confirmDeleteResultsId) {
+            await deleteProgrammeResults(confirmDeleteResultsId);
+            if (viewingProgramme?.id === confirmDeleteResultsId) {
+              setViewingProgramme(prev => prev ? { ...prev, resultPublished: false } : null);
+            }
+            setConfirmDeleteResultsId(null);
+          }
+        }}
+        title="Delete Added Results"
+        message="Are you sure you want to delete all added and published results for this programme? Ranks, positions, and points will be retracted and live leaderboards will be updated automatically."
+        confirmLabel="Delete Results"
+        isDestructive={true}
       />
     </div>
   );

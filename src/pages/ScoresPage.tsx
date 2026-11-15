@@ -30,7 +30,9 @@ import {
   User,
   Sliders,
   Check,
-  RotateCcw
+  RotateCcw,
+  Trash2,
+  Award
 } from 'lucide-react';
 
 export const ScoresPage: React.FC = () => {
@@ -44,20 +46,27 @@ export const ScoresPage: React.FC = () => {
     currentUser,
     submitOrUpdateScore,
     updateScoreStatus,
+    deleteScore,
     publishProgrammeResults,
+    deleteResult,
+    deleteProgrammeResults,
     teamProgrammeEntries,
     assignments,
     hasPermission,
     addToast,
   } = useFest();
 
-  // Active View Tab: 'sheet' (Fast Score Sheet Matrix) or 'all' (Historical Submissions & Audit Dossier)
-  const [activeTab, setActiveTab] = useState<'sheet' | 'all'>('sheet');
+  // Active View Tab: 'sheet' (Fast Score Sheet Matrix), 'results' (Added/Published Results), or 'all' (Historical Submissions & Audit Dossier)
+  const [activeTab, setActiveTab] = useState<'sheet' | 'results' | 'all'>('sheet');
 
   const [search, setSearch] = useState('');
   const [filterProgramme, setFilterProgramme] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterJudge, setFilterJudge] = useState('all');
+
+  // Added Results filter & search state
+  const [resultsSearch, setResultsSearch] = useState('');
+  const [resultsFilterProgramme, setResultsFilterProgramme] = useState('all');
 
   const [isScoreModalOpen, setIsScoreModalOpen] = useState(false);
   const [editingScore, setEditingScore] = useState<ScoreSubmission | null>(null);
@@ -66,6 +75,9 @@ export const ScoresPage: React.FC = () => {
     programmes[0]?.id || ''
   );
   const [confirmPublishId, setConfirmPublishId] = useState<string | null>(null);
+  const [confirmDeleteResultId, setConfirmDeleteResultId] = useState<string | null>(null);
+  const [confirmDeleteProgrammeResultsId, setConfirmDeleteProgrammeResultsId] = useState<string | null>(null);
+  const [confirmDeleteScoreId, setConfirmDeleteScoreId] = useState<string | null>(null);
 
   // Score Entry Modal Form State (Maintained for historical / individual score editing)
   const [formJudgeId, setFormJudgeId] = useState('');
@@ -110,6 +122,30 @@ export const ScoresPage: React.FC = () => {
       return true;
     });
   }, [scores, search, filterProgramme, filterStatus, filterJudge, programmes, teams, participants, isJudgeOnly, judgeId, currentUser.id]);
+
+  // Filtered added / published results for the 'results' tab
+  const filteredResults = useMemo(() => {
+    return results.filter((r) => {
+      if (resultsFilterProgramme !== 'all' && r.programmeId !== resultsFilterProgramme) {
+        return false;
+      }
+      if (!resultsSearch.trim()) return true;
+      const q = resultsSearch.toLowerCase();
+      const prog = programmes.find((p) => p.id === r.programmeId);
+      const team = teams.find((t) => t.id === r.teamId);
+      const part = r.participantId ? participants.find((p) => p.id === r.participantId) : undefined;
+      return (
+        (prog?.name.toLowerCase().includes(q) ?? false) ||
+        (prog?.code.toLowerCase().includes(q) ?? false) ||
+        (team?.name.toLowerCase().includes(q) ?? false) ||
+        (part?.name.toLowerCase().includes(q) ?? false) ||
+        (part?.chestNumber?.toLowerCase().includes(q) ?? false) ||
+        (r.entryName?.toLowerCase().includes(q) ?? false) ||
+        (r.participantName?.toLowerCase().includes(q) ?? false) ||
+        String(r.rank).includes(q)
+      );
+    });
+  }, [results, resultsFilterProgramme, resultsSearch, programmes, teams, participants]);
 
   // Programmes available for scoring (restricted for judges to assigned events)
   const scorableProgrammes = useMemo(() => {
@@ -667,6 +703,19 @@ export const ScoresPage: React.FC = () => {
               <FileSpreadsheet className="w-3.5 h-3.5" />
               <span>Fast Score Sheet</span>
             </button>
+            {!isJudgeOnly && (
+              <button
+                onClick={() => setActiveTab('results')}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 font-semibold rounded-md transition-all ${
+                  activeTab === 'results'
+                    ? 'bg-white text-emerald-700 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Trophy className="w-3.5 h-3.5 text-amber-500" />
+                <span>Added Results ({results.length})</span>
+              </button>
+            )}
             <button
               onClick={() => setActiveTab('all')}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 font-semibold rounded-md transition-all ${
@@ -1071,10 +1120,21 @@ export const ScoresPage: React.FC = () => {
                 {canApprove && activeSheetProg && (
                   <>
                     {activeSheetProg.resultPublished ? (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded">
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span>Results Live on Public Portal</span>
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded">
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>Results Live on Public Portal</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeleteProgrammeResultsId(activeSheetProg.id)}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-rose-700 hover:text-white bg-rose-50 hover:bg-rose-600 border border-rose-200 hover:border-rose-600 rounded transition-colors shadow-xs cursor-pointer"
+                          title="Delete added results and retract from public portal"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          <span>Delete Added Results</span>
+                        </button>
+                      </div>
                     ) : (
                       <button
                         type="button"
@@ -1094,7 +1154,205 @@ export const ScoresPage: React.FC = () => {
       )}
 
       {/* =================================================================== */}
-      {/* TAB 2: HISTORICAL SUBMISSIONS TABLE & AUDIT DOSSIER                */}
+      {/* TAB 2: ADDED / PUBLISHED RESULTS MANAGEMENT                         */}
+      {/* =================================================================== */}
+      {activeTab === 'results' && (
+        <div className="space-y-4">
+          {/* Summary Strip & Quick Actions */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="p-3.5 bg-white border border-slate-200 rounded-lg shadow-xs flex items-center justify-between">
+              <div>
+                <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Total Added Results</span>
+                <div className="font-mono font-black text-xl text-slate-900 mt-0.5">{results.length}</div>
+              </div>
+              <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <Trophy className="w-5 h-5" />
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-white border border-slate-200 rounded-lg shadow-xs flex items-center justify-between">
+              <div>
+                <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Ratified Programmes</span>
+                <div className="font-mono font-black text-xl text-slate-900 mt-0.5">
+                  {new Set(results.map((r) => r.programmeId)).size}
+                </div>
+              </div>
+              <div className="w-9 h-9 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-white border border-slate-200 rounded-lg shadow-xs flex items-center justify-between">
+              <div>
+                <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Leaderboard Points Awarded</span>
+                <div className="font-mono font-black text-xl text-emerald-600 mt-0.5">
+                  {results.reduce((sum, r) => sum + (r.pointsAwarded || 0), 0)} pts
+                </div>
+              </div>
+              <div className="w-9 h-9 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                <Award className="w-5 h-5" />
+              </div>
+            </div>
+          </div>
+
+          {/* Filter Bar */}
+          <div className="p-3.5 bg-white border border-slate-200 rounded-lg shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
+            <div className="flex-1 w-full md:w-auto relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search result by contestant, chest number, house, or programme..."
+                value={resultsSearch}
+                onChange={(e) => setResultsSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-900"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end">
+              <div className="flex items-center gap-1.5">
+                <Filter className="w-3.5 h-3.5 text-slate-400" />
+                <select
+                  value={resultsFilterProgramme}
+                  onChange={(e) => setResultsFilterProgramme(e.target.value)}
+                  className="text-xs border border-slate-200 rounded-md px-2 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-900"
+                >
+                  <option value="all">All Programmes ({programmes.length})</option>
+                  {programmes.map((p) => {
+                    const progResultsCount = results.filter((r) => r.programmeId === p.id).length;
+                    return (
+                      <option key={p.id} value={p.id}>
+                        {p.code} - {p.name} {progResultsCount > 0 ? `(${progResultsCount} results)` : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              {resultsFilterProgramme !== 'all' && results.some((r) => r.programmeId === resultsFilterProgramme) && canApprove && (
+                <button
+                  type="button"
+                  onClick={() => setConfirmDeleteProgrammeResultsId(resultsFilterProgramme)}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-600 hover:text-white border border-rose-200 hover:border-rose-600 rounded transition-colors shadow-xs cursor-pointer"
+                  title="Delete all results for this selected programme"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete Programme Results</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Results Data Table */}
+          <div className="bg-white border border-slate-200 rounded-lg shadow-xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs min-w-[650px]">
+                <thead>
+                  <tr className="bg-slate-50/70 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                    <th className="py-3 px-3 text-center w-16">Rank</th>
+                    <th className="py-3 px-3">Programme</th>
+                    <th className="py-3 px-3">Competitor / Entry</th>
+                    <th className="py-3 px-3">House / Team</th>
+                    <th className="py-3 px-2 text-center">Score / Marks</th>
+                    <th className="py-3 px-2 text-center">Points Awarded</th>
+                    <th className="py-3 px-3">Published At</th>
+                    <th className="py-3 px-3 text-right">Delete Option</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredResults.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-12 text-center text-slate-400">
+                        <Trophy className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                        No added results matching the current filter.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredResults.map((res) => {
+                      const prog = programmes.find((p) => p.id === res.programmeId);
+                      const team = teams.find((t) => t.id === res.teamId);
+                      const participant = res.participantId ? participants.find((p) => p.id === res.participantId) : undefined;
+                      const entryName = res.participantName || participant?.name || res.entryName || 'Competitor';
+
+                      return (
+                        <tr key={res.id} className="hover:bg-slate-50/60 transition-colors">
+                          <td className="py-3 px-3 text-center">
+                            <span
+                              className={`inline-flex items-center justify-center w-7 h-7 rounded-full font-mono text-xs font-bold ${
+                                res.rank === 1
+                                  ? 'bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs'
+                                  : res.rank === 2
+                                  ? 'bg-slate-200 text-slate-900 border border-slate-300'
+                                  : res.rank === 3
+                                  ? 'bg-orange-100 text-orange-900 border border-orange-200'
+                                  : 'bg-slate-100 text-slate-600'
+                              }`}
+                            >
+                              {res.rank === 1 ? '🥇 1' : res.rank === 2 ? '🥈 2' : res.rank === 3 ? '🥉 3' : `#${res.rank}`}
+                            </span>
+                          </td>
+
+                          <td className="py-3 px-3">
+                            <div className="font-semibold text-slate-900">{prog?.name || res.programmeId}</div>
+                            <div className="text-[10px] text-slate-500 font-mono">
+                              {prog?.code} • {res.category || prog?.category} • {res.isTeamProgramme ? 'Team' : 'Solo'}
+                            </div>
+                          </td>
+
+                          <td className="py-3 px-3">
+                            <div className="font-medium text-slate-900">{entryName}</div>
+                            {participant && (
+                              <div className="text-[10px] text-slate-500 font-mono">
+                                {participant.chestNumber ? `Chest #${participant.chestNumber} • ` : ''}
+                                {participant.category}
+                              </div>
+                            )}
+                          </td>
+
+                          <td className="py-3 px-3">
+                            <div className="font-medium text-slate-800">{team?.name || res.teamName || 'Independent'}</div>
+                            <div className="text-[10px] text-slate-400 font-mono">{team?.code}</div>
+                          </td>
+
+                          <td className="py-3 px-2 text-center font-mono font-bold text-slate-900 text-sm">
+                            {res.finalScore}
+                          </td>
+
+                          <td className="py-3 px-2 text-center">
+                            <span className="font-mono font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full text-xs">
+                              +{res.pointsAwarded} pts
+                            </span>
+                          </td>
+
+                          <td className="py-3 px-3 font-mono text-[11px] text-slate-500">
+                            {res.publishedAt || 'Published'}
+                          </td>
+
+                          <td className="py-3 px-3 text-right">
+                            {canApprove && (
+                              <button
+                                type="button"
+                                onClick={() => setConfirmDeleteResultId(res.id)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-600 hover:text-white hover:bg-rose-600 bg-rose-50 border border-rose-200 rounded transition-colors shadow-2xs cursor-pointer"
+                                title="Delete this added result entry"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>Delete</span>
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =================================================================== */}
+      {/* TAB 3: HISTORICAL SUBMISSIONS TABLE & AUDIT DOSSIER                */}
       {/* =================================================================== */}
       {activeTab === 'all' && (
         <div className="space-y-4">
@@ -1186,9 +1444,21 @@ export const ScoresPage: React.FC = () => {
 
                     <div>
                       {isPublished ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700 font-semibold bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
-                          <CheckCircle2 className="w-3 h-3" /> Published
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700 font-semibold bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
+                            <CheckCircle2 className="w-3 h-3" /> Published
+                          </span>
+                          {canApprove && (
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDeleteProgrammeResultsId(prog.id)}
+                              className="p-1 rounded text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer"
+                              title="Delete added results for this programme"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       ) : hasScores && canApprove ? (
                         <button
                           onClick={() => setConfirmPublishId(prog.id)}
@@ -1318,6 +1588,13 @@ export const ScoresPage: React.FC = () => {
                                       <CheckCircle2 className="w-3.5 h-3.5" />
                                     </button>
                                   )}
+                                  <button
+                                    onClick={() => setConfirmDeleteScoreId(score.id)}
+                                    className="p-1 rounded text-rose-500 hover:text-rose-700 hover:bg-rose-50"
+                                    title="Delete Score Entry"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
                                 </>
                               )}
                             </div>
@@ -1669,12 +1946,63 @@ export const ScoresPage: React.FC = () => {
         isOpen={!!confirmPublishId}
         onClose={() => setConfirmPublishId(null)}
         onConfirm={() => {
-          if (confirmPublishId) publishProgrammeResults(confirmPublishId);
+          if (confirmPublishId) {
+            publishProgrammeResults(confirmPublishId);
+            setConfirmPublishId(null);
+          }
         }}
         title="Ratify & Publish Programme Results"
         message="This action computes final rankings using server scoring algorithms, updates the overall team points leaderboard, and makes results visible on the visitor Public Page. Proceed?"
         confirmLabel="Ratify & Publish"
         isDestructive={false}
+      />
+
+      {/* Confirmation to Delete Single Result Entry */}
+      <ConfirmDialog
+        isOpen={!!confirmDeleteResultId}
+        onClose={() => setConfirmDeleteResultId(null)}
+        onConfirm={() => {
+          if (confirmDeleteResultId) {
+            deleteResult(confirmDeleteResultId);
+            setConfirmDeleteResultId(null);
+          }
+        }}
+        title="Delete Added Result Entry"
+        message="Are you sure you want to delete this added result entry? The leaderboard points will be automatically recalculated and this contestant's ranking will be removed."
+        confirmLabel="Delete Result"
+        isDestructive={true}
+      />
+
+      {/* Confirmation to Delete Programme Results */}
+      <ConfirmDialog
+        isOpen={!!confirmDeleteProgrammeResultsId}
+        onClose={() => setConfirmDeleteProgrammeResultsId(null)}
+        onConfirm={() => {
+          if (confirmDeleteProgrammeResultsId) {
+            deleteProgrammeResults(confirmDeleteProgrammeResultsId);
+            setConfirmDeleteProgrammeResultsId(null);
+          }
+        }}
+        title="Delete All Results for Programme"
+        message="Are you sure you want to delete all added results for this programme? The programme status will be reset, published results will be retracted from the public portal, and awarded leaderboard points will be subtracted."
+        confirmLabel="Delete & Retract Results"
+        isDestructive={true}
+      />
+
+      {/* Confirmation to Delete Score Submission */}
+      <ConfirmDialog
+        isOpen={!!confirmDeleteScoreId}
+        onClose={() => setConfirmDeleteScoreId(null)}
+        onConfirm={() => {
+          if (confirmDeleteScoreId) {
+            deleteScore(confirmDeleteScoreId);
+            setConfirmDeleteScoreId(null);
+          }
+        }}
+        title="Delete Score Sheet"
+        message="Are you sure you want to delete this score submission? This will permanently remove the judge's score entry."
+        confirmLabel="Delete Score"
+        isDestructive={true}
       />
     </div>
   );

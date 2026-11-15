@@ -73,7 +73,10 @@ import {
   saveProgrammeToFirestore,
   deleteProgrammeFromFirestore,
   saveScoreToFirestore,
+  deleteScoreFromFirestore,
   saveResultToFirestore,
+  deleteResultFromFirestore,
+  deleteProgrammeResultsFromFirestore,
   saveTeamLeaderInvitation,
   saveProgrammeAssignmentToFirestore,
   deleteProgrammeAssignmentFromFirestore,
@@ -297,7 +300,10 @@ interface FestContextType {
 
   submitOrUpdateScore: (score: Omit<ScoreSubmission, 'id' | 'submittedAt' | 'revisionHistory'> & { id?: string }) => void;
   updateScoreStatus: (id: string, newStatus: ScoreStatus, notes?: string) => void;
+  deleteScore: (scoreId: string) => void;
   publishProgrammeResults: (programmeId: string) => void;
+  deleteResult: (resultId: string) => void;
+  deleteProgrammeResults: (programmeId: string) => void;
 
   // Categories (General & Custom)
   addCategory: (cat: Omit<FestCategory, 'id' | 'createdAt'>) => Promise<boolean>;
@@ -1853,6 +1859,80 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     publishResultsViaCloudFunction(activeFestId, programmeId).catch((err) => {
       console.warn('[FestContext] Cloud function publishResults call error:', err);
     });
+  };
+
+  // Delete a single result entry
+  const deleteResult = (resultId: string) => {
+    if (!hasPermission(['admin', 'fest_admin', 'super_admin'])) {
+      addToast('error', 'Permission Denied', 'Only authorized Fest Admins can delete results.');
+      return;
+    }
+    const target = results.find((r) => r.id === resultId);
+    if (!target) return;
+
+    setResults((prev) => prev.filter((r) => r.id !== resultId));
+    deleteResultFromFirestore(resultId);
+
+    // If no more results remain for this programme, reset programme.resultPublished
+    const remainingForProg = results.filter((r) => r.programmeId === target.programmeId && r.id !== resultId);
+    if (remainingForProg.length === 0) {
+      setProgrammes((prev) =>
+        prev.map((p) =>
+          p.id === target.programmeId ? { ...p, resultPublished: false, publishedAt: undefined } : p
+        )
+      );
+      const prog = programmes.find((p) => p.id === target.programmeId);
+      if (prog) {
+        saveProgrammeToFirestore({ ...prog, resultPublished: false, publishedAt: undefined });
+      }
+    }
+
+    logActivity('DELETE_RESULT', 'score', resultId, `Deleted result entry #${resultId} (${target.participantName || target.entryName || 'Rank #' + target.rank}).`);
+    addToast('info', 'Result Deleted', 'Result entry removed successfully.');
+  };
+
+  // Delete all results for a programme (retract results)
+  const deleteProgrammeResults = (programmeId: string) => {
+    if (!hasPermission(['admin', 'fest_admin', 'super_admin'])) {
+      addToast('error', 'Permission Denied', 'Only authorized Fest Admins can delete results.');
+      return;
+    }
+    const prog = programmes.find((p) => p.id === programmeId);
+    const progName = prog?.name || programmeId;
+
+    // Remove all results for this programme
+    setResults((prev) => prev.filter((r) => r.programmeId !== programmeId));
+    deleteProgrammeResultsFromFirestore(programmeId);
+
+    // Mark programme as resultPublished = false
+    setProgrammes((prev) =>
+      prev.map((p) =>
+        p.id === programmeId ? { ...p, resultPublished: false, publishedAt: undefined } : p
+      )
+    );
+    if (prog) {
+      saveProgrammeToFirestore({ ...prog, resultPublished: false, publishedAt: undefined });
+    }
+
+    // Revert scores from 'published' to 'approved'
+    setScores((prev) =>
+      prev.map((s) => (s.programmeId === programmeId && s.status === 'published' ? { ...s, status: 'approved' } : s))
+    );
+
+    logActivity('DELETE_RESULTS', 'score', programmeId, `Deleted and retracted published results for programme ${progName}.`);
+    addToast('info', 'Results Deleted', `All results for ${progName} have been deleted and retracted from the public scoreboard.`);
+  };
+
+  // Delete a score entry
+  const deleteScore = (scoreId: string) => {
+    if (!hasPermission(['admin', 'fest_admin', 'super_admin'])) {
+      addToast('error', 'Permission Denied', 'Only authorized Fest Admins can delete scores.');
+      return;
+    }
+    setScores((prev) => prev.filter((s) => s.id !== scoreId));
+    deleteScoreFromFirestore(scoreId);
+    logActivity('DELETE_SCORE', 'score', scoreId, `Deleted score entry #${scoreId}.`);
+    addToast('info', 'Score Deleted', 'Score sheet entry was deleted.');
   };
 
   // Team Management
@@ -4370,7 +4450,10 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
         duplicateProgramme,
         submitOrUpdateScore,
         updateScoreStatus,
+        deleteScore,
         publishProgrammeResults,
+        deleteResult,
+        deleteProgrammeResults,
         addCategory,
         updateCategory,
         deleteCategory,

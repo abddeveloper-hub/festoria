@@ -8,6 +8,7 @@ import {
   deleteDoc,
   query,
   where,
+  writeBatch,
   onSnapshot,
   serverTimestamp,
 } from 'firebase/firestore';
@@ -892,6 +893,51 @@ export async function saveResultToFirestore(result: ApprovedResult): Promise<voi
       }), { merge: true });
     } catch (e) {
       console.warn('[Firestore] saveResultToFirestore error:', e);
+    }
+  }
+}
+
+export async function deleteScoreFromFirestore(scoreId: string): Promise<void> {
+  const scores = StorageService.getScoreSubmissions().filter((s) => s.id !== scoreId);
+  StorageService.saveScoreSubmissions(scores);
+
+  if (isFirebaseConfigured && db) {
+    try {
+      await deleteDoc(doc(db, 'scores', scoreId));
+    } catch (e) {
+      console.warn('[Firestore] deleteScoreFromFirestore error:', e);
+    }
+  }
+}
+
+export async function deleteResultFromFirestore(resultId: string): Promise<void> {
+  const results = StorageService.getApprovedResults().filter((r) => r.id !== resultId);
+  StorageService.saveApprovedResults(results);
+
+  if (isFirebaseConfigured && db) {
+    try {
+      await deleteDoc(doc(db, 'results', resultId));
+    } catch (e) {
+      console.warn('[Firestore] deleteResultFromFirestore error:', e);
+    }
+  }
+}
+
+export async function deleteProgrammeResultsFromFirestore(programmeId: string): Promise<void> {
+  const results = StorageService.getApprovedResults().filter((r) => r.programmeId !== programmeId);
+  StorageService.saveApprovedResults(results);
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const q = query(collection(db, 'results'), where('programmeId', '==', programmeId));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const batch = writeBatch(db);
+        snap.docs.forEach((d) => batch.delete(d.ref));
+        await batch.commit();
+      }
+    } catch (e) {
+      console.warn('[Firestore] deleteProgrammeResultsFromFirestore error:', e);
     }
   }
 }
