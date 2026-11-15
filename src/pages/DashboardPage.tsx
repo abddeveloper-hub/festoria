@@ -151,7 +151,10 @@ export const DashboardPage: React.FC = () => {
   const upcomingEvents = useMemo(() => {
     return programmes
       .filter((p) => p.status === 'scheduled' || p.status === 'ongoing')
-      .sort((a, b) => `${a.date} ${a.startTime}`.localeCompare(`${b.date} ${b.startTime}`))
+      .sort((a, b) =>
+        `${a.date} ${a.startTime}`.localeCompare(`${b.date} ${b.startTime}`) ||
+        (a.code || '').localeCompare(b.code || '', undefined, { numeric: true, sensitivity: 'base' })
+      )
       .slice(0, 5);
   }, [programmes]);
 

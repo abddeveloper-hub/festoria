@@ -73,8 +73,18 @@ export const SchedulePage: React.FC = () => {
         if (filterStatus !== 'all' && slot.status !== filterStatus) return false;
         return true;
       })
-      .sort((a, b) => `${a.date} ${a.startTime}`.localeCompare(`${b.date} ${b.startTime}`));
-  }, [scheduleSlots, selectedDate, filterVenue, filterStatus]);
+      .sort((a, b) => {
+        const timeA = `${a.date} ${a.startTime}`;
+        const timeB = `${b.date} ${b.startTime}`;
+        const timeComp = timeA.localeCompare(timeB);
+        if (timeComp !== 0) return timeComp;
+        const progA = programmes.find((p) => p.id === a.programmeId);
+        const progB = programmes.find((p) => p.id === b.programmeId);
+        const codeA = progA?.code || a.programmeId || '';
+        const codeB = progB?.code || b.programmeId || '';
+        return codeA.localeCompare(codeB, undefined, { numeric: true, sensitivity: 'base' });
+      });
+  }, [scheduleSlots, selectedDate, filterVenue, filterStatus, programmes]);
 
   const handleOpenAdd = () => {
     setEditingSlot(null);

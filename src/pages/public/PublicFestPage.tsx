@@ -273,9 +273,9 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
     return Array.from(catMap.values());
   }, [publishedProgrammes, festCategories]);
 
-  // Filtered programmes for schedule view
+  // Filtered programmes for schedule view (Sorted by Code & Schedule Time)
   const filteredScheduleProgrammes = React.useMemo(() => {
-    return publishedProgrammes.filter((p) => {
+    const list = publishedProgrammes.filter((p) => {
       if (scheduleCategoryFilter !== 'All' && (p.category || '').trim().toLowerCase() !== scheduleCategoryFilter.trim().toLowerCase()) {
         return false;
       }
@@ -296,11 +296,25 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       }
       return true;
     });
+
+    return list.sort((a, b) =>
+      (a.code || '').localeCompare(b.code || '', undefined, { numeric: true, sensitivity: 'base' }) ||
+      `${a.date} ${a.startTime}`.localeCompare(`${b.date} ${b.startTime}`)
+    );
   }, [publishedProgrammes, scheduleCategoryFilter, scheduleStageFilter, scheduleSearchQuery]);
 
-  // Participants scoped to this festival
+  // Participants scoped to this festival (Sorted by Chest Number)
   const festParticipants = React.useMemo(() => {
-    return (participants || []).filter((p) => !p.festId || p.festId === targetFestId);
+    return (participants || [])
+      .filter((p) => !p.festId || p.festId === targetFestId)
+      .sort((a, b) => {
+        if (a.chestNumber && b.chestNumber) {
+          return a.chestNumber.localeCompare(b.chestNumber, undefined, { numeric: true, sensitivity: 'base' });
+        }
+        if (a.chestNumber) return -1;
+        if (b.chestNumber) return 1;
+        return (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' });
+      });
   }, [participants, targetFestId]);
 
   // Student search filtering by Chest Number or Name
@@ -354,23 +368,32 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       });
     });
 
-    return groups.filter((g) => {
-      const matchesCat =
-        publicResultsFilterCat === 'all' ||
-        (g.category && g.category.toLowerCase() === publicResultsFilterCat.toLowerCase());
-      const query = publicResultsSearch.toLowerCase().trim();
-      const matchesSearch =
-        !query ||
-        g.programmeName.toLowerCase().includes(query) ||
-        (g.programme?.code && g.programme.code.toLowerCase().includes(query)) ||
-        g.results.some(
-          (r) =>
-            (r.participantName && r.participantName.toLowerCase().includes(query)) ||
-            (r.entryName && r.entryName.toLowerCase().includes(query)) ||
-            (r.teamName && r.teamName.toLowerCase().includes(query))
+    return groups
+      .filter((g) => {
+        const matchesCat =
+          publicResultsFilterCat === 'all' ||
+          (g.category && g.category.toLowerCase() === publicResultsFilterCat.toLowerCase());
+        const query = publicResultsSearch.toLowerCase().trim();
+        const matchesSearch =
+          !query ||
+          g.programmeName.toLowerCase().includes(query) ||
+          (g.programme?.code && g.programme.code.toLowerCase().includes(query)) ||
+          g.results.some(
+            (r) =>
+              (r.participantName && r.participantName.toLowerCase().includes(query)) ||
+              (r.entryName && r.entryName.toLowerCase().includes(query)) ||
+              (r.teamName && r.teamName.toLowerCase().includes(query))
+          );
+        return matchesCat && matchesSearch;
+      })
+      .sort((a, b) => {
+        const codeA = a.programme?.code || a.programmeId || '';
+        const codeB = b.programme?.code || b.programmeId || '';
+        return (
+          codeA.localeCompare(codeB, undefined, { numeric: true, sensitivity: 'base' }) ||
+          a.programmeName.localeCompare(b.programmeName, undefined, { sensitivity: 'base' })
         );
-      return matchesCat && matchesSearch;
-    });
+      });
   }, [publishedResults, programmes, publicResultsSearch, publicResultsFilterCat]);
 
   const availableResultCategories = React.useMemo(() => {

@@ -180,21 +180,32 @@ export const ScoresPage: React.FC = () => {
     });
 
     return groups.sort((a, b) => {
-      const nameA = a.programme?.name || '';
-      const nameB = b.programme?.name || '';
-      return nameA.localeCompare(nameB);
+      const codeA = a.programme?.code || a.programmeId || '';
+      const codeB = b.programme?.code || b.programmeId || '';
+      return codeA.localeCompare(codeB, undefined, { numeric: true, sensitivity: 'base' }) ||
+        (a.programme?.name || '').localeCompare(b.programme?.name || '', undefined, { sensitivity: 'base' });
     });
   }, [filteredResults, programmes]);
 
-  // Programmes available for scoring (restricted for judges to assigned events)
+  // Programmes available for scoring (restricted for judges to assigned events, sorted by code)
   const scorableProgrammes = useMemo(() => {
+    let list = programmes;
     if (isJudgeOnly && judgeId) {
       const assigned = programmes.filter((p) => p.assignedJudgeIds?.includes(judgeId));
-      if (assigned.length > 0) return assigned;
+      if (assigned.length > 0) return [...assigned].sort((a, b) =>
+        (a.code || '').localeCompare(b.code || '', undefined, { numeric: true, sensitivity: 'base' }) ||
+        (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' })
+      );
       // Fallback: If no specific programmes are assigned to this judge yet, allow evaluating active programmes in this fest
-      return programmes;
+      return [...programmes].sort((a, b) =>
+        (a.code || '').localeCompare(b.code || '', undefined, { numeric: true, sensitivity: 'base' }) ||
+        (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' })
+      );
     }
-    return programmes;
+    return [...programmes].sort((a, b) =>
+      (a.code || '').localeCompare(b.code || '', undefined, { numeric: true, sensitivity: 'base' }) ||
+      (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' })
+    );
   }, [programmes, isJudgeOnly, judgeId]);
 
   // =========================================================================
@@ -332,19 +343,29 @@ export const ScoresPage: React.FC = () => {
 
       const finalList = targetList.length > 0 ? targetList : participants;
 
-      return finalList.map((pt) => {
-        const tm = teams.find((t) => t.id === pt.teamId);
-        return {
-          key: pt.id,
-          id: pt.id,
-          name: pt.name,
-          teamId: pt.teamId,
-          teamName: tm?.name || pt.teamId,
-          isTeamEntry: false,
-          chestNumber: pt.chestNumber ? `#${pt.chestNumber}` : pt.id.replace('PT-', '#'),
-          subtitle: `${pt.category} • ${tm?.name || pt.teamId}`,
-        };
-      });
+      return finalList
+        .map((pt) => {
+          const tm = teams.find((t) => t.id === pt.teamId);
+          return {
+            key: pt.id,
+            id: pt.id,
+            name: pt.name,
+            teamId: pt.teamId,
+            teamName: tm?.name || pt.teamId,
+            isTeamEntry: false,
+            chestNumber: pt.chestNumber ? `#${pt.chestNumber}` : pt.id.replace('PT-', '#'),
+            rawChestNumber: pt.chestNumber || '',
+            subtitle: `${pt.category} • ${tm?.name || pt.teamId}`,
+          };
+        })
+        .sort((a, b) => {
+          if (a.rawChestNumber && b.rawChestNumber) {
+            return a.rawChestNumber.localeCompare(b.rawChestNumber, undefined, { numeric: true, sensitivity: 'base' });
+          }
+          if (a.rawChestNumber) return -1;
+          if (b.rawChestNumber) return 1;
+          return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+        });
     }
   }, [activeSheetProg, isSheetProgTeam, teamProgrammeEntries, teams, participants, assignments]);
 

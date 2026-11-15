@@ -47,9 +47,9 @@ export const TeamMembersPage: React.FC = () => {
     return participants.filter((p) => p.teamId === activeTeamId);
   }, [participants, activeTeamId]);
 
-  // Filtered members
+  // Filtered members (Sorted strictly by Chest Number)
   const filteredMembers = useMemo(() => {
-    return teamMembers.filter((m) => {
+    const list = teamMembers.filter((m) => {
       const matchesSearch =
         m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         m.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -58,6 +58,15 @@ export const TeamMembersPage: React.FC = () => {
         (m.phone || '').includes(searchQuery);
       const matchesCat = categoryFilter === 'all' || m.category === categoryFilter;
       return matchesSearch && matchesCat;
+    });
+
+    return list.sort((a, b) => {
+      if (a.chestNumber && b.chestNumber) {
+        return a.chestNumber.localeCompare(b.chestNumber, undefined, { numeric: true, sensitivity: 'base' });
+      }
+      if (a.chestNumber) return -1;
+      if (b.chestNumber) return 1;
+      return (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' });
     });
   }, [teamMembers, searchQuery, categoryFilter]);
 

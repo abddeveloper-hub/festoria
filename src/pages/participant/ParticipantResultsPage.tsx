@@ -227,7 +227,15 @@ export const ParticipantResultsPage: React.FC = () => {
         </div>
       ) : (
         <div className="space-y-4">
-          {Object.entries(resultsByProgramme).map(([progId, progResults]) => {
+          {Object.entries(resultsByProgramme)
+            .sort(([progIdA], [progIdB]) => {
+              const prgA = programmes.find((p) => p.id === progIdA);
+              const prgB = programmes.find((p) => p.id === progIdB);
+              const codeA = prgA?.code || progIdA;
+              const codeB = prgB?.code || progIdB;
+              return codeA.localeCompare(codeB, undefined, { numeric: true, sensitivity: 'base' });
+            })
+            .map(([progId, progResults]) => {
             const prg = programmes.find((p) => p.id === progId);
             if (!prg) return null;
             const isExpanded = expandedProgrammeId === progId;

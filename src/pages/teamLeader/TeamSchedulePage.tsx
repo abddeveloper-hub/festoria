@@ -105,7 +105,9 @@ export const TeamSchedulePage: React.FC = () => {
       })
       .sort((a, b) => {
         if (a.date !== b.date) return a.date.localeCompare(b.date);
-        return a.startTime.localeCompare(b.startTime);
+        const tComp = a.startTime.localeCompare(b.startTime);
+        if (tComp !== 0) return tComp;
+        return (a.code || '').localeCompare(b.code || '', undefined, { numeric: true, sensitivity: 'base' });
       });
   }, [teamProgrammes, selectedDate, searchQuery]);
 

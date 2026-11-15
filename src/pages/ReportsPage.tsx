@@ -176,27 +176,46 @@ export const ReportsPage: React.FC = () => {
         break;
       }
       case 'results': {
-        const rows = results.map((r) => {
-          const prog = programmes.find((p) => p.id === r.programmeId);
-          return {
-            ProgrammeCode: prog?.code || r.programmeId,
-            ProgrammeName: prog?.name || '',
-            Rank: r.rank,
-            Participant: r.participantName || 'N/A (Group Event)',
-            Team: r.teamName,
-            FinalScore: r.finalScore,
-            PointsAwarded: r.pointsAwarded,
-            PublishedDate: r.publishedAt || '',
-          };
-        });
+        const rows = [...results]
+          .sort((a, b) => {
+            const progA = programmes.find((p) => p.id === a.programmeId);
+            const progB = programmes.find((p) => p.id === b.programmeId);
+            const codeA = progA?.code || a.programmeId || '';
+            const codeB = progB?.code || b.programmeId || '';
+            const progComp = codeA.localeCompare(codeB, undefined, { numeric: true, sensitivity: 'base' });
+            if (progComp !== 0) return progComp;
+            return (a.rank || 0) - (b.rank || 0);
+          })
+          .map((r) => {
+            const prog = programmes.find((p) => p.id === r.programmeId);
+            return {
+              ProgrammeCode: prog?.code || r.programmeId,
+              ProgrammeName: prog?.name || '',
+              Rank: r.rank,
+              Participant: r.participantName || 'N/A (Group Event)',
+              Team: r.teamName,
+              FinalScore: r.finalScore,
+              PointsAwarded: r.pointsAwarded,
+              PublishedDate: r.publishedAt || '',
+            };
+          });
         exportToCSV(`festflow_official_results_${nowStr}`, rows);
         break;
       }
       case 'participants': {
-        const filtered = participants.filter((p) => {
-          if (participantCategoryFilter === 'all') return true;
-          return p.category?.toLowerCase() === participantCategoryFilter.toLowerCase();
-        });
+        const filtered = participants
+          .filter((p) => {
+            if (participantCategoryFilter === 'all') return true;
+            return p.category?.toLowerCase() === participantCategoryFilter.toLowerCase();
+          })
+          .sort((a, b) => {
+            if (a.chestNumber && b.chestNumber) {
+              return a.chestNumber.localeCompare(b.chestNumber, undefined, { numeric: true, sensitivity: 'base' });
+            }
+            if (a.chestNumber) return -1;
+            if (b.chestNumber) return 1;
+            return (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' });
+          });
         const rows = filtered.map((p) => {
           const team = teams.find((t) => t.id === p.teamId);
           return {
@@ -216,48 +235,54 @@ export const ReportsPage: React.FC = () => {
         break;
       }
       case 'teams': {
-        const rows = teams.map((t) => {
-          const count = participants.filter((p) => p.teamId === t.id).length;
-          return {
-            TeamCode: t.code,
-            Name: t.name,
-            Institution: t.institution,
-            LeaderName: t.teamLeaderName,
-            LeaderContact: t.teamLeaderContact,
-            ParticipantsCount: count,
-            Status: t.status,
-          };
-        });
+        const rows = [...teams]
+          .sort((a, b) => (a.code || a.id).localeCompare(b.code || b.id, undefined, { numeric: true, sensitivity: 'base' }))
+          .map((t) => {
+            const count = participants.filter((p) => p.teamId === t.id).length;
+            return {
+              TeamCode: t.code,
+              Name: t.name,
+              Institution: t.institution,
+              LeaderName: t.teamLeaderName,
+              LeaderContact: t.teamLeaderContact,
+              ParticipantsCount: count,
+              Status: t.status,
+            };
+          });
         exportToCSV(`festflow_teams_summary_${nowStr}`, rows);
         break;
       }
       case 'programmes': {
-        const rows = programmes.map((p) => ({
-          Code: p.code,
-          Name: p.name,
-          Category: p.category,
-          Type: p.type,
-          Venue: p.venue,
-          Stage: p.stage,
-          Date: p.date,
-          Time: `${p.startTime} - ${p.endTime}`,
-          Status: p.status,
-          ResultPublished: p.resultPublished ? 'Yes' : 'No',
-        }));
+        const rows = [...programmes]
+          .sort((a, b) => (a.code || '').localeCompare(b.code || '', undefined, { numeric: true, sensitivity: 'base' }))
+          .map((p) => ({
+            Code: p.code,
+            Name: p.name,
+            Category: p.category,
+            Type: p.type,
+            Venue: p.venue,
+            Stage: p.stage,
+            Date: p.date,
+            Time: `${p.startTime} - ${p.endTime}`,
+            Status: p.status,
+            ResultPublished: p.resultPublished ? 'Yes' : 'No',
+          }));
         exportToCSV(`festflow_programmes_${nowStr}`, rows);
         break;
       }
       case 'judges': {
-        const rows = judges.map((j) => ({
-          ID: j.id,
-          Name: j.name,
-          Email: j.email,
-          Phone: j.phone,
-          Designation: j.designation,
-          Institution: j.institution || '',
-          Status: j.status,
-          AssignedEventsCount: j.assignedProgrammes.length,
-        }));
+        const rows = [...judges]
+          .sort((a, b) => (a.id || a.name).localeCompare(b.id || b.name, undefined, { numeric: true, sensitivity: 'base' }))
+          .map((j) => ({
+            ID: j.id,
+            Name: j.name,
+            Email: j.email,
+            Phone: j.phone,
+            Designation: j.designation,
+            Institution: j.institution || '',
+            Status: j.status,
+            AssignedEventsCount: j.assignedProgrammes.length,
+          }));
         exportToCSV(`festflow_judges_${nowStr}`, rows);
         break;
       }
@@ -696,10 +721,19 @@ export const ReportsPage: React.FC = () => {
               </div>
 
               {(() => {
-                const filteredParticipants = participants.filter((p) => {
-                  if (participantCategoryFilter === 'all') return true;
-                  return p.category?.toLowerCase() === participantCategoryFilter.toLowerCase();
-                });
+                const filteredParticipants = participants
+                  .filter((p) => {
+                    if (participantCategoryFilter === 'all') return true;
+                    return p.category?.toLowerCase() === participantCategoryFilter.toLowerCase();
+                  })
+                  .sort((a, b) => {
+                    if (a.chestNumber && b.chestNumber) {
+                      return a.chestNumber.localeCompare(b.chestNumber, undefined, { numeric: true, sensitivity: 'base' });
+                    }
+                    if (a.chestNumber) return -1;
+                    if (b.chestNumber) return 1;
+                    return (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' });
+                  });
 
                 if (filteredParticipants.length === 0) {
                   return (
@@ -713,6 +747,7 @@ export const ReportsPage: React.FC = () => {
                   <table className="w-full text-left text-xs">
                     <thead>
                       <tr className="border-b border-slate-200 text-slate-500 text-[11px] uppercase">
+                        <th className="py-2.5 px-3">Chest #</th>
                         <th className="py-2.5 px-3">ID</th>
                         <th className="py-2.5 px-3">Name</th>
                         <th className="py-2.5 px-3">Email</th>
@@ -724,6 +759,9 @@ export const ReportsPage: React.FC = () => {
                     <tbody className="divide-y divide-slate-100">
                       {filteredParticipants.map((p) => (
                         <tr key={p.id}>
+                          <td className="py-2 px-3 font-mono font-bold text-purple-700">
+                            {p.chestNumber ? `#${p.chestNumber}` : <span className="text-slate-400 font-normal italic">-</span>}
+                          </td>
                           <td className="py-2 px-3 font-mono">{p.id}</td>
                           <td className="py-2 px-3 font-semibold text-slate-900">{p.name}</td>
                           <td className="py-2 px-3 text-slate-600">{p.email || '-'}</td>

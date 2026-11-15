@@ -51,7 +51,7 @@ export const TeamsPage: React.FC = () => {
   });
 
   const filteredTeams = useMemo(() => {
-    return teams.filter((t) => {
+    const list = teams.filter((t) => {
       const s = search.toLowerCase();
       return (
         t.name.toLowerCase().includes(s) ||
@@ -60,6 +60,7 @@ export const TeamsPage: React.FC = () => {
         t.teamLeaderName.toLowerCase().includes(s)
       );
     });
+    return list.sort((a, b) => (a.code || a.id).localeCompare(b.code || b.id, undefined, { numeric: true, sensitivity: 'base' }));
   }, [teams, search]);
 
   const handleOpenAdd = () => {

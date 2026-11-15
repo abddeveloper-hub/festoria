@@ -64,9 +64,9 @@ export const ParticipantsPage: React.FC = () => {
     registeredProgrammes: [] as string[],
   });
 
-  // Filtered & Searched Data
+  // Filtered & Searched Data (Ordered by Chest Number)
   const filteredData = useMemo(() => {
-    return participants.filter((p) => {
+    const list = participants.filter((p) => {
       // Search
       const s = search.toLowerCase();
       const matchesSearch =
@@ -92,6 +92,16 @@ export const ParticipantsPage: React.FC = () => {
       }
 
       return true;
+    });
+
+    // Natural sort by Chest Number (#1, #2, #10, C-01...), with fallback to Name
+    return list.sort((a, b) => {
+      if (a.chestNumber && b.chestNumber) {
+        return a.chestNumber.localeCompare(b.chestNumber, undefined, { numeric: true, sensitivity: 'base' });
+      }
+      if (a.chestNumber) return -1;
+      if (b.chestNumber) return 1;
+      return (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' });
     });
   }, [participants, search, filterTeam, filterCategory, filterProgramme, filterStatus]);
 

@@ -50,9 +50,9 @@ export const JudgesPage: React.FC = () => {
     assignedProgrammes: [] as string[],
   });
 
-  // Filtered judges
+  // Filtered judges (Ordered by ID / Name)
   const filteredJudges = useMemo(() => {
-    return judges.filter((j) => {
+    const list = judges.filter((j) => {
       const s = search.toLowerCase();
       const matchesSearch =
         j.name.toLowerCase().includes(s) ||
@@ -65,6 +65,7 @@ export const JudgesPage: React.FC = () => {
 
       return true;
     });
+    return list.sort((a, b) => (a.id || a.name).localeCompare(b.id || b.name, undefined, { numeric: true, sensitivity: 'base' }));
   }, [judges, search, statusFilter]);
 
   const handleOpenAdd = () => {

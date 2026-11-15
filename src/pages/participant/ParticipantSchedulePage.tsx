@@ -17,11 +17,13 @@ export const ParticipantSchedulePage: React.FC = () => {
     activeParticipant?.registeredProgrammes?.includes(p.id)
   );
 
-  // Sort programmes by date and startTime
+  // Sort programmes by date and startTime, then by programme code
   const sorted = [...myProgrammes].sort((a, b) => {
     const dComp = a.date.localeCompare(b.date);
     if (dComp !== 0) return dComp;
-    return a.startTime.localeCompare(b.startTime);
+    const tComp = a.startTime.localeCompare(b.startTime);
+    if (tComp !== 0) return tComp;
+    return (a.code || '').localeCompare(b.code || '', undefined, { numeric: true, sensitivity: 'base' });
   });
 
   return (

@@ -622,24 +622,35 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
   const [teamLeaderInvitations, setTeamLeaderInvitations] = useState<TeamLeaderInvitation[]>(() => StorageService.getTeamLeaderInvitations());
 
   // Scoped views for active festival (multi-tenancy isolation across distinct fests)
+  // Consistently sorted in authoritative order (Participants by Chest #, Programmes by Code, Teams by Code, etc.)
   const festTeams = useMemo(() => {
-    if (currentPortal === 'super_admin') return teams;
-    return teams.filter((t) => (t.festId ? t.festId === activeFestId : activeFestId === 'FEST-01'));
+    const list = currentPortal === 'super_admin' ? [...teams] : teams.filter((t) => (t.festId ? t.festId === activeFestId : activeFestId === 'FEST-01'));
+    return list.sort((a, b) => (a.code || a.id).localeCompare(b.code || b.id, undefined, { numeric: true, sensitivity: 'base' }));
   }, [teams, activeFestId, currentPortal]);
 
   const festProgrammes = useMemo(() => {
-    if (currentPortal === 'super_admin') return programmes;
-    return programmes.filter((p) => (p.festId ? p.festId === activeFestId : activeFestId === 'FEST-01'));
+    const list = currentPortal === 'super_admin' ? [...programmes] : programmes.filter((p) => (p.festId ? p.festId === activeFestId : activeFestId === 'FEST-01'));
+    return list.sort((a, b) =>
+      (a.code || '').localeCompare(b.code || '', undefined, { numeric: true, sensitivity: 'base' }) ||
+      (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' })
+    );
   }, [programmes, activeFestId, currentPortal]);
 
   const festParticipants = useMemo(() => {
-    if (currentPortal === 'super_admin') return participants;
-    return participants.filter((p) => (p.festId ? p.festId === activeFestId : activeFestId === 'FEST-01'));
+    const list = currentPortal === 'super_admin' ? [...participants] : participants.filter((p) => (p.festId ? p.festId === activeFestId : activeFestId === 'FEST-01'));
+    return list.sort((a, b) => {
+      if (a.chestNumber && b.chestNumber) {
+        return a.chestNumber.localeCompare(b.chestNumber, undefined, { numeric: true, sensitivity: 'base' });
+      }
+      if (a.chestNumber) return -1;
+      if (b.chestNumber) return 1;
+      return (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' });
+    });
   }, [participants, activeFestId, currentPortal]);
 
   const festJudges = useMemo(() => {
-    if (currentPortal === 'super_admin') return judges;
-    return judges.filter((j) => (j.festId ? j.festId === activeFestId : activeFestId === 'FEST-01'));
+    const list = currentPortal === 'super_admin' ? [...judges] : judges.filter((j) => (j.festId ? j.festId === activeFestId : activeFestId === 'FEST-01'));
+    return list.sort((a, b) => (a.id || a.name).localeCompare(b.id || b.name, undefined, { numeric: true, sensitivity: 'base' }));
   }, [judges, activeFestId, currentPortal]);
 
   const festScheduleSlots = useMemo(() => {
@@ -684,7 +695,10 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       }
     });
 
-    return mergedSlots;
+    return mergedSlots.sort((a, b) =>
+      `${a.date} ${a.startTime}`.localeCompare(`${b.date} ${b.startTime}`) ||
+      (a.venue || '').localeCompare(b.venue || '')
+    );
   }, [scheduleSlots, programmes, activeFestId, activeFest, currentPortal]);
 
   const festUsers = useMemo(() => {
@@ -717,14 +731,38 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
   }, [users, activeFestId, fests, currentPortal, judges, teams]);
 
   const festScores = useMemo(() => {
-    if (currentPortal === 'super_admin') return scores;
-    return scores.filter((s) => (s.festId ? s.festId === activeFestId : activeFestId === 'FEST-01'));
-  }, [scores, activeFestId, currentPortal]);
+    const list = currentPortal === 'super_admin' ? [...scores] : scores.filter((s) => (s.festId ? s.festId === activeFestId : activeFestId === 'FEST-01'));
+    return list.sort((a, b) => {
+      const progA = programmes.find((p) => p.id === a.programmeId);
+      const progB = programmes.find((p) => p.id === b.programmeId);
+      const codeA = progA?.code || a.programmeId || '';
+      const codeB = progB?.code || b.programmeId || '';
+      const progComp = codeA.localeCompare(codeB, undefined, { numeric: true, sensitivity: 'base' });
+      if (progComp !== 0) return progComp;
+
+      const partA = participants.find((p) => p.id === a.participantId);
+      const partB = participants.find((p) => p.id === b.participantId);
+      if (partA?.chestNumber && partB?.chestNumber) {
+        return partA.chestNumber.localeCompare(partB.chestNumber, undefined, { numeric: true, sensitivity: 'base' });
+      }
+      if (partA?.chestNumber) return -1;
+      if (partB?.chestNumber) return 1;
+      return (b.submittedAt || '').localeCompare(a.submittedAt || '');
+    });
+  }, [scores, activeFestId, currentPortal, programmes, participants]);
 
   const festResults = useMemo(() => {
-    if (currentPortal === 'super_admin') return results;
-    return results.filter((r) => (r.festId ? r.festId === activeFestId : activeFestId === 'FEST-01'));
-  }, [results, activeFestId, currentPortal]);
+    const list = currentPortal === 'super_admin' ? [...results] : results.filter((r) => (r.festId ? r.festId === activeFestId : activeFestId === 'FEST-01'));
+    return list.sort((a, b) => {
+      const progA = programmes.find((p) => p.id === a.programmeId);
+      const progB = programmes.find((p) => p.id === b.programmeId);
+      const codeA = progA?.code || a.programmeId || '';
+      const codeB = progB?.code || b.programmeId || '';
+      const progComp = codeA.localeCompare(codeB, undefined, { numeric: true, sensitivity: 'base' });
+      if (progComp !== 0) return progComp;
+      return (a.rank || 0) - (b.rank || 0);
+    });
+  }, [results, activeFestId, currentPortal, programmes]);
 
   const festActivityLogs = useMemo(() => {
     if (currentPortal === 'super_admin') return activityLogs;

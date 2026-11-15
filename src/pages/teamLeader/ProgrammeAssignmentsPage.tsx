@@ -138,7 +138,10 @@ export const ProgrammeAssignmentsPage: React.FC = () => {
       }
 
       return true;
-    });
+    }).sort((a, b) =>
+      (a.code || '').localeCompare(b.code || '', undefined, { numeric: true, sensitivity: 'base' }) ||
+      (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' })
+    );
   }, [
     activeViewTab,
     individualProgrammes,

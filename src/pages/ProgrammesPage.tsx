@@ -162,8 +162,9 @@ export const ProgrammesPage: React.FC = () => {
     return categories.filter((c) => c.enabled);
   }, [categories]);
 
+  // Filtered Programmes (Ordered strictly by Programme Code)
   const filteredProgrammes = useMemo(() => {
-    return programmes.filter((p) => {
+    const list = programmes.filter((p) => {
       const s = search.toLowerCase();
       const matchesSearch =
         p.name.toLowerCase().includes(s) ||
@@ -186,6 +187,12 @@ export const ProgrammesPage: React.FC = () => {
 
       return true;
     });
+
+    // Natural sort by Programme Code (P01, P02, P10...), with fallback to name
+    return list.sort((a, b) =>
+      (a.code || '').localeCompare(b.code || '', undefined, { numeric: true, sensitivity: 'base' }) ||
+      (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' })
+    );
   }, [programmes, search, filterCategory, filterType, filterStageType, filterStatus, filterDate]);
 
   const handleOpenAdd = () => {
