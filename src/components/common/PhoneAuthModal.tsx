@@ -177,6 +177,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           return;
         }
 
+        if (result.role === 'judge') {
+          addToast('success', 'Authenticated', `Welcome, Judge ${result.user?.name || ''}! Opening adjudication portal.`);
+          onClose();
+          switchPortal('fest_admin');
+          if (typeof window !== 'undefined') {
+            window.location.href = 'admin.html?tab=scores';
+          }
+          return;
+        }
+
         if (result.role === 'team_leader') {
           if (result.user?.linkedTeamId) {
             setActiveTeamId(result.user.linkedTeamId);
@@ -646,6 +656,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       Sign Up
                     </button>
                   </p>
+
+                  <div className="pt-2 border-t border-slate-200/60 text-center">
+                    <a
+                      href="admin.html?login=judge"
+                      className="inline-flex items-center gap-1.5 text-xs text-purple-700 font-bold hover:underline"
+                    >
+                      <KeyRound className="w-3.5 h-3.5" />
+                      <span>Are you an invited Judge? Enter with Token &rarr;</span>
+                    </a>
+                  </div>
                 </div>
               </div>
             )}

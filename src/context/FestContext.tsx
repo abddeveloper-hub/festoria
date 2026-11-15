@@ -387,7 +387,13 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       const pathname = (window.location.pathname || '').toLowerCase();
       const hash = (window.location.hash || '').toLowerCase();
 
-      // 1. Explicit public parameters override any stored administrative session:
+      // 1. Explicit administrative / staff path and hash routes take immediate precedence
+      if (pathname.includes('super-admin') || hash.includes('super-admin') || hash.includes('super_admin')) return 'super_admin';
+      if (pathname.includes('team-leader') || hash.includes('team-leader') || hash.includes('team_leader')) return 'team_leader';
+      if (pathname.includes('participant') || hash.includes('participant')) return 'participant';
+      if (pathname.includes('admin.html') || pathname.endsWith('/admin') || pathname.includes('/admin/') || hash.includes('admin')) return 'fest_admin';
+
+      // 2. Explicit public parameters override any stored administrative session for public visitors:
       // ?fest=..., ?festId=..., ?action=register, ?register=..., ?invite=..., ?token=..., /f/..., /invite...
       const isExplicitPublicRoute =
         urlParams.has('fest') ||
@@ -408,18 +414,6 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
         } catch {}
         return 'public';
       }
-
-      // Hash-based subroute detection (e.g. for GitHub Pages SPA navigation)
-      if (hash.includes('super-admin') || hash.includes('super_admin')) return 'super_admin';
-      if (hash.includes('team-leader') || hash.includes('team_leader')) return 'team_leader';
-      if (hash.includes('participant')) return 'participant';
-      if (hash.includes('admin')) return 'fest_admin';
-
-      // Path-based route detection (Multi-Page and Single-Page under base path)
-      if (pathname.includes('super-admin')) return 'super_admin';
-      if (pathname.includes('team-leader')) return 'team_leader';
-      if (pathname.includes('participant')) return 'participant';
-      if (pathname.includes('admin.html') || pathname.endsWith('/admin') || pathname.includes('/admin/')) return 'fest_admin';
 
       // Clean home path matching across local dev, Firebase, and GitHub Pages (/festoria/)
       const isHome =
@@ -830,6 +824,33 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
         setActiveFestId(queryFest);
       }
 
+      // Explicit administrative & staff paths take priority over query params
+      const isAdminPath = pathname.includes('admin.html') || pathname.endsWith('/admin') || pathname.includes('/admin/') || hash.includes('admin');
+      const isSuperAdminPath = pathname.includes('super-admin') || hash.includes('super-admin') || hash.includes('super_admin');
+      const isTeamLeaderPath = pathname.includes('team-leader') || hash.includes('team-leader') || hash.includes('team_leader');
+      const isParticipantPath = pathname.includes('participant') || hash.includes('participant');
+
+      if (isAdminPath) {
+        setCurrentPortal('fest_admin');
+        try { localStorage.setItem('festflow_portal', 'fest_admin'); } catch {}
+        return;
+      }
+      if (isSuperAdminPath) {
+        setCurrentPortal('super_admin');
+        try { localStorage.setItem('festflow_portal', 'super_admin'); } catch {}
+        return;
+      }
+      if (isTeamLeaderPath) {
+        setCurrentPortal('team_leader');
+        try { localStorage.setItem('festflow_portal', 'team_leader'); } catch {}
+        return;
+      }
+      if (isParticipantPath) {
+        setCurrentPortal('participant');
+        try { localStorage.setItem('festflow_portal', 'participant'); } catch {}
+        return;
+      }
+
       if (
         queryFest ||
         action === 'register' ||
@@ -1088,15 +1109,21 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     };
   }, []);
 
-  // Auto-route judges to scores tab and restrict unauthorized navigation
+  // Auto-route judges to scores tab and ensure adjudication portal is active
   useEffect(() => {
     if (currentUser.role === 'judge') {
+      if (currentPortal !== 'fest_admin') {
+        setCurrentPortal('fest_admin');
+        try {
+          localStorage.setItem('festflow_portal', 'fest_admin');
+        } catch {}
+      }
       const allowedJudgeTabs: NavigationTab[] = ['scores', 'programmes', 'schedule'];
       if (!allowedJudgeTabs.includes(activeTab)) {
         setActiveTab('scores');
       }
     }
-  }, [currentUser.role, activeTab]);
+  }, [currentUser.role, activeTab, currentPortal]);
 
   // Deduplicate fests on mount and clean up duplicate fest entries
   useEffect(() => {

@@ -656,7 +656,10 @@ export const ShareFestPage: React.FC = () => {
                 {invitations.map((inv) => {
                   const isExpired = new Date(inv.expiresAt).getTime() < Date.now();
                   const effectiveStatus = inv.status === 'pending' && isExpired ? 'expired' : inv.status;
-                  const inviteUrl = `${baseUrl}/?invite=true&token=${inv.token}&role=${inv.role}&fest=${inv.festId}`;
+                  const inviteUrl =
+                    inv.role === 'judge'
+                      ? `${baseUrl}/admin.html?token=${inv.token}&fest=${inv.festId}&tab=scores`
+                      : `${baseUrl}/?invite=true&token=${inv.token}&role=${inv.role}&fest=${inv.festId}`;
 
                   return (
                     <tr key={inv.id} className="hover:bg-slate-50/70 transition-colors">

@@ -53,6 +53,7 @@ export const InvitationAcceptPage: React.FC<InvitationAcceptPageProps> = ({ toke
   // Claim Success State
   const [claimedRole, setClaimedRole] = useState<'judge' | 'team_leader' | null>(null);
   const [claimSuccessMessage, setClaimSuccessMessage] = useState<string | null>(null);
+  const [autoRedirectSeconds, setAutoRedirectSeconds] = useState<number | null>(null);
 
   // Extract token from URL
   useEffect(() => {
@@ -126,6 +127,74 @@ export const InvitationAcceptPage: React.FC<InvitationAcceptPageProps> = ({ toke
       setSubmitting(false);
     }
   };
+
+  // Direct 1-Click Entry for Judges (No password required)
+  const handleDirectJudgeClaim = async () => {
+    if (!invitation || !token) return;
+    try {
+      setSubmitting(true);
+      setFormError(null);
+
+      const judgeName = invitation.assignedJudgeName || invitation.recipientName || 'Official Judge';
+      const judgeId = invitation.assignedJudgeId || `judge-${Date.now()}`;
+      const judgeUser: User = {
+        id: `usr-${judgeId}`,
+        name: judgeName,
+        email: invitation.recipientContact?.includes('@') ? invitation.recipientContact : `judge-${judgeId}@festoria.app`,
+        phone: !invitation.recipientContact?.includes('@') ? invitation.recipientContact : '',
+        role: 'judge',
+        festId: invitation.festId,
+        status: 'active',
+        linkedJudgeId: invitation.assignedJudgeId,
+        invitationStatus: 'active',
+        createdAt: new Date().toISOString()
+      };
+
+      const res = await acceptFestInvitation(token, judgeUser);
+      if (!res.success) {
+        setFormError(res.message);
+        return;
+      }
+
+      const activeUser = res.updatedUser || judgeUser;
+      try {
+        localStorage.setItem('festflow_portal', 'fest_admin');
+        localStorage.setItem('festflow_current_user', JSON.stringify(activeUser));
+      } catch {}
+
+      switchCurrentUser(activeUser.id, activeUser);
+      if (typeof switchPortal === 'function') {
+        switchPortal('fest_admin', invitation.festId);
+      }
+      addToast('success', 'Judge Portal Activated', `Welcome ${judgeName}! Opening adjudication portal.`);
+      navigateTo(`admin.html?fest=${invitation.festId}&tab=scores`);
+    } catch (err: any) {
+      setFormError(err.message || 'Failed to enter adjudication portal.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // When judge invitation is validated, initialize auto-redirect countdown
+  useEffect(() => {
+    if (invitation && invitation.role === 'judge' && !claimedRole) {
+      setAutoRedirectSeconds(2);
+    }
+  }, [invitation, claimedRole]);
+
+  useEffect(() => {
+    if (autoRedirectSeconds === null) return;
+    if (autoRedirectSeconds <= 0) {
+      handleDirectJudgeClaim();
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setAutoRedirectSeconds((prev) => (prev !== null ? prev - 1 : null));
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [autoRedirectSeconds]);
 
   // Sign In & Claim
   const handleSignInAndClaim = async (e: React.FormEvent) => {
@@ -392,6 +461,56 @@ export const InvitationAcceptPage: React.FC<InvitationAcceptPageProps> = ({ toke
                   >
                     {submitting ? 'Claiming...' : 'Claim as Current User'}
                   </button>
+                </div>
+              )}
+
+              {/* Direct Judge Entry Banner */}
+              {invitation.role === 'judge' && (
+                <div className="p-5 bg-linear-to-br from-purple-950/70 via-slate-900 to-indigo-950/60 border-b border-purple-500/30 text-center space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-500/40 text-purple-300 flex items-center justify-center mx-auto shadow-inner">
+                    <Award className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-white">Direct Judge Portal Access</h3>
+                    <p className="text-xs text-purple-200/80 mt-1">
+                      Token validated. Click below to enter the adjudication portal directly without password.
+                    </p>
+                  </div>
+
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      onClick={handleDirectJudgeClaim}
+                      disabled={submitting}
+                      className="w-full py-3 px-4 rounded-xl bg-linear-to-r from-purple-600 via-indigo-600 to-purple-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs shadow-lg shadow-purple-600/25 flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                    >
+                      {submitting ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span>Opening Adjudication Portal...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>
+                            {autoRedirectSeconds !== null && autoRedirectSeconds > 0
+                              ? `Auto-entering in ${autoRedirectSeconds}s • Click to Enter Now`
+                              : `Enter Adjudication Portal as ${invitation.assignedJudgeName || invitation.recipientName || 'Official Judge'}`}
+                          </span>
+                          <ArrowRight className="w-4 h-4" />
+                        </>
+                      )}
+                    </button>
+
+                    {autoRedirectSeconds !== null && autoRedirectSeconds > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setAutoRedirectSeconds(null)}
+                        className="mt-2 text-[11px] text-slate-400 hover:text-slate-200 underline"
+                      >
+                        Cancel auto-entry (Stay on this page)
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
 
