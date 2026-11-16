@@ -337,6 +337,7 @@ interface FestContextType {
   updateSettings: (newSettings: FestSettings) => void;
   addAnnouncement: (announcement: Omit<Announcement, 'id' | 'createdAt' | 'author'>) => void;
   deleteAnnouncement: (id: string) => void;
+  refreshFirestoreData: (force?: boolean) => Promise<void>;
 
   // Mutators - Super Admin & Platform Operations
   approveFestRequest: (requestId: string, approvalNote?: string) => Promise<void>;
@@ -370,7 +371,7 @@ interface FestContextType {
     projectId: string;
     status: 'connected' | 'demo_mode' | 'loading';
   };
-  syncFirestoreData: () => Promise<void>;
+  syncFirestoreData: (force?: boolean) => Promise<void>;
 }
 
 const FestContext = createContext<FestContextType | undefined>(undefined);
@@ -1017,9 +1018,39 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     status: isFirebaseConfigured ? 'loading' : 'demo_mode'
   });
 
-  const syncFirestoreData = async () => {
+  const PUBLIC_CACHE_TTL_MS = 3 * 60 * 1000; // 3-minute freshness TTL for student / public viewers
+
+  const invalidateClientCache = () => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('festoria_last_fs_sync');
+    }
+  };
+
+  const syncFirestoreData = async (force: boolean = false) => {
     if (!isFirebaseConfigured) return;
     try {
+      const isStaffOrAdmin =
+        currentUser.role === 'admin' ||
+        currentUser.role === 'fest_admin' ||
+        currentUser.role === 'super_admin' ||
+        currentUser.role === 'judge';
+
+      // For public viewers (students), check if recent data is already cached in memory / storage
+      if (!force && !isStaffOrAdmin && typeof window !== 'undefined') {
+        const lastSync = Number(sessionStorage.getItem('festoria_last_fs_sync') || 0);
+        const timeSinceSync = Date.now() - lastSync;
+        const hasExistingData = programmes.length > 0 && (results.length > 0 || teams.length > 0);
+        if (lastSync > 0 && timeSinceSync < PUBLIC_CACHE_TTL_MS && hasExistingData) {
+          // Serve from local memory / IndexedDB cache — 0 Firestore reads!
+          setFirebaseStatus({
+            isConfigured: true,
+            projectId: 'festoria-cd375',
+            status: 'connected'
+          });
+          return;
+        }
+      }
+
       setFirebaseStatus(prev => ({ ...prev, status: 'loading' }));
       await seedFirestoreIfEmpty();
 
@@ -1077,6 +1108,11 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       if (fsTeamEntries && fsTeamEntries.length > 0) setTeamProgrammeEntries(fsTeamEntries);
       if (fsJudges && fsJudges.length > 0) setJudges(fsJudges);
 
+      // Record successful sync timestamp
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('festoria_last_fs_sync', Date.now().toString());
+      }
+
       // Fetch role-restricted collections safely
       if (currentUser.role === 'super_admin') {
         try {
@@ -1117,8 +1153,17 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
   useEffect(() => {
     if (isFirebaseConfigured) {
       syncFirestoreData();
+
+      // Background freshness check every 3 minutes if tab is active
+      const timer = setInterval(() => {
+        if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+          syncFirestoreData(false);
+        }
+      }, PUBLIC_CACHE_TTL_MS);
+
+      return () => clearInterval(timer);
     }
-  }, []);
+  }, [currentUser]);
 
   // Retain all valid registered user accounts (Super Admins, Fest Admins, Judges, Team Leaders, and Participants)
   useEffect(() => {
@@ -2124,6 +2169,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     setAnnouncements((prev) => [announcement, ...prev]);
 
     logActivity('PUBLISH_RESULTS', 'score', programmeId, `Published ratified results and awarded leaderboard points for ${programme.name}.`);
+    invalidateClientCache();
     addToast('success', 'Results Published', `Results for ${programme.name} are now live on the Public Site.`);
 
     // Authoritatively publish results via trusted backend Cloud Function (generates secure PUBLISH_RESULTS audit)
@@ -2159,6 +2205,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     }
 
     logActivity('DELETE_RESULT', 'score', resultId, `Deleted result entry #${resultId} (${target.participantName || target.entryName || 'Rank #' + target.rank}).`);
+    invalidateClientCache();
     addToast('info', 'Result Deleted', 'Result entry removed successfully.');
   };
 
@@ -2191,6 +2238,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     );
 
     logActivity('DELETE_RESULTS', 'score', programmeId, `Deleted and retracted published results for programme ${progName}.`);
+    invalidateClientCache();
     addToast('info', 'Results Deleted', `All results for ${progName} have been deleted and retracted from the public scoreboard.`);
   };
 
@@ -4767,6 +4815,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
         removeToast,
         firebaseStatus,
         syncFirestoreData,
+        refreshFirestoreData: (force?: boolean) => syncFirestoreData(force),
       }}
     >
       {children}

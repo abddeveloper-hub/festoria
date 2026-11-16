@@ -1,6 +1,13 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { getAuth, type Auth, connectAuthEmulator } from 'firebase/auth';
-import { getFirestore, initializeFirestore, type Firestore, connectFirestoreEmulator } from 'firebase/firestore';
+import {
+  getFirestore,
+  initializeFirestore,
+  type Firestore,
+  connectFirestoreEmulator,
+  persistentLocalCache,
+  persistentMultipleTabManager
+} from 'firebase/firestore';
 import { getStorage, type FirebaseStorage, connectStorageEmulator } from 'firebase/storage';
 import { getAnalytics, isSupported, type Analytics } from 'firebase/analytics';
 
@@ -46,9 +53,18 @@ if (isFirebaseConfigured) {
     }
 
     try {
-      db = initializeFirestore(app, {
-        ignoreUndefinedProperties: true
-      });
+      if (typeof window !== 'undefined') {
+        db = initializeFirestore(app, {
+          ignoreUndefinedProperties: true,
+          localCache: persistentLocalCache({
+            tabManager: persistentMultipleTabManager()
+          })
+        });
+      } else {
+        db = initializeFirestore(app, {
+          ignoreUndefinedProperties: true
+        });
+      }
     } catch (dbError) {
       try {
         db = getFirestore(app);

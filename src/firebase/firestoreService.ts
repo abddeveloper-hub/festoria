@@ -1679,6 +1679,9 @@ export function getDefaultFestPublicPage(festId: string, festName?: string, fest
   };
 }
 
+// In-memory cache for published fest pages with 3-minute TTL to reduce Firestore reads
+const publishedFestPageCache = new Map<string, { timestamp: number; data: FestPublicPageData }>();
+
 /**
  * Fetches the published public fest page (viewable by all visitors).
  */
@@ -1687,17 +1690,23 @@ export async function fetchPublishedFestPage(festId: string, festName?: string):
   if (!cleanId) return getDefaultFestPublicPage('FEST-01', festName);
   const pageDocId = `${cleanId}_published`;
 
+  const cached = publishedFestPageCache.get(pageDocId);
+  if (cached && Date.now() - cached.timestamp < 3 * 60 * 1000) {
+    return cached.data;
+  }
+
   if (isFirebaseConfigured && db) {
     try {
       const snap = await getDoc(doc(db, 'fest_public_pages', pageDocId));
       if (snap.exists()) {
         const remoteData = snap.data() as FestPublicPageData;
+        let finalData: FestPublicPageData = remoteData;
         // Merge with local media if available in localStorage
         try {
           const local = localStorage.getItem(`festoria_public_page_${pageDocId}`);
           if (local) {
             const localData = JSON.parse(local) as FestPublicPageData;
-            return {
+            finalData = {
               ...remoteData,
               hero: {
                 ...remoteData.hero,
@@ -1712,7 +1721,8 @@ export async function fetchPublishedFestPage(festId: string, festName?: string):
             };
           }
         } catch {}
-        return remoteData;
+        publishedFestPageCache.set(pageDocId, { timestamp: Date.now(), data: finalData });
+        return finalData;
       }
     } catch (e) {
       console.warn('[Firestore] fetchPublishedFestPage error:', e);
@@ -1723,11 +1733,14 @@ export async function fetchPublishedFestPage(festId: string, festName?: string):
   try {
     const local = localStorage.getItem(`festoria_public_page_${pageDocId}`);
     if (local) {
-      return JSON.parse(local) as FestPublicPageData;
+      const localData = JSON.parse(local) as FestPublicPageData;
+      publishedFestPageCache.set(pageDocId, { timestamp: Date.now(), data: localData });
+      return localData;
     }
   } catch {}
 
-  return getDefaultFestPublicPage(cleanId, festName);
+  const defaultData = getDefaultFestPublicPage(cleanId, festName);
+  return defaultData;
 }
 
 /**
@@ -1976,7 +1989,8 @@ export async function publishFestPage(festId: string, pageData: FestPublicPageDa
     version: (pageData.version || 1) + 1
   };
 
-  // Always save full original published content in localStorage
+  // Always save full original published content in localStorage and invalidate memory cache
+  publishedFestPageCache.delete(publishedDocId);
   try {
     localStorage.setItem(`festoria_public_page_${publishedDocId}`, JSON.stringify(published));
     localStorage.setItem(`festoria_public_page_${draftDocId}`, JSON.stringify(published));
