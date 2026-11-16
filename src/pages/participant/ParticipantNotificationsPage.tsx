@@ -31,7 +31,7 @@ export const ParticipantNotificationsPage: React.FC = () => {
           : 'Registration Under Review',
       content:
         activeParticipant?.approvalStatus === 'approved'
-          ? `Your participant profile (${activeParticipant.name}, Chest #${activeParticipant.id}) has been formally approved for participation.`
+          ? `Your participant profile (${activeParticipant.name}${activeParticipant.chestNumber ? `, Chest #${activeParticipant.chestNumber}` : ''}) has been formally approved for participation.`
           : activeParticipant?.approvalStatus === 'pending_approval'
           ? 'Your registration is queued in your Team Leader\'s review drawer. You will receive real-time access once approved.'
           : activeParticipant?.approvalStatus === 'more_info_required'

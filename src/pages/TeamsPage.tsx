@@ -476,9 +476,13 @@ export const TeamsPage: React.FC = () => {
                   .filter((p) => p.teamId === viewingTeam.id)
                   .map((p) => (
                     <div key={p.id} className="p-2 flex items-center justify-between">
-                      <div>
+                      <div className="flex items-center gap-1.5">
+                        {p.chestNumber ? (
+                          <span className="font-mono text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded">
+                            #{p.chestNumber}
+                          </span>
+                        ) : null}
                         <span className="font-medium text-slate-800">{p.name}</span>
-                        <span className="text-[10px] font-mono text-slate-400 ml-2">({p.id})</span>
                       </div>
                       <Badge variant={p.status} size="sm">
                         {p.category}

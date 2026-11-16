@@ -78,8 +78,10 @@ export const ParticipantProfilePage: React.FC = () => {
         {/* Read-Only Identity Card */}
         <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-mono">
           <div>
-            <span className="text-slate-400 uppercase font-bold text-[10px] block">Participant ID</span>
-            <span className="font-bold text-slate-900 text-sm mt-0.5 block">{activeParticipant?.id}</span>
+            <span className="text-slate-400 uppercase font-bold text-[10px] block">Chest Number</span>
+            <span className="font-bold text-slate-900 text-sm mt-0.5 block font-mono">
+              {activeParticipant?.chestNumber ? `#${activeParticipant.chestNumber}` : 'Not assigned'}
+            </span>
           </div>
           <div>
             <span className="text-slate-400 uppercase font-bold text-[10px] block">Assigned Team</span>

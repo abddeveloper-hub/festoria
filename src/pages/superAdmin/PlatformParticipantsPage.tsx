@@ -183,7 +183,7 @@ export const PlatformParticipantsPage: React.FC = () => {
           <table className="w-full text-left text-xs divide-y divide-slate-200">
             <thead className="bg-slate-50 text-slate-600 font-semibold uppercase tracking-wider text-[10px]">
               <tr>
-                <th className="px-4 py-3">Participant ID</th>
+                <th className="px-4 py-3">Chest #</th>
                 <th className="px-4 py-3">Full Name & Contact</th>
                 <th className="px-4 py-3">College / Institution</th>
                 <th className="px-4 py-3">Category</th>
@@ -205,7 +205,15 @@ export const PlatformParticipantsPage: React.FC = () => {
                   const teamObj = teams.find((t) => t.id === p.teamId);
                   return (
                     <tr key={p.id} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="px-4 py-3 font-mono font-medium text-slate-900">{p.id}</td>
+                      <td className="px-4 py-3 font-mono font-medium text-slate-900">
+                        {p.chestNumber ? (
+                          <span className="px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200 font-bold">
+                            #{p.chestNumber}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 italic text-[11px]">—</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         <div className="font-semibold text-slate-900 flex items-center gap-1.5">
                           <span>{p.name}</span>
@@ -261,7 +269,7 @@ export const PlatformParticipantsPage: React.FC = () => {
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
               <div>
                 <h3 className="text-base font-semibold text-slate-900">{selectedParticipant.name}</h3>
-                <p className="text-slate-500 mt-0.5">{selectedParticipant.college} • ID: {selectedParticipant.id}</p>
+                <p className="text-slate-500 mt-0.5">{selectedParticipant.college}{selectedParticipant.chestNumber ? ` • Chest #${selectedParticipant.chestNumber}` : ''}</p>
               </div>
               <button onClick={() => setSelectedParticipant(null)} className="text-slate-400 hover:text-slate-600">
                 <X className="w-4 h-4" />

@@ -133,8 +133,7 @@ export const TeamMembersPage: React.FC = () => {
 
   const handleExportCSV = () => {
     const rows = teamMembers.map((m) => ({
-      ID: m.id,
-      'Chest Number': m.chestNumber || m.id,
+      'Chest Number': m.chestNumber || '',
       Name: m.name,
       Email: m.email,
       Phone: m.phone,
@@ -262,10 +261,9 @@ export const TeamMembersPage: React.FC = () => {
                     <div className="min-w-0">
                       <span className="font-bold text-sm text-slate-900 block truncate">{member.name}</span>
                       <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="text-[11px] font-mono font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
-                          Chest #{member.chestNumber || member.id}
+                        <span className="text-[11px] font-mono font-bold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200">
+                          {member.chestNumber ? `Chest #${member.chestNumber}` : 'No chest #'}
                         </span>
-                        <span className="text-[10px] font-mono text-slate-400">ID: {member.id}</span>
                       </div>
                     </div>
                   </div>
@@ -344,13 +342,12 @@ export const TeamMembersPage: React.FC = () => {
                           </div>
                           <div>
                             <span className="font-bold text-slate-900 block">{member.name}</span>
-                            <span className="text-[11px] font-mono text-slate-500">{member.id}</span>
                           </div>
                         </div>
                       </td>
                       <td className="py-3.5 px-4">
                         <span className="font-mono font-bold text-xs bg-slate-100 text-slate-900 px-2.5 py-1 rounded-md border border-slate-200 shadow-2xs">
-                          #{member.chestNumber || member.id}
+                          {member.chestNumber ? `#${member.chestNumber}` : '—'}
                         </span>
                       </td>
                       <td className="py-3.5 px-4">
@@ -450,11 +447,11 @@ export const TeamMembersPage: React.FC = () => {
 
               <div>
                 <label className="font-bold text-xs text-slate-700 uppercase tracking-wider block mb-1">
-                  Chest Number <span className="text-slate-400 font-normal lowercase">(optional - defaults to ID)</span>
+                  Chest Number <span className="text-slate-400 font-normal lowercase">(official bib number)</span>
                 </label>
                 <input
                   type="text"
-                  placeholder={editingMember ? `e.g. 101, CH-05 (Current: ${editingMember.chestNumber || editingMember.id})` : 'e.g. 101, CH-05 (Auto-generated if empty)'}
+                  placeholder={editingMember ? `e.g. 101, CH-05 (Current: ${editingMember.chestNumber || 'Not assigned'})` : 'e.g. 101, CH-05'}
                   value={formData.chestNumber}
                   onChange={(e) => setFormData({ ...formData, chestNumber: e.target.value })}
                   className="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-slate-400 text-slate-900 font-mono"

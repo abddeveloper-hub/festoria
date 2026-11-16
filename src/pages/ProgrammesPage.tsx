@@ -2051,7 +2051,7 @@ export const ProgrammesPage: React.FC = () => {
                                   </span>
                                 ) : (
                                   <span className="font-mono text-[10px] text-slate-400 bg-slate-50 px-1 rounded flex-shrink-0">
-                                    #{pt.id}
+                                    —
                                   </span>
                                 )}
                                 <span className="font-medium text-slate-900 truncate">{pt.name}</span>

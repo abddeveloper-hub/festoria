@@ -280,7 +280,6 @@ export const ParticipantsPage: React.FC = () => {
     const exportRows = filteredData.map((p) => {
       const team = teams.find((t) => t.id === p.teamId);
       return {
-        ID: p.id,
         ChestNumber: p.chestNumber || '',
         Name: p.name,
         Email: p.email || '',
@@ -377,7 +376,7 @@ export const ParticipantsPage: React.FC = () => {
             <Search className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search by name, ID, email..."
+              placeholder="Search by name, chest #, email..."
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
@@ -470,7 +469,7 @@ export const ParticipantsPage: React.FC = () => {
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="bg-slate-50/70 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                <th className="py-3 px-3 w-28">ID & Chest #</th>
+                <th className="py-3 px-3 w-28">Chest #</th>
                 <th className="py-3 px-3">Participant Name</th>
                 <th className="py-3 px-3">Contact</th>
                 <th className="py-3 px-3">Team</th>
@@ -497,15 +496,12 @@ export const ParticipantsPage: React.FC = () => {
                       className="hover:bg-slate-50/60 transition-colors"
                     >
                       <td className="py-3 px-3">
-                        <div className="font-mono font-bold text-slate-800 text-xs">
-                          {participant.id}
-                        </div>
                         {participant.chestNumber ? (
-                          <span className="inline-block mt-0.5 px-1.5 py-0.5 bg-purple-50 text-purple-700 border border-purple-200 rounded font-mono text-[10px] font-bold">
+                          <span className="inline-flex items-center px-2 py-0.5 bg-purple-50 text-purple-700 border border-purple-200 rounded font-mono text-xs font-bold shadow-2xs">
                             #{participant.chestNumber}
                           </span>
                         ) : (
-                          <span className="text-[10px] text-slate-400 font-mono italic">No chest #</span>
+                          <span className="text-[11px] text-slate-400 font-mono italic">Not assigned</span>
                         )}
                       </td>
                       <td className="py-3 px-3">
@@ -1001,12 +997,8 @@ export const ParticipantsPage: React.FC = () => {
             {/* Identity Grid */}
             <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 rounded border border-slate-200">
               <div>
-                <span className="text-[10px] text-slate-400 uppercase font-semibold">Participant ID</span>
-                <p className="font-mono font-bold text-slate-900">{viewingParticipant.id}</p>
-              </div>
-              <div>
                 <span className="text-[10px] text-slate-400 uppercase font-semibold">Chest Number</span>
-                <p className="font-mono font-bold text-purple-700">
+                <p className="font-mono font-bold text-sm text-purple-700">
                   {viewingParticipant.chestNumber ? `#${viewingParticipant.chestNumber}` : 'Not assigned'}
                 </p>
               </div>

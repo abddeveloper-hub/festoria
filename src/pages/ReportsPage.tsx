@@ -219,7 +219,6 @@ export const ReportsPage: React.FC = () => {
         const rows = filtered.map((p) => {
           const team = teams.find((t) => t.id === p.teamId);
           return {
-            ID: p.id,
             ChestNumber: p.chestNumber || '',
             Name: p.name,
             Email: p.email || '',
@@ -748,7 +747,6 @@ export const ReportsPage: React.FC = () => {
                     <thead>
                       <tr className="border-b border-slate-200 text-slate-500 text-[11px] uppercase">
                         <th className="py-2.5 px-3">Chest #</th>
-                        <th className="py-2.5 px-3">ID</th>
                         <th className="py-2.5 px-3">Name</th>
                         <th className="py-2.5 px-3">Email</th>
                         <th className="py-2.5 px-3">Team</th>
@@ -762,7 +760,6 @@ export const ReportsPage: React.FC = () => {
                           <td className="py-2 px-3 font-mono font-bold text-purple-700">
                             {p.chestNumber ? `#${p.chestNumber}` : <span className="text-slate-400 font-normal italic">-</span>}
                           </td>
-                          <td className="py-2 px-3 font-mono">{p.id}</td>
                           <td className="py-2 px-3 font-semibold text-slate-900">{p.name}</td>
                           <td className="py-2 px-3 text-slate-600">{p.email || '-'}</td>
                           <td className="py-2 px-3 text-slate-600">
