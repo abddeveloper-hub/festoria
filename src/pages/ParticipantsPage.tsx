@@ -182,17 +182,7 @@ export const ParticipantsPage: React.FC = () => {
       const prog = programmes.find((pr) => pr.id === progId);
       if (!prog) continue;
 
-      // 1. Team event restriction
-      if (prog.type === 'team' || prog.type === 'group' || prog.programmeType === 'team') {
-        addToast(
-          'error',
-          'Team Event Restriction',
-          `"${prog.name}" is a team event. Please register team entries through the Teams page with complete squad rosters.`
-        );
-        return;
-      }
-
-      // 2. Category eligibility
+      // 1. Category eligibility
       const fCat = (formData.category || '').toLowerCase().trim();
       const pCat = (prog.category || '').toLowerCase().trim();
       const eligibleCats = (prog.eligibleCategories || []).map((c) => c.toLowerCase().trim());
@@ -212,8 +202,9 @@ export const ParticipantsPage: React.FC = () => {
         return;
       }
 
-      // 3. Team Quota (maxParticipantsPerTeam)
-      const maxAllowed = prog.maxParticipantsPerTeam || 1;
+      // 2. Team Quota (maxParticipantsPerTeam / maxTeamMembers)
+      const isTeam = prog.type === 'team' || prog.type === 'group' || prog.programmeType === 'team';
+      const maxAllowed = isTeam ? (prog.maxTeamMembers || 25) : (prog.maxParticipantsPerTeam || 1);
       const otherTeamMembers = participants.filter(
         (p) =>
           p.teamId === formData.teamId &&
@@ -227,7 +218,9 @@ export const ParticipantsPage: React.FC = () => {
         addToast(
           'error',
           'Team Limit Exceeded',
-          `Team "${teamName}" already has ${otherTeamMembers.length} of ${maxAllowed} allowed participant(s) registered in "${prog.name}" (${otherTeamMembers.map((p) => p.name).join(', ')}). Registration blocked.`
+          isTeam
+            ? `Team "${teamName}" already reached the maximum squad limit of ${maxAllowed} members for team event "${prog.name}".`
+            : `Team "${teamName}" already has ${otherTeamMembers.length} of ${maxAllowed} allowed participant(s) registered in "${prog.name}" (${otherTeamMembers.map((p) => p.name).join(', ')}). Registration blocked.`
         );
         return;
       }
@@ -819,7 +812,7 @@ export const ParticipantsPage: React.FC = () => {
                     pCat === 'general';
 
                   // Team quota check
-                  const maxAllowedPerTeam = prog.maxParticipantsPerTeam || 1;
+                  const maxAllowedPerTeam = isTeamEvent ? (prog.maxTeamMembers || 25) : (prog.maxParticipantsPerTeam || 1);
                   const otherTeamMembers = participants.filter(
                     (p) =>
                       p.teamId === formData.teamId &&
@@ -841,7 +834,7 @@ export const ParticipantsPage: React.FC = () => {
                   const isCapFull = maxCap > 0 && totalInProg >= maxCap;
 
                   // Can the checkbox be toggled on?
-                  const canSelect = !isTeamEvent && isCategoryEligible && !isTeamQuotaFull && !isCapFull;
+                  const canSelect = isCategoryEligible && !isTeamQuotaFull && !isCapFull;
                   const isBlocked = !checked && !canSelect;
 
                   const handleToggle = () => {
@@ -851,14 +844,6 @@ export const ParticipantsPage: React.FC = () => {
                         registeredProgrammes: formData.registeredProgrammes.filter((id) => id !== prog.id),
                       });
                     } else {
-                      if (isTeamEvent) {
-                        addToast(
-                          'error',
-                          'Team Programme Restriction',
-                          `"${prog.name}" is a team event. Register team entries with full squad rosters in Teams page or Team Leader portal.`
-                        );
-                        return;
-                      }
                       if (!isCategoryEligible) {
                         addToast(
                           'error',
@@ -873,7 +858,9 @@ export const ParticipantsPage: React.FC = () => {
                         addToast(
                           'error',
                           'Team Quota Full',
-                          `Team "${teamName}" already has ${currentTeamCount} of ${maxAllowedPerTeam} allowed participant(s) registered in "${prog.name}": ${otherTeamMembers.map((p) => p.name).join(', ')}.`
+                          isTeamEvent
+                            ? `Team "${teamName}" already reached maximum squad limit of ${maxAllowedPerTeam} members for team event "${prog.name}".`
+                            : `Team "${teamName}" already has ${currentTeamCount} of ${maxAllowedPerTeam} allowed participant(s) registered in "${prog.name}": ${otherTeamMembers.map((p) => p.name).join(', ')}.`
                         );
                         return;
                       }
@@ -930,11 +917,12 @@ export const ParticipantsPage: React.FC = () => {
                       </div>
 
                       <div className="flex items-center gap-1.5 flex-shrink-0">
-                        {isTeamEvent ? (
+                        {isTeamEvent && (
                           <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 border border-purple-200">
-                            Team Squad Only
+                            Team Event
                           </span>
-                        ) : !isCategoryEligible ? (
+                        )}
+                        {!isCategoryEligible ? (
                           <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">
                             Ineligible
                           </span>

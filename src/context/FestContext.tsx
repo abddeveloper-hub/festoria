@@ -1472,18 +1472,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       const prog = programmes.find((pr) => pr.id === progId);
       if (!prog) continue;
 
-      // 1. Team event restriction (must register via team squad entries)
-      const isTeam = prog.type === 'team' || prog.type === 'group' || prog.programmeType === 'team';
-      if (isTeam) {
-        addToast(
-          'error',
-          'Team Event Restriction',
-          `"${prog.name}" is a team event. Registrations must be made through team squad entries via the Teams page.`
-        );
-        return false;
-      }
-
-      // 2. Category eligibility
+      // 1. Category eligibility
       const allowedCats = (prog.eligibleCategories || []).map((c) => c.toLowerCase().trim());
       const allowsGeneral = allowedCats.includes('general') || (prog.category || '').toLowerCase() === 'general';
       const isEligible =
@@ -1501,8 +1490,9 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
         return false;
       }
 
-      // 3. Team Quota (maxParticipantsPerTeam)
-      const maxAllowed = prog.maxParticipantsPerTeam || 1;
+      // 2. Team Quota (maxParticipantsPerTeam / maxTeamMembers)
+      const isTeam = prog.type === 'team' || prog.type === 'group' || prog.programmeType === 'team';
+      const maxAllowed = isTeam ? (prog.maxTeamMembers || 25) : (prog.maxParticipantsPerTeam || 1);
       const teamRegistrations = participants.filter(
         (p) => p.teamId === targetTeamId && p.status !== 'inactive' && p.registeredProgrammes?.includes(prog.id)
       );
@@ -1512,7 +1502,9 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
         addToast(
           'error',
           'Team Quota Exceeded',
-          `Team "${teamName}" already has ${teamRegistrations.length} of ${maxAllowed} allowed participant(s) registered in "${prog.name}" (${teamRegistrations.map((p) => p.name).join(', ')}). Registration blocked.`
+          isTeam
+            ? `Team "${teamName}" has reached maximum squad limit of ${maxAllowed} members for team event "${prog.name}".`
+            : `Team "${teamName}" already has ${teamRegistrations.length} of ${maxAllowed} allowed participant(s) registered in "${prog.name}" (${teamRegistrations.map((p) => p.name).join(', ')}). Registration blocked.`
         );
         return false;
       }
@@ -1598,18 +1590,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
         const prog = programmes.find((pr) => pr.id === progId);
         if (!prog) continue;
 
-        // 1. Team event restriction
-        const isTeam = prog.type === 'team' || prog.type === 'group' || prog.programmeType === 'team';
-        if (isTeam) {
-          addToast(
-            'error',
-            'Team Event Restriction',
-            `"${prog.name}" is a team event. Registrations must be made through team squad entries via the Teams page.`
-          );
-          return false;
-        }
-
-        // 2. Category eligibility
+        // 1. Category eligibility
         const allowedCats = (prog.eligibleCategories || []).map((c) => c.toLowerCase().trim());
         const allowsGeneral = allowedCats.includes('general') || (prog.category || '').toLowerCase() === 'general';
         const isEligible =
@@ -1627,8 +1608,9 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
           return false;
         }
 
-        // 3. Team Quota (maxParticipantsPerTeam)
-        const maxAllowed = prog.maxParticipantsPerTeam || 1;
+        // 2. Team Quota (maxParticipantsPerTeam / maxTeamMembers)
+        const isTeam = prog.type === 'team' || prog.type === 'group' || prog.programmeType === 'team';
+        const maxAllowed = isTeam ? (prog.maxTeamMembers || 25) : (prog.maxParticipantsPerTeam || 1);
         const otherTeamRegistrations = participants.filter(
           (p) => p.id !== id && p.teamId === targetTeamId && p.status !== 'inactive' && p.registeredProgrammes?.includes(prog.id)
         );
@@ -1638,7 +1620,9 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
           addToast(
             'error',
             'Team Quota Exceeded',
-            `Team "${teamName}" already has ${otherTeamRegistrations.length} of ${maxAllowed} allowed participant(s) registered in "${prog.name}" (${otherTeamRegistrations.map((p) => p.name).join(', ')}). Registration blocked.`
+            isTeam
+              ? `Team "${teamName}" has reached maximum squad limit of ${maxAllowed} members for team event "${prog.name}".`
+              : `Team "${teamName}" already has ${otherTeamRegistrations.length} of ${maxAllowed} allowed participant(s) registered in "${prog.name}" (${otherTeamRegistrations.map((p) => p.name).join(', ')}). Registration blocked.`
           );
           return false;
         }
