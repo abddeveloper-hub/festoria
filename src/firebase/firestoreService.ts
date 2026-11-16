@@ -540,6 +540,14 @@ export async function deleteParticipantFromFirestore(participantId: string): Pro
   StorageService.saveParticipants(participants.filter((p) => p.id !== participantId));
 
   if (typeof window !== 'undefined') {
+    try {
+      const deletedIds = new Set<string>(
+        JSON.parse(localStorage.getItem('festoria_deleted_participant_ids') || '[]')
+      );
+      deletedIds.add(participantId);
+      localStorage.setItem('festoria_deleted_participant_ids', JSON.stringify(Array.from(deletedIds)));
+    } catch {}
+
     window.dispatchEvent(
       new CustomEvent('festoria_participants_changed', { detail: { participantId } })
     );

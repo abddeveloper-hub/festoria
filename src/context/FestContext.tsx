@@ -978,31 +978,27 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       }
     }
 
-    // 3. Sync teams that lack festId or have 'FEST-01' fallback
-    const misalignedTeams = teams.filter(
-      (t) => !t.festId || (t.festId === 'FEST-01' && activeFestId !== 'FEST-01')
-    );
+    // 3. Sync teams that lack festId
+    const misalignedTeams = teams.filter((t) => !t.festId);
     if (misalignedTeams.length > 0) {
       misalignedTeams.forEach((t) => {
         const aligned: Team = { ...t, festId: activeFestId };
         saveTeamToFirestore(aligned);
       });
       setTeams((prev) =>
-        prev.map((t) => (!t.festId || t.festId === 'FEST-01' ? { ...t, festId: activeFestId } : t))
+        prev.map((t) => (!t.festId ? { ...t, festId: activeFestId } : t))
       );
     }
 
-    // 4. Sync participants that lack festId or have 'FEST-01' fallback
-    const misalignedParticipants = participants.filter(
-      (p) => !p.festId || (p.festId === 'FEST-01' && activeFestId !== 'FEST-01')
-    );
+    // 4. Sync participants that lack festId
+    const misalignedParticipants = participants.filter((p) => !p.festId);
     if (misalignedParticipants.length > 0) {
       misalignedParticipants.forEach((p) => {
         const aligned: Participant = { ...p, festId: activeFestId };
         saveParticipantToFirestore(aligned);
       });
       setParticipants((prev) =>
-        prev.map((p) => (!p.festId || p.festId === 'FEST-01' ? { ...p, festId: activeFestId } : p))
+        prev.map((p) => (!p.festId ? { ...p, festId: activeFestId } : p))
       );
     }
   }, [currentUser, activeFestId, programmes, categories, teams, participants]);
@@ -1081,12 +1077,22 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       if (fsTeams && fsTeams.length > 0) setTeams(fsTeams);
       if (fsParticipants && fsParticipants.length > 0) {
         setParticipants((prev) => {
-          const remoteMap = new Map((fsParticipants || []).map((p) => [p.id, p]));
-          const unsynced = prev.filter((p) => !remoteMap.has(p.id));
+          let deletedIds = new Set<string>();
+          try {
+            if (typeof window !== 'undefined') {
+              deletedIds = new Set<string>(
+                JSON.parse(localStorage.getItem('festoria_deleted_participant_ids') || '[]')
+              );
+            }
+          } catch {}
+
+          const cleanFs = (fsParticipants || []).filter((p) => !deletedIds.has(p.id));
+          const remoteMap = new Map(cleanFs.map((p) => [p.id, p]));
+          const unsynced = prev.filter((p) => !remoteMap.has(p.id) && !deletedIds.has(p.id));
           unsynced.forEach((p) => {
             saveParticipantToFirestore(p).catch(() => {});
           });
-          return [...(fsParticipants || []), ...unsynced];
+          return [...cleanFs, ...unsynced];
         });
       }
 
@@ -1727,6 +1733,17 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
   const deleteParticipant = (id: string) => {
     const target = participants.find((p) => p.id === id);
     setParticipants((prev) => prev.filter((p) => p.id !== id));
+
+    try {
+      if (typeof window !== 'undefined') {
+        const deletedIds = new Set<string>(
+          JSON.parse(localStorage.getItem('festoria_deleted_participant_ids') || '[]')
+        );
+        deletedIds.add(id);
+        localStorage.setItem('festoria_deleted_participant_ids', JSON.stringify(Array.from(deletedIds)));
+      }
+    } catch {}
+
     deleteParticipantFromFirestore(id).catch((err) => console.warn('[Firestore] deleteParticipant error:', err));
 
     // Cascade: remove participant from programmes registeredParticipantIds

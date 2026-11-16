@@ -207,8 +207,12 @@ service cloud.firestore {
           !request.resource.data.diff(resource.data).affectedKeys().hasAny(['id', 'points', 'goldMedals', 'silverMedals', 'bronzeMedals'])
         )
       );
-      // Deletions use existing document data
-      allow delete: if isAuthenticated() && isFestAdmin(resource.data.festId);
+      // Deletions use existing document data (allows fest admins and super admins to delete records, including orphaned records)
+      allow delete: if isSuperAdmin() || (isAuthenticated() && (
+        isFestAdmin(resource.data.festId) ||
+        resource.data.festId == null ||
+        resource.data.festId == ''
+      ));
     }
 
     // ========================================================
@@ -248,8 +252,12 @@ service cloud.firestore {
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'activatedUserId', 'activatedAt'])
         )
       );
-      // Deletions use existing document data
-      allow delete: if isAuthenticated() && isFestAdmin(resource.data.festId);
+      // Deletions use existing document data (allows fest admins and super admins to delete records, including orphaned records)
+      allow delete: if isSuperAdmin() || (isAuthenticated() && (
+        isFestAdmin(resource.data.festId) ||
+        resource.data.festId == null ||
+        resource.data.festId == ''
+      ));
     }
 
     // ========================================================
@@ -289,8 +297,12 @@ service cloud.firestore {
         )
       );
 
-      // Deletions use existing document data
-      allow delete: if isAuthenticated() && isFestAdmin(resource.data.festId);
+      // Deletions use existing document data (allows fest admins and super admins to delete records, including orphaned records)
+      allow delete: if isSuperAdmin() || (isAuthenticated() && (
+        isFestAdmin(resource.data.festId) ||
+        resource.data.festId == null ||
+        resource.data.festId == ''
+      ));
     }
 
     // ========================================================

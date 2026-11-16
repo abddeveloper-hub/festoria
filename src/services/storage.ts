@@ -218,10 +218,32 @@ export const StorageService = {
   },
 
   getParticipants(): Participant[] {
-    return getStorageItem(STORAGE_KEYS.PARTICIPANTS, []);
+    const list = getStorageItem<Participant[]>(STORAGE_KEYS.PARTICIPANTS, []);
+    try {
+      if (typeof window !== 'undefined') {
+        const deletedIds = new Set<string>(
+          JSON.parse(localStorage.getItem('festoria_deleted_participant_ids') || '[]')
+        );
+        if (deletedIds.size > 0) {
+          return list.filter((p) => p && !deletedIds.has(p.id));
+        }
+      }
+    } catch {}
+    return list;
   },
   saveParticipants(participants: Participant[]): void {
-    setStorageItem(STORAGE_KEYS.PARTICIPANTS, participants);
+    let clean = participants;
+    try {
+      if (typeof window !== 'undefined') {
+        const deletedIds = new Set<string>(
+          JSON.parse(localStorage.getItem('festoria_deleted_participant_ids') || '[]')
+        );
+        if (deletedIds.size > 0) {
+          clean = participants.filter((p) => p && !deletedIds.has(p.id));
+        }
+      }
+    } catch {}
+    setStorageItem(STORAGE_KEYS.PARTICIPANTS, clean);
   },
 
   getScoreSubmissions(): ScoreSubmission[] {
