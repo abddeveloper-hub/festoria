@@ -1074,6 +1074,20 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
           }
         }
       }
+      // Harmonize Team Programme Entries and Participant registeredProgrammes
+      const rawTeamEntries = (fsTeamEntries && fsTeamEntries.length > 0 ? fsTeamEntries : teamProgrammeEntries)
+        .filter((e) => e.status !== 'withdrawn');
+
+      const teamProgMembersMap = new Map<string, Set<string>>();
+      rawTeamEntries.forEach((entry) => {
+        (entry.memberParticipantIds || []).forEach((pid) => {
+          if (!teamProgMembersMap.has(pid)) {
+            teamProgMembersMap.set(pid, new Set<string>());
+          }
+          teamProgMembersMap.get(pid)!.add(entry.programmeId);
+        });
+      });
+
       if (fsTeams && fsTeams.length > 0) setTeams(fsTeams);
       if (fsParticipants && fsParticipants.length > 0) {
         setParticipants((prev) => {
@@ -1089,10 +1103,34 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
           const cleanFs = (fsParticipants || []).filter((p) => !deletedIds.has(p.id));
           const remoteMap = new Map(cleanFs.map((p) => [p.id, p]));
           const unsynced = prev.filter((p) => !remoteMap.has(p.id) && !deletedIds.has(p.id));
+
+          // Ensure participants have registeredProgrammes populated from teamProgrammeEntries
+          const allMerged = [...cleanFs, ...unsynced].map((pt) => {
+            const teamProgs = teamProgMembersMap.get(pt.id);
+            if (teamProgs && teamProgs.size > 0) {
+              const currentProgs = new Set(pt.registeredProgrammes || []);
+              let changed = false;
+              teamProgs.forEach((progId) => {
+                if (!currentProgs.has(progId)) {
+                  currentProgs.add(progId);
+                  changed = true;
+                }
+              });
+              if (changed) {
+                const updated = { ...pt, registeredProgrammes: Array.from(currentProgs) };
+                if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'fest_admin' || currentUser.role === 'super_admin')) {
+                  saveParticipantToFirestore(updated).catch(() => {});
+                }
+                return updated;
+              }
+            }
+            return pt;
+          });
+
           unsynced.forEach((p) => {
             saveParticipantToFirestore(p).catch(() => {});
           });
-          return [...cleanFs, ...unsynced];
+          return allMerged;
         });
       }
 
@@ -1112,15 +1150,32 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
             pids.add(pt.id);
           }
         });
+        // Include members from active team programme entries
+        rawTeamEntries.forEach((entry) => {
+          if (entry.programmeId === p.id) {
+            (entry.memberParticipantIds || []).forEach((pid) => pids.add(pid));
+          }
+        });
         const alignedPids = Array.from(pids);
         const pidsChanged = alignedPids.length !== (p.registeredParticipantIds || []).length;
         const categoryChanged = !!(canonical && p.category !== canonical);
 
-        if (categoryChanged || pidsChanged) {
+        // Include teams from active team programme entries
+        const tids = new Set(p.registeredTeamIds || []);
+        rawTeamEntries.forEach((entry) => {
+          if (entry.programmeId === p.id && entry.teamId) {
+            tids.add(entry.teamId);
+          }
+        });
+        const alignedTids = Array.from(tids);
+        const tidsChanged = alignedTids.length !== (p.registeredTeamIds || []).length;
+
+        if (categoryChanged || pidsChanged || tidsChanged) {
           const updated = {
             ...p,
             category: categoryChanged && canonical ? canonical : p.category,
             registeredParticipantIds: alignedPids,
+            registeredTeamIds: alignedTids,
           };
           if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'fest_admin' || currentUser.role === 'super_admin')) {
             saveProgrammeToFirestore(updated).catch(() => {});
@@ -3803,24 +3858,31 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     setTeamProgrammeEntries((prev) => [...prev, newEntry]);
     saveTeamProgrammeEntryToFirestore(newEntry);
 
-    // Update participants registeredProgrammes
+    // Update participants registeredProgrammes and persist to Firestore
     setParticipants((prev) =>
       prev.map((p) => {
         if (data.memberParticipantIds.includes(p.id)) {
           if (!p.registeredProgrammes.includes(data.programmeId)) {
-            return { ...p, registeredProgrammes: [...p.registeredProgrammes, data.programmeId] };
+            const updated = { ...p, registeredProgrammes: [...p.registeredProgrammes, data.programmeId] };
+            saveParticipantToFirestore(updated).catch(() => {});
+            return updated;
           }
         }
         return p;
       })
     );
 
-    // Update programme registeredTeamIds
-    if (!programme.registeredTeamIds.includes(data.teamId)) {
-      updateProgramme(programme.id, {
-        registeredTeamIds: [...programme.registeredTeamIds, data.teamId],
-      });
-    }
+    // Update programme registeredTeamIds and registeredParticipantIds
+    const currentProg = programmes.find((p) => p.id === data.programmeId) || programme;
+    const existingTeamIds = new Set(currentProg.registeredTeamIds || []);
+    const existingParticipantIds = new Set(currentProg.registeredParticipantIds || []);
+    existingTeamIds.add(data.teamId);
+    data.memberParticipantIds.forEach((pid) => existingParticipantIds.add(pid));
+
+    updateProgramme(data.programmeId, {
+      registeredTeamIds: Array.from(existingTeamIds),
+      registeredParticipantIds: Array.from(existingParticipantIds),
+    });
 
     logActivity('CREATE_TEAM_ENTRY', 'programme', id, `Registered team entry "${newEntry.entryName}" for ${programme.name}.`);
     addToast('success', 'Entry Registered', `Team entry "${newEntry.entryName}" successfully registered.`);
@@ -3843,14 +3905,65 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       }
     }
 
+    const memberObjs = updates.memberParticipantIds
+      ? participants.filter((p) => updates.memberParticipantIds!.includes(p.id))
+      : undefined;
+
     const updatedEntry: TeamProgrammeEntry = {
       ...entry,
       ...updates,
+      memberNames: memberObjs ? memberObjs.map((m) => m.name) : (updates.memberNames || entry.memberNames),
       updatedAt: new Date().toISOString(),
     };
 
     setTeamProgrammeEntries((prev) => prev.map((e) => (e.id === id ? updatedEntry : e)));
     saveTeamProgrammeEntryToFirestore(updatedEntry);
+
+    // If memberParticipantIds changed, synchronize participants' registeredProgrammes and programme's registeredParticipantIds
+    if (updates.memberParticipantIds) {
+      const oldMemberIds = new Set(entry.memberParticipantIds || []);
+      const newMemberIds = new Set(updates.memberParticipantIds);
+
+      const addedIds = updates.memberParticipantIds.filter((mId) => !oldMemberIds.has(mId));
+      const removedIds = (entry.memberParticipantIds || []).filter((mId) => !newMemberIds.has(mId));
+
+      setParticipants((prev) =>
+        prev.map((p) => {
+          if (addedIds.includes(p.id)) {
+            if (!p.registeredProgrammes.includes(entry.programmeId)) {
+              const updated = { ...p, registeredProgrammes: [...p.registeredProgrammes, entry.programmeId] };
+              saveParticipantToFirestore(updated).catch(() => {});
+              return updated;
+            }
+          } else if (removedIds.includes(p.id)) {
+            const inAnotherEntry = teamProgrammeEntries.some(
+              (e) => e.id !== id && e.programmeId === entry.programmeId && e.status !== 'withdrawn' && (e.memberParticipantIds || []).includes(p.id)
+            );
+            if (!inAnotherEntry) {
+              const updated = { ...p, registeredProgrammes: p.registeredProgrammes.filter((pid) => pid !== entry.programmeId) };
+              saveParticipantToFirestore(updated).catch(() => {});
+              return updated;
+            }
+          }
+          return p;
+        })
+      );
+
+      if (programme) {
+        const currentPids = new Set(programme.registeredParticipantIds || []);
+        addedIds.forEach((pid) => currentPids.add(pid));
+        removedIds.forEach((pid) => {
+          const inAnotherEntry = teamProgrammeEntries.some(
+            (e) => e.id !== id && e.programmeId === entry.programmeId && e.status !== 'withdrawn' && (e.memberParticipantIds || []).includes(pid)
+          );
+          if (!inAnotherEntry) {
+            currentPids.delete(pid);
+          }
+        });
+        updateProgramme(programme.id, { registeredParticipantIds: Array.from(currentPids) });
+      }
+    }
+
     addToast('success', 'Entry Updated', `Team entry "${updatedEntry.entryName}" updated.`);
     return { success: true };
   };
@@ -3861,6 +3974,53 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
 
     setTeamProgrammeEntries((prev) => prev.filter((e) => e.id !== id));
     deleteTeamProgrammeEntryFromFirestore(id, entry.festId);
+
+    // Remove programme from members' registeredProgrammes if not part of another entry
+    setParticipants((prev) =>
+      prev.map((p) => {
+        if ((entry.memberParticipantIds || []).includes(p.id)) {
+          const inAnotherEntry = teamProgrammeEntries.some(
+            (e) => e.id !== id && e.programmeId === entry.programmeId && e.status !== 'withdrawn' && (e.memberParticipantIds || []).includes(p.id)
+          );
+          if (!inAnotherEntry) {
+            const updated = {
+              ...p,
+              registeredProgrammes: (p.registeredProgrammes || []).filter((pid) => pid !== entry.programmeId),
+            };
+            saveParticipantToFirestore(updated).catch(() => {});
+            return updated;
+          }
+        }
+        return p;
+      })
+    );
+
+    // Update programme registeredTeamIds and registeredParticipantIds
+    const programme = programmes.find((p) => p.id === entry.programmeId);
+    if (programme) {
+      const remainingTeamEntries = teamProgrammeEntries.filter(
+        (e) => e.id !== id && e.programmeId === entry.programmeId && e.teamId === entry.teamId && e.status !== 'withdrawn'
+      );
+      const remainingTeamIds = remainingTeamEntries.length > 0
+        ? (programme.registeredTeamIds || [])
+        : (programme.registeredTeamIds || []).filter((tId) => tId !== entry.teamId);
+
+      const remainingPids = new Set(programme.registeredParticipantIds || []);
+      (entry.memberParticipantIds || []).forEach((pid) => {
+        const inAnother = teamProgrammeEntries.some(
+          (e) => e.id !== id && e.programmeId === entry.programmeId && e.status !== 'withdrawn' && (e.memberParticipantIds || []).includes(pid)
+        );
+        if (!inAnother) {
+          remainingPids.delete(pid);
+        }
+      });
+
+      updateProgramme(programme.id, {
+        registeredTeamIds: remainingTeamIds,
+        registeredParticipantIds: Array.from(remainingPids),
+      });
+    }
+
     addToast('info', 'Entry Withdrawn', `Team entry "${entry.entryName}" withdrawn.`);
     return { success: true };
   };
@@ -3873,7 +4033,9 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     setParticipants((prev) =>
       prev.map((p) => {
         if (asg.participantIds.includes(p.id)) {
-          return { ...p, registeredProgrammes: p.registeredProgrammes.filter((pid) => pid !== asg.programmeId) };
+          const updated = { ...p, registeredProgrammes: p.registeredProgrammes.filter((pid) => pid !== asg.programmeId) };
+          saveParticipantToFirestore(updated).catch(() => {});
+          return updated;
         }
         return p;
       })

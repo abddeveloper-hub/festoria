@@ -72,7 +72,8 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
     leaderboard,
     getCategoryScoreboard,
     addToast,
-    scheduleSlots
+    scheduleSlots,
+    teamProgrammeEntries
   } = useFest();
 
   // Contact Message form state
@@ -2752,7 +2753,8 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                     const team = teams.find((t) => t.id === student.teamId);
                     const stats = getStudentStats(student.id);
                     const studentProgs = programmes.filter((prg) =>
-                      student.registeredProgrammes?.includes(prg.id)
+                      student.registeredProgrammes?.includes(prg.id) ||
+                      teamProgrammeEntries.some((e) => e.programmeId === prg.id && e.status !== 'withdrawn' && (e.memberParticipantIds || []).includes(student.id))
                     );
 
                     return (
@@ -3968,7 +3970,8 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
         const team = teams.find((t) => t.id === student.teamId);
         const stats = getStudentStats(student.id);
         const studentProgs = programmes.filter((prg) =>
-          student.registeredProgrammes?.includes(prg.id)
+          student.registeredProgrammes?.includes(prg.id) ||
+          teamProgrammeEntries.some((e) => e.programmeId === prg.id && e.status !== 'withdrawn' && (e.memberParticipantIds || []).includes(student.id))
         );
 
         return (

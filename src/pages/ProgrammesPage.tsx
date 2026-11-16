@@ -7,7 +7,8 @@ import {
   ProgrammeStatus,
   ParticipantCategory,
   ScoringCriterion,
-  FestCategory
+  FestCategory,
+  Participant
 } from '../types';
 import { Badge } from '../components/common/Badge';
 import { Modal } from '../components/common/Modal';
@@ -51,6 +52,7 @@ export const ProgrammesPage: React.FC = () => {
     toggleGeneralCategory,
     teamProgrammeEntries,
     createTeamProgrammeEntry,
+    updateTeamProgrammeEntry,
     deleteTeamProgrammeEntry,
     addProgramme,
     updateProgramme,
@@ -101,8 +103,26 @@ export const ProgrammesPage: React.FC = () => {
   const handleRemoveParticipantFromProg = (participantId: string, progId: string) => {
     const p = participants.find((item) => item.id === participantId);
     if (!p) return;
+    const prog = programmes.find((pr) => pr.id === progId);
+    const isTeam = prog?.type === 'group' || prog?.type === 'team' || prog?.programmeType === 'team';
+
     const nextProgs = (p.registeredProgrammes || []).filter((id) => id !== progId);
     const success = updateParticipant(p.id, { registeredProgrammes: nextProgs });
+
+    if (isTeam) {
+      const affectedEntries = teamProgrammeEntries.filter(
+        (e) => e.programmeId === progId && (e.memberParticipantIds || []).includes(p.id) && e.status !== 'withdrawn'
+      );
+      affectedEntries.forEach((entry) => {
+        const remaining = entry.memberParticipantIds.filter((id) => id !== p.id);
+        if (remaining.length === 0) {
+          deleteTeamProgrammeEntry(entry.id);
+        } else {
+          updateTeamProgrammeEntry(entry.id, { memberParticipantIds: remaining });
+        }
+      });
+    }
+
     if (success) {
       addToast('success', 'Participant Removed', `Removed ${p.name} from event.`);
     }
@@ -111,10 +131,39 @@ export const ProgrammesPage: React.FC = () => {
   const handleAddParticipantToProg = (participantId: string, progId: string) => {
     const p = participants.find((item) => item.id === participantId);
     if (!p) return;
+    const prog = programmes.find((pr) => pr.id === progId);
+    const isTeam = prog?.type === 'group' || prog?.type === 'team' || prog?.programmeType === 'team';
+
     const currentProgs = p.registeredProgrammes || [];
-    if (currentProgs.includes(progId)) return;
-    const nextProgs = [...currentProgs, progId];
+    const nextProgs = currentProgs.includes(progId) ? currentProgs : [...currentProgs, progId];
     const success = updateParticipant(p.id, { registeredProgrammes: nextProgs });
+
+    if (isTeam && prog) {
+      const existingEntry = teamProgrammeEntries.find(
+        (e) => e.programmeId === progId && e.teamId === p.teamId && e.status !== 'withdrawn'
+      );
+      if (existingEntry) {
+        if (!existingEntry.memberParticipantIds.includes(p.id)) {
+          const nextMemberIds = [...existingEntry.memberParticipantIds, p.id];
+          updateTeamProgrammeEntry(existingEntry.id, {
+            memberParticipantIds: nextMemberIds,
+          });
+        }
+      } else {
+        const teamObj = teams.find((t) => t.id === p.teamId);
+        const entriesCount = teamProgrammeEntries.filter((e) => e.programmeId === progId && e.teamId === p.teamId).length;
+        const letter = String.fromCharCode(65 + entriesCount);
+        const entryName = `${teamObj?.name || 'Team'} Entry ${letter}`;
+        createTeamProgrammeEntry({
+          programmeId: prog.id,
+          teamId: p.teamId,
+          entryName,
+          categoryId: p.category || prog.eligibleCategories?.[0] || 'General',
+          memberParticipantIds: [p.id],
+        });
+      }
+    }
+
     if (success) {
       addToast('success', 'Participant Assigned', `Assigned ${p.name} to event.`);
     }
@@ -710,6 +759,9 @@ export const ProgrammesPage: React.FC = () => {
               (asg.participantIds || []).forEach((pid) => registeredParticipantIdsSet.add(pid));
             }
           });
+          teamEntries.forEach((e) => {
+            (e.memberParticipantIds || []).forEach((pid) => registeredParticipantIdsSet.add(pid));
+          });
           const registeredCount = registeredParticipantIdsSet.size;
 
           return (
@@ -788,7 +840,7 @@ export const ProgrammesPage: React.FC = () => {
                     <Users className="w-3.5 h-3.5 text-purple-600 flex-shrink-0" />
                     <span>
                       {isTeam
-                        ? `${teamEntriesCount} team entries (Max ${prog.maxEntriesPerTeam || 1}/team) • Roster &rarr;`
+                        ? `${teamEntriesCount} team ${teamEntriesCount === 1 ? 'entry' : 'entries'} (${registeredCount} participants) • Roster &rarr;`
                         : `${registeredCount} participant${registeredCount === 1 ? '' : 's'} registered • Assign &rarr;`}
                     </span>
                   </button>
@@ -861,7 +913,7 @@ export const ProgrammesPage: React.FC = () => {
                       title="Manage participants assigned to this event"
                     >
                       <Users className="w-3.5 h-3.5" />
-                      <span>Roster ({isTeam ? teamEntriesCount : registeredCount})</span>
+                      <span>Roster ({isTeam ? `${teamEntriesCount} teams (${registeredCount} pts)` : registeredCount})</span>
                     </button>
                   )}
                 </div>
@@ -2034,6 +2086,11 @@ export const ProgrammesPage: React.FC = () => {
                   (asg.participantIds || []).forEach((pid) => viewingPids.add(pid));
                 }
               });
+              teamProgrammeEntries
+                .filter((e) => e.programmeId === viewingProgramme.id && e.status !== 'withdrawn')
+                .forEach((e) => {
+                  (e.memberParticipantIds || []).forEach((pid) => viewingPids.add(pid));
+                });
 
               const viewingParticipants = participants
                 .filter((p) => viewingPids.has(p.id))
@@ -2056,7 +2113,7 @@ export const ProgrammesPage: React.FC = () => {
                     <span className="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-1.5">
                       <Users className="w-3.5 h-3.5 text-slate-600" />
                       {isViewingTeam
-                        ? `Registered Team Entries (${viewingTeamEntries.length})`
+                        ? `Registered Team Entries (${viewingTeamEntries.length}) • ${viewingParticipants.length} Total Participants`
                         : `Registered Participants (${viewingParticipants.length}${viewingProgramme.maxCapacity ? ` / ${viewingProgramme.maxCapacity}` : ''})`}
                     </span>
                     <span className="text-[10px] text-slate-500 font-mono">
@@ -2067,34 +2124,106 @@ export const ProgrammesPage: React.FC = () => {
                   </div>
 
                   {isViewingTeam ? (
-                    viewingTeamEntries.length === 0 ? (
+                    viewingTeamEntries.length === 0 && viewingParticipants.length === 0 ? (
                       <p className="text-slate-400 italic text-[11px] py-1.5 text-center">
-                        No team entries registered yet for this event.
+                        No team entries or participants registered yet for this event.
                       </p>
                     ) : (
-                      <div className="space-y-2 max-h-48 overflow-y-auto mt-2">
+                      <div className="space-y-2.5 max-h-56 overflow-y-auto mt-2 pr-1">
                         {viewingTeamEntries.map((entry) => {
                           const tm = teams.find((t) => t.id === entry.teamId);
+                          const memberList = (entry.memberParticipantIds || [])
+                            .map((pid) => participants.find((p) => p.id === pid))
+                            .filter(Boolean) as Participant[];
+
                           return (
-                            <div key={entry.id} className="p-2 bg-white rounded border border-slate-200 flex items-center justify-between">
-                              <div>
-                                <div className="flex items-center gap-1.5">
-                                  <span className="font-semibold text-slate-900">{entry.entryName || entry.teamName}</span>
-                                  <span className="text-[10px] font-mono bg-slate-100 text-slate-700 px-1 rounded font-bold">
-                                    {tm?.code || entry.teamId}
-                                  </span>
+                            <div key={entry.id} className="p-2.5 bg-white rounded-lg border border-slate-200">
+                              <div className="flex items-center justify-between gap-2">
+                                <div>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-bold text-slate-900">{entry.entryName || entry.teamName}</span>
+                                    <span className="text-[10px] font-mono bg-purple-50 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded font-bold">
+                                      {tm?.code || entry.teamId}
+                                    </span>
+                                    <span className="text-[10px] text-slate-500 font-medium">
+                                      {tm?.name}
+                                    </span>
+                                  </div>
                                 </div>
-                                <div className="text-[10px] text-slate-500 mt-0.5">
-                                  {entry.memberParticipantIds?.length || 0} squad members
-                                  {entry.memberNames && entry.memberNames.length > 0 ? `: ${entry.memberNames.join(', ')}` : ''}
+                                <Badge variant={entry.status === 'verified' ? 'active' : 'pending'} size="sm">
+                                  {entry.status}
+                                </Badge>
+                              </div>
+
+                              {/* Members list */}
+                              <div className="mt-2 pt-2 border-t border-slate-100">
+                                <div className="text-[10px] font-semibold text-slate-500 mb-1">
+                                  Squad Members ({memberList.length}):
+                                </div>
+                                <div className="flex flex-wrap gap-1">
+                                  {memberList.length > 0 ? (
+                                    memberList.map((m) => (
+                                      <span
+                                        key={m.id}
+                                        className="inline-flex items-center gap-1 text-[10px] bg-slate-50 border border-slate-200 text-slate-800 px-1.5 py-0.5 rounded"
+                                      >
+                                        <strong className="text-purple-700 font-mono">
+                                          {m.chestNumber ? `#${m.chestNumber}` : m.id}
+                                        </strong>
+                                        <span>{m.name}</span>
+                                        <span className="text-[9px] text-slate-400">({m.category})</span>
+                                      </span>
+                                    ))
+                                  ) : (
+                                    <span className="text-[10px] text-slate-400 italic">
+                                      {entry.memberNames && entry.memberNames.length > 0
+                                        ? entry.memberNames.join(', ')
+                                        : 'No member records found'}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
-                              <Badge variant={entry.status === 'verified' ? 'active' : 'pending'} size="sm">
-                                {entry.status}
-                              </Badge>
                             </div>
                           );
                         })}
+
+                        {/* Unassigned / Direct registered participants */}
+                        {(() => {
+                          const inEntriesIds = new Set(
+                            viewingTeamEntries.flatMap((e) => e.memberParticipantIds || [])
+                          );
+                          const directMembers = viewingParticipants.filter((p) => !inEntriesIds.has(p.id));
+                          if (directMembers.length === 0) return null;
+
+                          return (
+                            <div className="mt-3 pt-2.5 border-t border-dashed border-slate-300">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+                                Direct Registered Participants ({directMembers.length})
+                              </span>
+                              <div className="space-y-1">
+                                {directMembers.map((pt) => {
+                                  const tm = teams.find((t) => t.id === pt.teamId);
+                                  return (
+                                    <div
+                                      key={pt.id}
+                                      className="p-1.5 bg-white rounded border border-slate-200 flex items-center justify-between text-[11px]"
+                                    >
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <span className="font-mono font-bold text-[10px] bg-purple-50 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded">
+                                          {pt.chestNumber ? `#${pt.chestNumber}` : pt.id}
+                                        </span>
+                                        <span className="font-medium text-slate-900 truncate">{pt.name}</span>
+                                        <span className="text-[10px] text-slate-500 bg-slate-100 px-1 rounded">
+                                          {tm?.name || pt.teamId} • {pt.category}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     )
                   ) : (
@@ -2224,73 +2353,174 @@ export const ProgrammesPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5">
-                <span className="px-2.5 py-1 text-xs font-bold rounded-lg bg-white border border-slate-200 text-purple-900 shadow-2xs">
-                  {participants.filter((p) => p.status !== 'inactive' && p.registeredProgrammes?.includes(liveManagingRosterProg.id)).length} Registered
-                </span>
-              </div>
+              {(() => {
+                const isTeamEvent =
+                  liveManagingRosterProg.type === 'team' ||
+                  liveManagingRosterProg.type === 'group' ||
+                  liveManagingRosterProg.programmeType === 'team';
+                const pids = new Set<string>();
+                participants.forEach((p) => {
+                  if (p.registeredProgrammes?.includes(liveManagingRosterProg.id) && p.status !== 'inactive') {
+                    pids.add(p.id);
+                  }
+                });
+                (liveManagingRosterProg.registeredParticipantIds || []).forEach((id) => pids.add(id));
+                (assignments || []).forEach((asg) => {
+                  if (asg.programmeId === liveManagingRosterProg.id) {
+                    (asg.participantIds || []).forEach((id) => pids.add(id));
+                  }
+                });
+                const teamEntriesForProg = teamProgrammeEntries.filter(
+                  (e) => e.programmeId === liveManagingRosterProg.id && e.status !== 'withdrawn'
+                );
+                teamEntriesForProg.forEach((e) => {
+                  (e.memberParticipantIds || []).forEach((id) => pids.add(id));
+                });
+                const totalCount = pids.size;
+
+                return (
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2.5 py-1 text-xs font-bold rounded-lg bg-white border border-slate-200 text-purple-900 shadow-2xs">
+                      {isTeamEvent && teamEntriesForProg.length > 0 ? `${teamEntriesForProg.length} Squads • ` : ''}
+                      {totalCount} Registered
+                    </span>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* SECTION 1: CURRENTLY REGISTERED PARTICIPANTS */}
             <div className="border border-slate-200 rounded-xl p-3 bg-white">
-              <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-100">
-                <h5 className="font-bold text-slate-900 flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>Currently Registered Participants</span>
-                  <span className="text-[11px] font-semibold text-slate-500">
-                    ({participants.filter((p) => p.status !== 'inactive' && p.registeredProgrammes?.includes(liveManagingRosterProg.id)).length})
-                  </span>
-                </h5>
-              </div>
-
               {(() => {
-                const registeredParticipants = participants.filter(
-                  (p) => p.status !== 'inactive' && p.registeredProgrammes?.includes(liveManagingRosterProg.id)
-                );
+                const isTeamEvent =
+                  liveManagingRosterProg.type === 'team' ||
+                  liveManagingRosterProg.type === 'group' ||
+                  liveManagingRosterProg.programmeType === 'team';
 
-                if (registeredParticipants.length === 0) {
-                  return (
-                    <div className="py-6 text-center text-slate-400 italic bg-slate-50/70 rounded-lg border border-dashed border-slate-200">
-                      No participants registered in this event yet. Select a team below to assign members.
-                    </div>
-                  );
-                }
+                const pids = new Set<string>();
+                participants.forEach((p) => {
+                  if (p.registeredProgrammes?.includes(liveManagingRosterProg.id) && p.status !== 'inactive') {
+                    pids.add(p.id);
+                  }
+                });
+                (liveManagingRosterProg.registeredParticipantIds || []).forEach((id) => pids.add(id));
+                (assignments || []).forEach((asg) => {
+                  if (asg.programmeId === liveManagingRosterProg.id) {
+                    (asg.participantIds || []).forEach((id) => pids.add(id));
+                  }
+                });
+                const teamEntriesForProg = teamProgrammeEntries.filter(
+                  (e) => e.programmeId === liveManagingRosterProg.id && e.status !== 'withdrawn'
+                );
+                teamEntriesForProg.forEach((e) => {
+                  (e.memberParticipantIds || []).forEach((id) => pids.add(id));
+                });
+
+                const registeredParticipants = participants
+                  .filter((p) => pids.has(p.id) && p.status !== 'inactive')
+                  .sort((a, b) => {
+                    if (a.chestNumber && b.chestNumber) {
+                      return a.chestNumber.localeCompare(b.chestNumber, undefined, { numeric: true, sensitivity: 'base' });
+                    }
+                    return (a.name || '').localeCompare(b.name || '');
+                  });
 
                 return (
-                  <div className="max-h-52 overflow-y-auto space-y-1.5 pr-1 divide-y divide-slate-100">
-                    {registeredParticipants.map((p) => {
-                      const team = teams.find((t) => t.id === p.teamId);
-                      return (
-                        <div key={p.id} className="pt-1.5 first:pt-0 flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
-                              {p.chestNumber ? `#${p.chestNumber}` : p.id}
-                            </span>
-                            <span className="font-bold text-slate-900 truncate">{p.name}</span>
-                            <div className="flex items-center gap-1 text-[11px] text-slate-500">
-                              <span
-                                className="w-2 h-2 rounded-full"
-                                style={{ backgroundColor: team?.colorHex || '#94a3b8' }}
-                              />
-                              <span>{team?.name || p.teamId}</span>
-                              <span className="text-[10px] font-medium bg-slate-100 px-1 rounded text-slate-600">
-                                {p.category}
-                              </span>
-                            </div>
-                          </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-100">
+                      <h5 className="font-bold text-slate-900 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        <span>Currently Registered Participants</span>
+                        <span className="text-[11px] font-semibold text-slate-500">
+                          ({registeredParticipants.length})
+                        </span>
+                      </h5>
+                    </div>
 
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveParticipantFromProg(p.id, liveManagingRosterProg.id)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors cursor-pointer"
-                            title="Remove participant from this event"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                            <span>Remove</span>
-                          </button>
+                    {/* Team Squads Summary for Group Events */}
+                    {isTeamEvent && teamEntriesForProg.length > 0 && (
+                      <div className="mb-3 space-y-1.5">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                          Registered Squad Entries ({teamEntriesForProg.length})
+                        </span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {teamEntriesForProg.map((entry) => {
+                            const tm = teams.find((t) => t.id === entry.teamId);
+                            return (
+                              <div key={entry.id} className="p-2 rounded-lg border border-purple-200 bg-purple-50/40 flex items-center justify-between">
+                                <div>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-bold text-slate-900 text-xs">{entry.entryName}</span>
+                                    <span className="font-mono text-[9px] font-bold px-1.5 py-0.5 rounded bg-white text-purple-700 border border-purple-200">
+                                      {tm?.code || entry.teamId}
+                                    </span>
+                                  </div>
+                                  <div className="text-[10px] text-slate-600 mt-0.5">
+                                    <strong>{entry.memberParticipantIds?.length || 0}</strong> squad members • {entry.teamName}
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => deleteTeamProgrammeEntry(entry.id)}
+                                  className="text-[10px] text-rose-600 hover:text-rose-800 hover:underline font-semibold ml-2"
+                                  title="Withdraw team entry"
+                                >
+                                  Withdraw
+                                </button>
+                              </div>
+                            );
+                          })}
                         </div>
-                      );
-                    })}
+                      </div>
+                    )}
+
+                    {registeredParticipants.length === 0 ? (
+                      <div className="py-6 text-center text-slate-400 italic bg-slate-50/70 rounded-lg border border-dashed border-slate-200">
+                        No participants registered in this event yet. Select a team below to assign members.
+                      </div>
+                    ) : (
+                      <div className="max-h-52 overflow-y-auto space-y-1.5 pr-1 divide-y divide-slate-100">
+                        {registeredParticipants.map((p) => {
+                          const team = teams.find((t) => t.id === p.teamId);
+                          const entry = teamEntriesForProg.find((e) => (e.memberParticipantIds || []).includes(p.id));
+                          return (
+                            <div key={p.id} className="pt-1.5 first:pt-0 flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
+                                  {p.chestNumber ? `#${p.chestNumber}` : p.id}
+                                </span>
+                                <span className="font-bold text-slate-900 truncate">{p.name}</span>
+                                <div className="flex items-center gap-1 text-[11px] text-slate-500">
+                                  <span
+                                    className="w-2 h-2 rounded-full"
+                                    style={{ backgroundColor: team?.colorHex || '#94a3b8' }}
+                                  />
+                                  <span>{team?.name || p.teamId}</span>
+                                  <span className="text-[10px] font-medium bg-slate-100 px-1 rounded text-slate-600">
+                                    {p.category}
+                                  </span>
+                                  {isTeamEvent && (
+                                    <span className="text-[9px] font-semibold bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded border border-purple-200">
+                                      {entry ? entry.entryName : 'Direct'}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveParticipantFromProg(p.id, liveManagingRosterProg.id)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors cursor-pointer"
+                                title="Remove participant from this event"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>Remove</span>
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
               })()}
@@ -2331,12 +2561,13 @@ export const ProgrammesPage: React.FC = () => {
                   ? liveManagingRosterProg.maxTeamMembers || 25
                   : liveManagingRosterProg.maxParticipantsPerTeam || 1;
 
-                const teamMembersInProg = participants.filter(
-                  (p) =>
-                    p.teamId === rosterTeamFilter &&
-                    p.status !== 'inactive' &&
-                    p.registeredProgrammes?.includes(liveManagingRosterProg.id)
-                );
+                const teamMembersInProg = participants.filter((p) => {
+                  if (p.teamId !== rosterTeamFilter || p.status === 'inactive') return false;
+                  if (p.registeredProgrammes?.includes(liveManagingRosterProg.id)) return true;
+                  return teamProgrammeEntries.some(
+                    (e) => e.programmeId === liveManagingRosterProg.id && e.teamId === rosterTeamFilter && e.status !== 'withdrawn' && (e.memberParticipantIds || []).includes(p.id)
+                  );
+                });
                 const currentCount = teamMembersInProg.length;
                 const isTeamFull = currentCount >= maxPerTeam;
 
@@ -2392,7 +2623,10 @@ export const ProgrammesPage: React.FC = () => {
                         }
 
                         return teamMembers.map((member) => {
-                          const isAlreadyIn = (member.registeredProgrammes || []).includes(liveManagingRosterProg.id);
+                          const isAlreadyIn = (member.registeredProgrammes || []).includes(liveManagingRosterProg.id) ||
+                            teamProgrammeEntries.some(
+                              (e) => e.programmeId === liveManagingRosterProg.id && e.status !== 'withdrawn' && (e.memberParticipantIds || []).includes(member.id)
+                            );
 
                           const mCat = (member.category || '').toLowerCase().trim();
                           const isCategoryEligible =

@@ -25,7 +25,16 @@ export const TeamMembersPage: React.FC = () => {
     addTeamMember,
     updateTeamMember,
     programmes,
+    teamProgrammeEntries,
   } = useFest();
+
+  const getMemberEventsCount = (m: Participant) => {
+    const pids = new Set(m.registeredProgrammes || []);
+    teamProgrammeEntries
+      .filter((e) => e.status !== 'withdrawn' && (e.memberParticipantIds || []).includes(m.id))
+      .forEach((e) => pids.add(e.programmeId));
+    return pids.size;
+  };
 
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -139,7 +148,7 @@ export const TeamMembersPage: React.FC = () => {
       Phone: m.phone,
       Category: m.category,
       Status: m.status,
-      'Registered Events Count': (m.registeredProgrammes || []).length,
+      'Registered Events Count': getMemberEventsCount(m),
       'Created Date': m.createdAt,
     }));
     exportToCSV(`${activeTeam?.name || 'Team'}_Roster`, rows);
@@ -302,7 +311,7 @@ export const TeamMembersPage: React.FC = () => {
                     </div>
                   )}
                   <span className="text-indigo-600 font-semibold ml-auto">
-                    {(member.registeredProgrammes || []).length} events
+                    {getMemberEventsCount(member)} events
                   </span>
                 </div>
               </div>
@@ -377,7 +386,7 @@ export const TeamMembersPage: React.FC = () => {
                       </td>
                       <td className="py-3.5 px-4 text-center">
                         <span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
-                          {(member.registeredProgrammes || []).length} events
+                          {getMemberEventsCount(member)} events
                         </span>
                       </td>
                       <td className="py-3.5 px-4 text-center">

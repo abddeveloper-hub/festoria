@@ -35,6 +35,7 @@ export const ParticipantDashboardPage: React.FC = () => {
     setParticipantTab,
     verifyParticipantPhone,
     addToast,
+    teamProgrammeEntries,
   } = useFest();
 
   const [realtimeParticipant, setRealtimeParticipant] = useState<Participant | null>(null);
@@ -61,7 +62,8 @@ export const ParticipantDashboardPage: React.FC = () => {
 
   const assignedTeam = teams.find((t) => t.id === (currentParticipant?.teamId || currentParticipant?.requestedTeamId));
   const myProgrammes = programmes.filter((p) =>
-    currentParticipant?.registeredProgrammes?.includes(p.id)
+    currentParticipant?.registeredProgrammes?.includes(p.id) ||
+    (currentParticipant?.id && teamProgrammeEntries.some((e) => e.programmeId === p.id && e.status !== 'withdrawn' && (e.memberParticipantIds || []).includes(currentParticipant.id)))
   );
 
   const myResults = results.filter(

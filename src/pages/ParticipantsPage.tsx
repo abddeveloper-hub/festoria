@@ -43,7 +43,16 @@ export const ParticipantsPage: React.FC = () => {
     deleteParticipant,
     bulkImportParticipants,
     addToast,
+    teamProgrammeEntries,
   } = useFest();
+
+  const getParticipantProgsCount = (p: Participant) => {
+    const pids = new Set(p.registeredProgrammes || []);
+    teamProgrammeEntries
+      .filter((e) => e.status !== 'withdrawn' && (e.memberParticipantIds || []).includes(p.id))
+      .forEach((e) => pids.add(e.programmeId));
+    return pids.size;
+  };
 
   // Search & Filter state
   const [search, setSearch] = useState('');
@@ -155,8 +164,12 @@ export const ParticipantsPage: React.FC = () => {
       if (filterStatus !== 'all' && p.status !== filterStatus) return false;
 
       // Programme
-      if (filterProgramme !== 'all' && !(p.registeredProgrammes || []).includes(filterProgramme)) {
-        return false;
+      if (filterProgramme !== 'all') {
+        const inDirect = (p.registeredProgrammes || []).includes(filterProgramme);
+        const inTeamEntry = teamProgrammeEntries.some(
+          (e) => e.programmeId === filterProgramme && e.status !== 'withdrawn' && (e.memberParticipantIds || []).includes(p.id)
+        );
+        if (!inDirect && !inTeamEntry) return false;
       }
 
       return true;
@@ -438,7 +451,7 @@ export const ParticipantsPage: React.FC = () => {
         Team: team?.name || p.teamId,
         Category: p.category,
         Status: p.status,
-        RegisteredProgrammesCount: (p.registeredProgrammes || []).length,
+        RegisteredProgrammesCount: getParticipantProgsCount(p),
         RegistrationDate: p.createdAt,
       };
     });
@@ -817,7 +830,7 @@ export const ParticipantsPage: React.FC = () => {
                           title="Click to assign or manage programmes"
                         >
                           <CalendarCheck className="w-3.5 h-3.5 text-purple-600" />
-                          <span>{(participant.registeredProgrammes || []).length} assigned</span>
+                          <span>{getParticipantProgsCount(participant)} assigned</span>
                         </button>
                       </td>
                       <td className="py-3 px-2 text-center">
@@ -1437,45 +1450,66 @@ export const ParticipantsPage: React.FC = () => {
             {/* Registered Events and Achieved Results */}
             <div>
               <h4 className="font-semibold text-slate-900 mb-2">Registered Programmes & Results</h4>
-              {(viewingParticipant.registeredProgrammes || []).length === 0 ? (
-                <p className="text-slate-400 italic">No programmes currently assigned.</p>
-              ) : (
-                <div className="space-y-2">
-                  {(viewingParticipant.registeredProgrammes || []).map((progId) => {
-                    const prog = programmes.find((p) => p.id === progId);
-                    const result = results.find(
-                      (r) => r.programmeId === progId && r.participantId === viewingParticipant.id
-                    );
+              {(() => {
+                const assignedProgIds = new Set(viewingParticipant.registeredProgrammes || []);
+                teamProgrammeEntries
+                  .filter((e) => e.status !== 'withdrawn' && (e.memberParticipantIds || []).includes(viewingParticipant.id))
+                  .forEach((e) => assignedProgIds.add(e.programmeId));
+                const progIdList = Array.from(assignedProgIds);
 
-                    return (
-                      <div
-                        key={progId}
-                        className="p-2.5 border border-slate-200 rounded flex items-center justify-between"
-                      >
-                        <div>
-                          <div className="font-medium text-slate-900">
-                            {prog?.name || progId}
+                if (progIdList.length === 0) {
+                  return <p className="text-slate-400 italic">No programmes currently assigned.</p>;
+                }
+
+                return (
+                  <div className="space-y-2">
+                    {progIdList.map((progId) => {
+                      const prog = programmes.find((p) => p.id === progId);
+                      const isTeamProg = prog?.type === 'group' || prog?.type === 'team' || prog?.programmeType === 'team';
+                      const squadEntry = isTeamProg
+                        ? teamProgrammeEntries.find(
+                            (e) => e.programmeId === progId && e.status !== 'withdrawn' && (e.memberParticipantIds || []).includes(viewingParticipant.id)
+                          )
+                        : null;
+                      const result = results.find(
+                        (r) => r.programmeId === progId && (r.participantId === viewingParticipant.id || (squadEntry && r.teamEntryId === squadEntry.id))
+                      );
+
+                      return (
+                        <div
+                          key={progId}
+                          className="p-2.5 border border-slate-200 rounded flex items-center justify-between"
+                        >
+                          <div>
+                            <div className="font-medium text-slate-900 flex items-center gap-1.5 flex-wrap">
+                              <span>{prog?.name || progId}</span>
+                              {squadEntry && (
+                                <span className="text-[10px] bg-purple-50 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded font-semibold">
+                                  Squad: {squadEntry.entryName}
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-slate-500">
+                              {prog?.category} • Venue: {prog?.venue}
+                            </div>
                           </div>
-                          <div className="text-[11px] text-slate-500">
-                            {prog?.category} • Venue: {prog?.venue}
+                          <div>
+                            {result ? (
+                              <Badge variant="published" size="sm">
+                                Rank #{result.rank} ({result.pointsAwarded} pts)
+                              </Badge>
+                            ) : (
+                              <Badge variant={prog?.status || 'draft'} size="sm">
+                                {prog?.status || 'Assigned'}
+                              </Badge>
+                            )}
                           </div>
                         </div>
-                        <div>
-                          {result ? (
-                            <Badge variant="published" size="sm">
-                              Rank #{result.rank} ({result.pointsAwarded} pts)
-                            </Badge>
-                          ) : (
-                            <Badge variant={prog?.status || 'draft'} size="sm">
-                              {prog?.status || 'Assigned'}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="pt-3 border-t border-slate-200 flex justify-end">

@@ -17,16 +17,18 @@ import {
 } from 'lucide-react';
 
 export const ParticipantProgrammesPage: React.FC = () => {
-  const { activeParticipant, programmes, results } = useFest();
+  const { activeParticipant, programmes, results, teamProgrammeEntries } = useFest();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
   const myProgrammes = useMemo(() => {
+    if (!activeParticipant) return [];
     return programmes.filter((p) =>
-      activeParticipant?.registeredProgrammes?.includes(p.id)
+      activeParticipant.registeredProgrammes?.includes(p.id) ||
+      teamProgrammeEntries.some((e) => e.programmeId === p.id && e.status !== 'withdrawn' && (e.memberParticipantIds || []).includes(activeParticipant.id))
     );
-  }, [programmes, activeParticipant]);
+  }, [programmes, activeParticipant, teamProgrammeEntries]);
 
   const filtered = useMemo(() => {
     return myProgrammes.filter((p) => {

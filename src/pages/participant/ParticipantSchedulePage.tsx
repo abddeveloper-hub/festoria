@@ -11,10 +11,11 @@ import {
 } from 'lucide-react';
 
 export const ParticipantSchedulePage: React.FC = () => {
-  const { activeParticipant, programmes, scheduleSlots } = useFest();
+  const { activeParticipant, programmes, scheduleSlots, teamProgrammeEntries } = useFest();
 
   const myProgrammes = programmes.filter((p) =>
-    activeParticipant?.registeredProgrammes?.includes(p.id)
+    activeParticipant?.registeredProgrammes?.includes(p.id) ||
+    (activeParticipant?.id && teamProgrammeEntries.some((e) => e.programmeId === p.id && e.status !== 'withdrawn' && (e.memberParticipantIds || []).includes(activeParticipant.id)))
   );
 
   // Sort programmes by date and startTime, then by programme code
