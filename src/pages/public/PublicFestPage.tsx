@@ -107,6 +107,25 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
     'overview' | 'leaderboard' | 'student_search' | 'results' | 'schedule' | 'teams' | 'gallery' | 'bulletin'
   >('overview');
 
+  // Theme Switcher State: Varsity Heritage (Collegiate Vintage) vs Modern
+  const [publicTheme, setPublicTheme] = useState<'varsity_heritage' | 'modern'>(() => {
+    try {
+      const saved = localStorage.getItem('festoria_public_theme');
+      if (saved === 'modern' || saved === 'varsity_heritage') return saved;
+    } catch {}
+    return 'varsity_heritage';
+  });
+
+  const togglePublicTheme = () => {
+    const next = publicTheme === 'varsity_heritage' ? 'modern' : 'varsity_heritage';
+    setPublicTheme(next);
+    try {
+      localStorage.setItem('festoria_public_theme', next);
+    } catch {}
+  };
+
+  const isVarsity = publicTheme === 'varsity_heritage';
+
   const [leaderboardType, setLeaderboardType] = useState<'team' | 'individual'>('team');
   const [leaderboardCategory, setLeaderboardCategory] = useState<string>('all');
 
@@ -444,11 +463,23 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
   const categories = ['All', ...Array.from(new Set(allPhotos.map((p) => p.category || 'General')))];
 
   return (
-    <div className="min-h-screen min-h-dvh w-full max-w-full overflow-x-hidden bg-[#faf8ff] text-slate-800 flex flex-col font-sans selection:bg-[#0d9488] selection:text-white">
+    <div
+      className={`min-h-screen min-h-dvh w-full max-w-full overflow-x-hidden flex flex-col ${
+        isVarsity
+          ? 'theme-varsity-heritage bg-[#fdf9f3] text-[#1c1c18] font-body-serif selection:bg-[#782f40] selection:text-white'
+          : 'bg-[#faf8ff] text-slate-800 font-sans selection:bg-[#0d9488] selection:text-white'
+      }`}
+    >
       {/* ==================================================================== */}
       {/* 1. PUBLIC TOP NAVIGATION                                             */}
       {/* ==================================================================== */}
-      <nav className="sticky top-0 z-40 bg-[#faf8ff]/95 backdrop-blur-md border-b border-[#e2e8f0] px-3.5 sm:px-8 py-2.5 sm:py-3.5 flex items-center justify-between gap-2 shadow-2xs w-full max-w-full">
+      <nav
+        className={`sticky top-0 z-40 px-3.5 sm:px-8 py-2.5 sm:py-3.5 flex items-center justify-between gap-2 shadow-2xs w-full max-w-full ${
+          isVarsity
+            ? 'bg-[#fdf9f3]/95 border-b-2 border-[#1c1c18]'
+            : 'bg-[#faf8ff]/95 backdrop-blur-md border-b border-[#e2e8f0]'
+        }`}
+      >
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
           {pageData.logo.logoUrl ? (
             <img
@@ -462,47 +493,93 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               src={FESTORIA_LOGO}
               alt={festName}
               onError={handleLogoError}
-              className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl object-contain shadow-xs border border-[#e2e8f0] bg-white p-0.5 shrink-0"
+              className={`w-8 h-8 sm:w-9 sm:h-9 object-contain bg-white p-0.5 shrink-0 ${
+                isVarsity
+                  ? 'border-2 border-[#1c1c18] rounded-none shadow-[2px_2px_0px_#782f40]'
+                  : 'rounded-xl shadow-xs border border-[#e2e8f0]'
+              }`}
             />
           )}
 
           <div className="min-w-0 flex-1">
-            <h1 className="text-xs sm:text-base font-bold tracking-tight text-[#0f172a] leading-tight font-display truncate">
+            <h1
+              className={`text-xs sm:text-base font-bold tracking-tight leading-tight truncate ${
+                isVarsity ? 'font-headline text-[#1c1c18]' : 'font-display text-[#0f172a]'
+              }`}
+            >
               {festName}
             </h1>
-            <p className="text-[9px] sm:text-[11px] text-[#64748b] font-medium tracking-wide truncate">
-              {fest?.institution ? `${fest.institution} · ` : ''}{fest?.edition || settings.festEdition || 'Official Festival Portal'}
+            <p
+              className={`text-[9px] sm:text-[11px] tracking-wide truncate ${
+                isVarsity ? 'font-body-serif text-[#534345]' : 'font-medium text-[#64748b]'
+              }`}
+            >
+              {fest?.institution ? `${fest.institution} · ` : ''}
+              {fest?.edition || settings.festEdition || 'Official Festival Portal'}
             </p>
           </div>
         </div>
 
-        {/* Menu Bar Button */}
+        {/* Menu Bar & Theme Toggle */}
         <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={togglePublicTheme}
+            title={isVarsity ? 'Switch to Modern Theme' : 'Switch to Varsity Heritage Theme'}
+            className={
+              isVarsity
+                ? 'vh-btn-brass px-2.5 sm:px-3 py-1.5 text-xs inline-flex items-center gap-1.5'
+                : 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-all border border-slate-300'
+            }
+          >
+            <span>{isVarsity ? '🏛️ Varsity Heritage' : '✨ Modern'}</span>
+          </button>
+
           <button
             type="button"
             onClick={() => setMenuDrawerOpen(true)}
             aria-label="Open Navigation Menu"
-            className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-full bg-[#0d9488] hover:bg-[#0f766e] active:bg-[#115e59] text-white text-xs font-bold transition-all shadow-[0_4px_14px_rgba(13,148,136,0.25)] hover:shadow-[0_6px_18px_rgba(13,148,136,0.35)] active:scale-95 cursor-pointer shrink-0 min-h-[36px] sm:min-h-[40px] touch-manipulation"
+            className={
+              isVarsity
+                ? 'vh-btn-primary px-3 sm:px-4 py-2 text-xs inline-flex items-center gap-1.5 min-h-[36px] sm:min-h-[40px]'
+                : 'inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-full bg-[#0d9488] hover:bg-[#0f766e] active:bg-[#115e59] text-white text-xs font-bold transition-all shadow-[0_4px_14px_rgba(13,148,136,0.25)] hover:shadow-[0_6px_18px_rgba(13,148,136,0.35)] active:scale-95 cursor-pointer shrink-0 min-h-[36px] sm:min-h-[40px] touch-manipulation'
+            }
           >
             <Menu className="w-4 h-4 text-white shrink-0" />
-            <span className="font-semibold tracking-wide">Menu</span>
+            <span className={isVarsity ? 'font-anton tracking-wider uppercase' : 'font-semibold tracking-wide'}>
+              Menu
+            </span>
           </button>
         </div>
       </nav>
 
       {/* Subview Navigation Breadcrumb (When viewing a specific section) */}
       {activeTabSection !== 'overview' && (
-        <div className="bg-[#f0fdfa]/90 border-b border-[#ccfbf1] py-2.5 sm:py-3 px-3.5 sm:px-8 sticky top-[59px] z-30 backdrop-blur-md w-full max-w-full">
+        <div
+          className={`py-2.5 sm:py-3 px-3.5 sm:px-8 sticky top-[59px] z-30 w-full max-w-full ${
+            isVarsity
+              ? 'bg-[#f7f3ed] border-b-2 border-[#1c1c18]'
+              : 'bg-[#f0fdfa]/90 border-b border-[#ccfbf1] backdrop-blur-md'
+          }`}
+        >
           <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 min-w-0">
             <button
               type="button"
               onClick={() => setActiveTabSection('overview')}
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0f766e] hover:text-[#0d9488] transition-colors cursor-pointer shrink-0"
+              className={`inline-flex items-center gap-1.5 text-xs font-bold transition-colors cursor-pointer shrink-0 ${
+                isVarsity
+                  ? 'font-anton uppercase tracking-wider text-[#782f40] hover:text-[#5b192a]'
+                  : 'text-[#0f766e] hover:text-[#0d9488]'
+              }`}
             >
               <ChevronLeft className="w-4 h-4 shrink-0" />
               <span>Back to Festival Overview</span>
             </button>
-            <span className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider truncate text-right">
+            <span
+              className={`text-[11px] font-bold uppercase tracking-wider truncate text-right ${
+                isVarsity ? 'font-anton text-[#1c1c18]' : 'text-[#64748b]'
+              }`}
+            >
               {activeTabSection === 'student_search' ? 'Student Directory' : activeTabSection.replace('_', ' ')}
             </span>
           </div>
@@ -518,7 +595,13 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
           {/* A. FEATURED MEDIA CAROUSEL / SHOWCASE BANNER                     */}
           {/* ================================================================ */}
           <section className="relative px-3 sm:px-6 lg:px-8 pt-3 sm:pt-6 pb-6 max-w-7xl mx-auto w-full">
-            <div className="relative w-full rounded-3xl overflow-hidden shadow-[0_15px_40px_-10px_rgba(15,23,42,0.12)] border border-[#e2e8f0] bg-gradient-to-br from-[#06332e] via-[#00685f] to-[#044c69] text-white min-h-[440px] sm:min-h-[520px] flex flex-col justify-between p-4 sm:p-8 lg:p-10">
+            <div
+              className={`relative w-full overflow-hidden flex flex-col justify-between p-4 sm:p-8 lg:p-10 min-h-[440px] sm:min-h-[520px] ${
+                isVarsity
+                  ? 'rounded-none border-2 border-[#1c1c18] bg-[#f7f3ed] text-[#1c1c18] shadow-[6px_6px_0px_#782f40] vh-crest-watermark'
+                  : 'rounded-3xl shadow-[0_15px_40px_-10px_rgba(15,23,42,0.12)] border border-[#e2e8f0] bg-gradient-to-br from-[#06332e] via-[#00685f] to-[#044c69] text-white'
+              }`}
+            >
               
               {/* Carousel Background Layer: Video / Photos / Radial Compass Placeholder */}
               {pageData.hero.videoUrl && !videoFailed ? (
@@ -552,7 +635,13 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                     alt={mainFeaturedPhotos[currentSlideIndex % mainFeaturedPhotos.length]?.caption || 'Featured Festival Moment'}
                     className="absolute inset-0 w-full h-full object-cover object-center z-0 opacity-35 transition-all duration-500"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#06332e] via-[#06332e]/40 to-[#06332e]/70 z-0" />
+                  <div
+                    className={`absolute inset-0 z-0 ${
+                      isVarsity
+                        ? 'bg-gradient-to-t from-[#f7f3ed] via-[#f7f3ed]/60 to-[#782f40]/30'
+                        : 'bg-gradient-to-t from-[#06332e] via-[#06332e]/40 to-[#06332e]/70'
+                    }`}
+                  />
                 </>
               ) : (
                 /* Concentric Radial Compass Placeholder Illustration as in the reference model */
@@ -578,8 +667,8 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
               {/* Ambient Luminous Floating Glow Orbs */}
               <div aria-hidden="true" className="absolute inset-0 overflow-hidden pointer-events-none z-10">
-                <div className="absolute -top-20 -left-20 w-80 h-80 bg-[#89f5e7]/15 rounded-full blur-3xl"></div>
-                <div className="absolute top-1/2 -right-20 w-88 h-88 bg-[#5bb8fe]/15 rounded-full blur-3xl"></div>
+                <div className={`absolute -top-20 -left-20 w-80 h-80 rounded-full blur-3xl ${isVarsity ? 'bg-[#782f40]/10' : 'bg-[#89f5e7]/15'}`}></div>
+                <div className={`absolute top-1/2 -right-20 w-88 h-88 rounded-full blur-3xl ${isVarsity ? 'bg-[#1b365d]/10' : 'bg-[#5bb8fe]/15'}`}></div>
               </div>
 
               {/* Top Controls: 1/1 Slide Indicator Badge */}
@@ -591,6 +680,13 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                     style={{ width: `${pageData.logo.widthPx || 120}px` }}
                     className="h-9 max-w-[120px] object-contain drop-shadow-md"
                   />
+                ) : isVarsity ? (
+                  <div className="vh-pennant-burgundy truncate max-w-[75%] shadow-xs">
+                    <Sparkles className="w-3.5 h-3.5 text-[#ffdeab] mr-1.5 shrink-0" />
+                    <span className="truncate">
+                      {fest ? `${fest.name} · ${fest.institution || ''}` : (settings.festEdition || 'Annual Inter-Collegiate Fest')}
+                    </span>
+                  </div>
                 ) : (
                   <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/25 text-[#89f5e7] text-xs font-semibold tracking-wide uppercase shadow-sm truncate max-w-[75%]">
                     <Sparkles className="w-3.5 h-3.5 text-[#6ffbbe] shrink-0" />
@@ -598,8 +694,14 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                   </div>
                 )}
 
-                {/* Top Right Slide Counter Badge (Matching Model 1/1) */}
-                <div className="px-3 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/20 text-white font-mono text-xs font-bold shadow-sm shrink-0">
+                {/* Top Right Slide Counter Badge */}
+                <div
+                  className={`font-mono text-xs font-bold shadow-sm shrink-0 ${
+                    isVarsity
+                      ? 'px-3 py-1 bg-[#1c1c18] text-[#fdf9f3] font-anton border border-[#782f40]'
+                      : 'px-3 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/20 text-white'
+                  }`}
+                >
                   {mainFeaturedPhotos.length > 0 ? `${(currentSlideIndex % mainFeaturedPhotos.length) + 1}/${mainFeaturedPhotos.length}` : '1/1'}
                 </div>
               </div>
@@ -624,22 +726,50 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
               {/* Center Hero Information Overlay */}
               <div className="relative z-20 max-w-4xl mx-auto text-center space-y-4 my-auto py-4 sm:py-6 w-full min-w-0">
-                <h2 className="text-2xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight drop-shadow-md font-display break-words">
+                <h2
+                  className={`text-2xl sm:text-5xl lg:text-6xl font-bold leading-tight break-words ${
+                    isVarsity
+                      ? 'font-headline text-[#1c1c18]'
+                      : 'font-display font-extrabold tracking-tight text-white drop-shadow-md'
+                  }`}
+                >
                   {pageData.hero.heading && !pageData.hero.heading.includes('Celebrate Passion') ? pageData.hero.heading : `Welcome to ${festName}`}
                 </h2>
 
-                <p className="text-xs sm:text-base lg:text-lg text-white/90 max-w-2xl mx-auto font-normal leading-relaxed">
+                <p
+                  className={`text-xs sm:text-base lg:text-lg max-w-2xl mx-auto leading-relaxed ${
+                    isVarsity
+                      ? 'font-body-serif text-[#534345]'
+                      : 'text-white/90 font-normal'
+                  }`}
+                >
                   {fest?.description || pageData.hero.description}
                 </p>
 
                 {/* Dates & Venue Info Pills */}
-                <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 pt-1 text-xs font-medium text-white/90 max-w-full">
-                  <div className="flex items-center gap-1.5 sm:gap-2 bg-white/10 backdrop-blur-md px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border border-white/20 truncate max-w-full">
-                    <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#89f5e7] shrink-0" />
+                <div
+                  className={`flex flex-wrap items-center justify-center gap-2 sm:gap-4 pt-1 text-xs max-w-full ${
+                    isVarsity ? 'font-body-serif text-[#1c1c18]' : 'font-medium text-white/90'
+                  }`}
+                >
+                  <div
+                    className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 truncate max-w-full ${
+                      isVarsity
+                        ? 'bg-[#ffffff] border-2 border-[#1c1c18] text-[#1c1c18] shadow-[2px_2px_0px_#1c1c18] rounded-none font-bold'
+                        : 'bg-white/10 backdrop-blur-md rounded-full border border-white/20'
+                    }`}
+                  >
+                    <Calendar className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${isVarsity ? 'text-[#782f40]' : 'text-[#89f5e7]'}`} />
                     <span className="truncate">{fest?.startDate || settings.startDate} to {fest?.endDate || settings.endDate}</span>
                   </div>
-                  <div className="flex items-center gap-1.5 sm:gap-2 bg-white/10 backdrop-blur-md px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border border-white/20 truncate max-w-full">
-                    <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#89f5e7] shrink-0" />
+                  <div
+                    className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 truncate max-w-full ${
+                      isVarsity
+                        ? 'bg-[#ffffff] border-2 border-[#1c1c18] text-[#1c1c18] shadow-[2px_2px_0px_#1c1c18] rounded-none font-bold'
+                        : 'bg-white/10 backdrop-blur-md rounded-full border border-white/20'
+                    }`}
+                  >
+                    <MapPin className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${isVarsity ? 'text-[#1b365d]' : 'text-[#89f5e7]'}`} />
                     <span className="truncate">{fest ? `${fest.venue || ''}${fest.institution ? `, ${fest.institution}` : ''}` : (settings.venue || 'Grand University Campus')}</span>
                   </div>
                 </div>
@@ -649,39 +779,117 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                   {countdown.status === 'upcoming' && (
                     <div className="space-y-2">
                       <div className="flex items-center justify-center gap-1 sm:gap-2.5 max-w-full">
-                        <div className="bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl px-2.5 py-1.5 sm:px-4 sm:py-2.5 text-center min-w-[48px] sm:min-w-[68px] shadow-lg">
-                          <span className="font-mono font-black text-lg sm:text-2xl text-white block leading-none">
+                        <div
+                          className={`px-2.5 py-1.5 sm:px-4 sm:py-2.5 text-center min-w-[48px] sm:min-w-[68px] ${
+                            isVarsity
+                              ? 'bg-[#ffffff] border-2 border-[#1c1c18] shadow-[3px_3px_0px_#782f40] rounded-none'
+                              : 'bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl shadow-lg'
+                          }`}
+                        >
+                          <span
+                            className={`block leading-none ${
+                              isVarsity
+                                ? 'font-anton text-lg sm:text-2xl text-[#782f40]'
+                                : 'font-mono font-black text-lg sm:text-2xl text-white'
+                            }`}
+                          >
                             {countdown.days}
                           </span>
-                          <span className="text-[9px] uppercase font-bold text-teal-100 tracking-wider">Days</span>
+                          <span
+                            className={`text-[9px] uppercase tracking-wider block ${
+                              isVarsity ? 'font-anton text-[#1b365d]' : 'font-bold text-teal-100'
+                            }`}
+                          >
+                            Days
+                          </span>
                         </div>
-                        <span className="text-white/60 font-black text-base sm:text-lg leading-none">:</span>
-                        <div className="bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl px-2.5 py-1.5 sm:px-4 sm:py-2.5 text-center min-w-[48px] sm:min-w-[68px] shadow-lg">
-                          <span className="font-mono font-black text-lg sm:text-2xl text-white block leading-none">
+                        <span className={`text-base sm:text-lg leading-none ${isVarsity ? 'text-[#1c1c18] font-anton font-bold' : 'text-white/60 font-black'}`}>:</span>
+                        <div
+                          className={`px-2.5 py-1.5 sm:px-4 sm:py-2.5 text-center min-w-[48px] sm:min-w-[68px] ${
+                            isVarsity
+                              ? 'bg-[#ffffff] border-2 border-[#1c1c18] shadow-[3px_3px_0px_#782f40] rounded-none'
+                              : 'bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl shadow-lg'
+                          }`}
+                        >
+                          <span
+                            className={`block leading-none ${
+                              isVarsity
+                                ? 'font-anton text-lg sm:text-2xl text-[#782f40]'
+                                : 'font-mono font-black text-lg sm:text-2xl text-white'
+                            }`}
+                          >
                             {String(countdown.hours).padStart(2, '0')}
                           </span>
-                          <span className="text-[9px] uppercase font-bold text-teal-100 tracking-wider">Hours</span>
+                          <span
+                            className={`text-[9px] uppercase tracking-wider block ${
+                              isVarsity ? 'font-anton text-[#1b365d]' : 'font-bold text-teal-100'
+                            }`}
+                          >
+                            Hours
+                          </span>
                         </div>
-                        <span className="text-white/60 font-black text-base sm:text-lg leading-none">:</span>
-                        <div className="bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl px-2.5 py-1.5 sm:px-4 sm:py-2.5 text-center min-w-[48px] sm:min-w-[68px] shadow-lg">
-                          <span className="font-mono font-black text-lg sm:text-2xl text-white block leading-none">
+                        <span className={`text-base sm:text-lg leading-none ${isVarsity ? 'text-[#1c1c18] font-anton font-bold' : 'text-white/60 font-black'}`}>:</span>
+                        <div
+                          className={`px-2.5 py-1.5 sm:px-4 sm:py-2.5 text-center min-w-[48px] sm:min-w-[68px] ${
+                            isVarsity
+                              ? 'bg-[#ffffff] border-2 border-[#1c1c18] shadow-[3px_3px_0px_#782f40] rounded-none'
+                              : 'bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl shadow-lg'
+                          }`}
+                        >
+                          <span
+                            className={`block leading-none ${
+                              isVarsity
+                                ? 'font-anton text-lg sm:text-2xl text-[#782f40]'
+                                : 'font-mono font-black text-lg sm:text-2xl text-white'
+                            }`}
+                          >
                             {String(countdown.minutes).padStart(2, '0')}
                           </span>
-                          <span className="text-[9px] uppercase font-bold text-teal-100 tracking-wider">Mins</span>
+                          <span
+                            className={`text-[9px] uppercase tracking-wider block ${
+                              isVarsity ? 'font-anton text-[#1b365d]' : 'font-bold text-teal-100'
+                            }`}
+                          >
+                            Mins
+                          </span>
                         </div>
-                        <span className="text-white/60 font-black text-base sm:text-lg leading-none">:</span>
-                        <div className="bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl px-2.5 py-1.5 sm:px-4 sm:py-2.5 text-center min-w-[48px] sm:min-w-[68px] shadow-lg">
-                          <span className="font-mono font-black text-lg sm:text-2xl text-[#6ffbbe] block leading-none">
+                        <span className={`text-base sm:text-lg leading-none ${isVarsity ? 'text-[#1c1c18] font-anton font-bold' : 'text-white/60 font-black'}`}>:</span>
+                        <div
+                          className={`px-2.5 py-1.5 sm:px-4 sm:py-2.5 text-center min-w-[48px] sm:min-w-[68px] ${
+                            isVarsity
+                              ? 'bg-[#ffffff] border-2 border-[#1c1c18] shadow-[3px_3px_0px_#782f40] rounded-none'
+                              : 'bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl shadow-lg'
+                          }`}
+                        >
+                          <span
+                            className={`block leading-none ${
+                              isVarsity
+                                ? 'font-anton text-lg sm:text-2xl text-[#a47e3b]'
+                                : 'font-mono font-black text-lg sm:text-2xl text-[#6ffbbe]'
+                            }`}
+                          >
                             {String(countdown.seconds).padStart(2, '0')}
                           </span>
-                          <span className="text-[9px] uppercase font-bold text-[#6ffbbe] tracking-wider">Secs</span>
+                          <span
+                            className={`text-[9px] uppercase tracking-wider block ${
+                              isVarsity ? 'font-anton text-[#a47e3b]' : 'font-bold text-[#6ffbbe]'
+                            }`}
+                          >
+                            Secs
+                          </span>
                         </div>
                       </div>
                     </div>
                   )}
 
                   {countdown.status === 'live' && (
-                    <div className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 rounded-full bg-[#10b981]/25 backdrop-blur-md border border-[#10b981]/60 text-[#6ffbbe] text-xs font-bold uppercase tracking-wider shadow-lg max-w-full">
+                    <div
+                      className={`inline-flex items-center gap-2 px-4 sm:px-5 py-2 text-xs font-bold uppercase tracking-wider max-w-full ${
+                        isVarsity
+                          ? 'bg-[#1b365d] text-white border-2 border-[#1c1c18] shadow-[3px_3px_0px_#782f40] rounded-none font-anton'
+                          : 'rounded-full bg-[#10b981]/25 backdrop-blur-md border border-[#10b981]/60 text-[#6ffbbe] shadow-lg'
+                      }`}
+                    >
                       <span className="relative flex h-2.5 w-2.5 shrink-0">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#10b981] opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#10b981]"></span>
@@ -691,8 +899,14 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                   )}
 
                   {countdown.status === 'concluded' && (
-                    <div className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 rounded-full bg-amber-500/20 backdrop-blur-md border border-amber-400/40 text-amber-200 text-xs font-bold uppercase tracking-wider shadow-md max-w-full">
-                      <Trophy className="w-4 h-4 text-amber-300 shrink-0" />
+                    <div
+                      className={`inline-flex items-center gap-2 px-4 sm:px-5 py-2 text-xs font-bold uppercase tracking-wider max-w-full ${
+                        isVarsity
+                          ? 'bg-[#a47e3b] text-white border-2 border-[#1c1c18] shadow-[3px_3px_0px_#1b365d] rounded-none font-anton'
+                          : 'rounded-full bg-amber-500/20 backdrop-blur-md border border-amber-400/40 text-amber-200 shadow-md'
+                      }`}
+                    >
+                      <Trophy className="w-4 h-4 text-[#ffdeab] shrink-0" />
                       <span className="truncate">Festival Concluded · Official Ratified Standings</span>
                     </div>
                   )}
@@ -703,7 +917,11 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                   <button
                     type="button"
                     onClick={() => openAuth('participant', 'register')}
-                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 sm:py-3 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-full text-xs sm:text-sm font-bold shadow-[0_4px_14px_rgba(13,148,136,0.35)] hover:shadow-[0_6px_20px_rgba(13,148,136,0.45)] active:scale-[0.98] transition-all cursor-pointer"
+                    className={
+                      isVarsity
+                        ? 'vh-btn-primary w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 sm:py-3 text-xs sm:text-sm'
+                        : 'w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 sm:py-3 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-full text-xs sm:text-sm font-bold shadow-[0_4px_14px_rgba(13,148,136,0.35)] hover:shadow-[0_6px_20px_rgba(13,148,136,0.45)] active:scale-[0.98] transition-all cursor-pointer'
+                    }
                   >
                     <span>{pageData.hero.primaryCtaText || 'Register Now'}</span>
                     <ArrowRight className="w-4 h-4" />
@@ -712,7 +930,11 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                   <button
                     type="button"
                     onClick={() => setActiveTabSection('schedule')}
-                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 sm:py-3 bg-white/15 backdrop-blur-md border border-white/25 text-white rounded-full text-xs sm:text-sm font-semibold hover:bg-white/25 active:scale-[0.98] transition-all cursor-pointer"
+                    className={
+                      isVarsity
+                        ? 'vh-btn-secondary w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 sm:py-3 text-xs sm:text-sm'
+                        : 'w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 sm:py-3 bg-white/15 backdrop-blur-md border border-white/25 text-white rounded-full text-xs sm:text-sm font-semibold hover:bg-white/25 active:scale-[0.98] transition-all cursor-pointer'
+                    }
                   >
                     <span>{pageData.hero.secondaryCtaText || 'View Schedule'}</span>
                     <ChevronRight className="w-4 h-4 text-teal-200" />
@@ -721,10 +943,16 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
                 {/* Quick Chest Number Student Search Bar */}
                 <div className="w-full max-w-lg mx-auto pt-3 sm:pt-4 text-left">
-                  <div className="relative bg-white/95 backdrop-blur-md rounded-2xl p-2 sm:p-2.5 shadow-[0_8px_20px_-4px_rgba(13,148,136,0.15)] border border-[#99f6e4] space-y-1.5">
+                  <div
+                    className={`relative space-y-1.5 p-2 sm:p-2.5 ${
+                      isVarsity
+                        ? 'bg-[#ffffff] border-2 border-[#1c1c18] shadow-[4px_4px_0px_#782f40] rounded-none'
+                        : 'bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_8px_20px_-4px_rgba(13,148,136,0.15)] border border-[#99f6e4]'
+                    }`}
+                  >
                     <div className="flex items-center gap-2">
-                      <div className="pl-2 text-[#0d9488]">
-                        <Search className="w-4 h-4 text-[#0d9488]" />
+                      <div className={`pl-2 ${isVarsity ? 'text-[#782f40]' : 'text-[#0d9488]'}`}>
+                        <Search className="w-4 h-4" />
                       </div>
                       <input
                         type="text"
@@ -736,7 +964,11 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                           }
                         }}
                         placeholder="Search student by Chest Number (e.g. 104) or Name..."
-                        className="flex-1 bg-transparent border-0 focus:outline-none text-[#0f172a] placeholder:text-slate-400 text-base sm:text-sm py-1.5 px-1 font-medium"
+                        className={`flex-1 bg-transparent border-0 focus:outline-none text-base sm:text-sm py-1.5 px-1 font-medium ${
+                          isVarsity
+                            ? 'text-[#1c1c18] placeholder:text-[#867275] font-body-serif'
+                            : 'text-[#0f172a] placeholder:text-slate-400 font-sans'
+                        }`}
                       />
                       {studentSearchQuery && (
                         <button
@@ -755,15 +987,25 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                             setActiveTabSection('student_search');
                           }
                         }}
-                        className="px-4 py-2 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-full text-xs font-bold transition-all shrink-0 shadow-xs active:scale-95 cursor-pointer"
+                        className={
+                          isVarsity
+                            ? 'vh-btn-primary px-4 py-2 text-xs'
+                            : 'px-4 py-2 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-full text-xs font-bold transition-all shrink-0 shadow-xs active:scale-95 cursor-pointer'
+                        }
                       >
                         Search
                       </button>
                     </div>
 
                     {/* Fast Search Pills */}
-                    <div className="flex flex-wrap items-center gap-1.5 pt-0.5 px-1 text-[11px] text-slate-400">
-                      <span className="font-semibold text-slate-500">Quick Lookups:</span>
+                    <div
+                      className={`flex flex-wrap items-center gap-1.5 pt-0.5 px-1 text-[11px] ${
+                        isVarsity ? 'text-[#534345]' : 'text-slate-400'
+                      }`}
+                    >
+                      <span className={`font-semibold ${isVarsity ? 'text-[#1c1c18] font-anton' : 'text-slate-500'}`}>
+                        Quick Lookups:
+                      </span>
                       {festParticipants.slice(0, 3).map((p) => (
                         <button
                           key={p.id}
@@ -772,7 +1014,11 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                             setStudentSearchQuery(p.chestNumber || p.name);
                             setActiveTabSection('student_search');
                           }}
-                          className="px-2 py-0.5 rounded-full bg-[#f0fdfa] hover:bg-[#ccfbf1] border border-[#99f6e4] text-[#0f766e] font-mono font-bold transition-colors cursor-pointer text-[10px]"
+                          className={
+                            isVarsity
+                              ? 'px-2 py-0.5 bg-[#f1ede7] hover:bg-[#e6e2dc] border border-[#1c1c18] text-[#1c1c18] font-anton font-bold transition-colors cursor-pointer text-[10px] rounded-none'
+                              : 'px-2 py-0.5 rounded-full bg-[#f0fdfa] hover:bg-[#ccfbf1] border border-[#99f6e4] text-[#0f766e] font-mono font-bold transition-colors cursor-pointer text-[10px]'
+                          }
                         >
                           #{p.chestNumber || p.id}
                         </button>
@@ -780,7 +1026,11 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                       <button
                         type="button"
                         onClick={() => setActiveTabSection('student_search')}
-                        className="px-2 py-0.5 rounded-full bg-[#f0f9ff] hover:bg-[#e0f2fe] border border-[#bae6fd] text-[#0284c7] font-semibold transition-colors cursor-pointer text-[10px]"
+                        className={
+                          isVarsity
+                            ? 'px-2 py-0.5 bg-[#ffffff] hover:bg-[#f1ede7] border border-[#1c1c18] text-[#782f40] font-anton font-bold transition-colors cursor-pointer text-[10px] rounded-none'
+                            : 'px-2 py-0.5 rounded-full bg-[#f0f9ff] hover:bg-[#e0f2fe] border border-[#bae6fd] text-[#0284c7] font-semibold transition-colors cursor-pointer text-[10px]'
+                        }
                       >
                         Directory →
                       </button>
@@ -854,75 +1104,214 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
           </section>
 
           {/* ================================================================ */}
-          {/* B. 4 CIRCULAR STATS BADGES STRIP (EXACT MATCH TO REFERENCE MODEL)*/}
+          {/* B. 4 STATS BADGES STRIP                                          */}
           {/* ================================================================ */}
-          <section className="py-12 bg-[#faf8ff] border-b border-[#e2e8f0]">
+          <section
+            className={`py-10 sm:py-12 ${
+              isVarsity ? 'bg-[#f7f3ed] border-b-2 border-[#1c1c18]' : 'bg-[#faf8ff] border-b border-[#e2e8f0]'
+            }`}
+          >
             <div className="max-w-7xl mx-auto px-4 sm:px-8">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 text-center">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 text-center">
                 
                 {/* 1. Programs */}
-                <div className="flex flex-col items-center">
-                  <div className="w-16 h-16 rounded-full bg-[#f0fdfa] border border-[#ccfbf1] text-[#0d9488] flex items-center justify-center shadow-xs mb-3 group hover:scale-105 transition-transform">
-                    <Calendar className="w-7 h-7 text-[#0d9488]" />
+                <div
+                  className={`flex flex-col items-center ${
+                    isVarsity
+                      ? 'p-5 bg-white border-2 border-[#1c1c18] shadow-[4px_4px_0px_#782f40] rounded-none'
+                      : ''
+                  }`}
+                >
+                  <div
+                    className={`flex items-center justify-center mb-3 ${
+                      isVarsity
+                        ? 'w-12 h-12 bg-[#fdf9f3] border-2 border-[#1c1c18] text-[#782f40] rounded-none shadow-[2px_2px_0px_#1c1c18]'
+                        : 'w-16 h-16 rounded-full bg-[#f0fdfa] border border-[#ccfbf1] text-[#0d9488] shadow-xs group hover:scale-105 transition-transform'
+                    }`}
+                  >
+                    <Calendar className={`w-6 h-6 sm:w-7 sm:h-7 ${isVarsity ? 'text-[#782f40]' : 'text-[#0d9488]'}`} />
                   </div>
-                  <span className="font-mono font-black text-3xl sm:text-4xl text-[#0f172a] block leading-none">
+                  <span
+                    className={`block leading-none ${
+                      isVarsity
+                        ? 'font-anton text-3xl sm:text-4xl text-[#782f40]'
+                        : 'font-mono font-black text-3xl sm:text-4xl text-[#0f172a]'
+                    }`}
+                  >
                     {publishedProgrammes.length > 0 ? publishedProgrammes.length : 0}
                   </span>
-                  <h4 className="font-bold text-sm sm:text-base text-[#0f172a] mt-2">Programs</h4>
-                  <p className="text-[11px] text-[#64748b] mt-0.5">Exciting programs · Collegiate Events</p>
+                  <h4
+                    className={`mt-2 ${
+                      isVarsity
+                        ? 'font-headline font-bold text-sm sm:text-base text-[#1c1c18]'
+                        : 'font-bold text-sm sm:text-base text-[#0f172a]'
+                    }`}
+                  >
+                    Programs
+                  </h4>
+                  <p className={`text-[11px] mt-0.5 ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>
+                    Exciting programs · Collegiate Events
+                  </p>
                 </div>
 
                 {/* 2. Participants */}
-                <div className="flex flex-col items-center">
-                  <div className="w-16 h-16 rounded-full bg-[#f0f9ff] border border-[#bae6fd] text-[#0284c7] flex items-center justify-center shadow-xs mb-3 group hover:scale-105 transition-transform">
-                    <Users className="w-7 h-7 text-[#0284c7]" />
+                <div
+                  className={`flex flex-col items-center ${
+                    isVarsity
+                      ? 'p-5 bg-white border-2 border-[#1c1c18] shadow-[4px_4px_0px_#782f40] rounded-none'
+                      : ''
+                  }`}
+                >
+                  <div
+                    className={`flex items-center justify-center mb-3 ${
+                      isVarsity
+                        ? 'w-12 h-12 bg-[#fdf9f3] border-2 border-[#1c1c18] text-[#1b365d] rounded-none shadow-[2px_2px_0px_#1c1c18]'
+                        : 'w-16 h-16 rounded-full bg-[#f0f9ff] border border-[#bae6fd] text-[#0284c7] shadow-xs group hover:scale-105 transition-transform'
+                    }`}
+                  >
+                    <Users className={`w-6 h-6 sm:w-7 sm:h-7 ${isVarsity ? 'text-[#1b365d]' : 'text-[#0284c7]'}`} />
                   </div>
-                  <span className="font-mono font-black text-3xl sm:text-4xl text-[#0f172a] block leading-none">
+                  <span
+                    className={`block leading-none ${
+                      isVarsity
+                        ? 'font-anton text-3xl sm:text-4xl text-[#1b365d]'
+                        : 'font-mono font-black text-3xl sm:text-4xl text-[#0f172a]'
+                    }`}
+                  >
                     {festParticipants.length}
                   </span>
-                  <h4 className="font-bold text-sm sm:text-base text-[#0f172a] mt-2">Participants</h4>
-                  <p className="text-[11px] text-[#64748b] mt-0.5">Talented individuals</p>
+                  <h4
+                    className={`mt-2 ${
+                      isVarsity
+                        ? 'font-headline font-bold text-sm sm:text-base text-[#1c1c18]'
+                        : 'font-bold text-sm sm:text-base text-[#0f172a]'
+                    }`}
+                  >
+                    Participants
+                  </h4>
+                  <p className={`text-[11px] mt-0.5 ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>
+                    Talented individuals
+                  </p>
                 </div>
 
                 {/* 3. Teams */}
-                <div className="flex flex-col items-center">
-                  <div className="w-16 h-16 rounded-full bg-[#fef3c7] border border-[#fde68a] text-[#d97706] flex items-center justify-center shadow-xs mb-3 group hover:scale-105 transition-transform">
-                    <Award className="w-7 h-7 text-[#d97706]" />
+                <div
+                  className={`flex flex-col items-center ${
+                    isVarsity
+                      ? 'p-5 bg-white border-2 border-[#1c1c18] shadow-[4px_4px_0px_#782f40] rounded-none'
+                      : ''
+                  }`}
+                >
+                  <div
+                    className={`flex items-center justify-center mb-3 ${
+                      isVarsity
+                        ? 'w-12 h-12 bg-[#fdf9f3] border-2 border-[#1c1c18] text-[#a47e3b] rounded-none shadow-[2px_2px_0px_#1c1c18]'
+                        : 'w-16 h-16 rounded-full bg-[#fef3c7] border border-[#fde68a] text-[#d97706] shadow-xs group hover:scale-105 transition-transform'
+                    }`}
+                  >
+                    <Award className={`w-6 h-6 sm:w-7 sm:h-7 ${isVarsity ? 'text-[#a47e3b]' : 'text-[#d97706]'}`} />
                   </div>
-                  <span className="font-mono font-black text-3xl sm:text-4xl text-[#0f172a] block leading-none">
+                  <span
+                    className={`block leading-none ${
+                      isVarsity
+                        ? 'font-anton text-3xl sm:text-4xl text-[#a47e3b]'
+                        : 'font-mono font-black text-3xl sm:text-4xl text-[#0f172a]'
+                    }`}
+                  >
                     {teams.length > 0 ? teams.length : 4}
                   </span>
-                  <h4 className="font-bold text-sm sm:text-base text-[#0f172a] mt-2">Teams</h4>
-                  <p className="text-[11px] text-[#64748b] mt-0.5">Collaborating groups · Competing Houses</p>
+                  <h4
+                    className={`mt-2 ${
+                      isVarsity
+                        ? 'font-headline font-bold text-sm sm:text-base text-[#1c1c18]'
+                        : 'font-bold text-sm sm:text-base text-[#0f172a]'
+                    }`}
+                  >
+                    Teams
+                  </h4>
+                  <p className={`text-[11px] mt-0.5 ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>
+                    Collaborating groups · Competing Houses
+                  </p>
                 </div>
 
                 {/* 4. Venues */}
-                <div className="flex flex-col items-center">
-                  <div className="w-16 h-16 rounded-full bg-[#f0fdf4] border border-[#bbf7d0] text-[#10b981] flex items-center justify-center shadow-xs mb-3 group hover:scale-105 transition-transform">
-                    <MapPin className="w-7 h-7 text-[#10b981]" />
+                <div
+                  className={`flex flex-col items-center ${
+                    isVarsity
+                      ? 'p-5 bg-white border-2 border-[#1c1c18] shadow-[4px_4px_0px_#782f40] rounded-none'
+                      : ''
+                  }`}
+                >
+                  <div
+                    className={`flex items-center justify-center mb-3 ${
+                      isVarsity
+                        ? 'w-12 h-12 bg-[#fdf9f3] border-2 border-[#1c1c18] text-[#782f40] rounded-none shadow-[2px_2px_0px_#1c1c18]'
+                        : 'w-16 h-16 rounded-full bg-[#f0fdf4] border border-[#bbf7d0] text-[#10b981] shadow-xs group hover:scale-105 transition-transform'
+                    }`}
+                  >
+                    <MapPin className={`w-6 h-6 sm:w-7 sm:h-7 ${isVarsity ? 'text-[#782f40]' : 'text-[#10b981]'}`} />
                   </div>
-                  <span className="font-mono font-black text-3xl sm:text-4xl text-[#0f172a] block leading-none">
+                  <span
+                    className={`block leading-none ${
+                      isVarsity
+                        ? 'font-anton text-3xl sm:text-4xl text-[#782f40]'
+                        : 'font-mono font-black text-3xl sm:text-4xl text-[#0f172a]'
+                    }`}
+                  >
                     {publishedResults.length > 0 ? publishedResults.length : 6}
                   </span>
-                  <h4 className="font-bold text-sm sm:text-base text-[#0f172a] mt-2">Venues</h4>
-                  <p className="text-[11px] text-[#64748b] mt-0.5">Event locations · Ratified Results</p>
+                  <h4
+                    className={`mt-2 ${
+                      isVarsity
+                        ? 'font-headline font-bold text-sm sm:text-base text-[#1c1c18]'
+                        : 'font-bold text-sm sm:text-base text-[#0f172a]'
+                    }`}
+                  >
+                    Venues
+                  </h4>
+                  <p className={`text-[11px] mt-0.5 ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>
+                    Event locations · Ratified Results
+                  </p>
                 </div>
               </div>
             </div>
           </section>
 
           {/* ================================================================ */}
-          {/* C. ABOUT {FESTNAME} SECTION (MATCHING REFERENCE MODEL)           */}
+          {/* C. ABOUT {FESTNAME} SECTION                                      */}
           {/* ================================================================ */}
-          <section className="py-10 sm:py-16 bg-[#faf8ff] border-b border-[#e2e8f0] w-full max-w-full">
+          <section
+            className={`py-10 sm:py-16 w-full max-w-full ${
+              isVarsity ? 'bg-[#fdf9f3] border-b-2 border-[#1c1c18]' : 'bg-[#faf8ff] border-b border-[#e2e8f0]'
+            }`}
+          >
             <div className="max-w-7xl mx-auto px-4 sm:px-8">
-              {/* Centered Heading with Decorative Gradient Underline */}
+              {/* Centered Heading */}
               <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-12">
-                <h3 className="text-2xl sm:text-4xl font-extrabold text-[#0f172a] tracking-tight font-display break-words">
-                  About <span className="bg-gradient-to-r from-[#00685f] via-[#0d9488] to-[#006398] bg-clip-text text-transparent">{festName}</span>
+                <h3
+                  className={`text-2xl sm:text-4xl font-bold tracking-tight break-words ${
+                    isVarsity ? 'font-headline text-[#1c1c18]' : 'font-display font-extrabold text-[#0f172a]'
+                  }`}
+                >
+                  About{' '}
+                  <span
+                    className={
+                      isVarsity
+                        ? 'text-[#782f40]'
+                        : 'bg-gradient-to-r from-[#00685f] via-[#0d9488] to-[#006398] bg-clip-text text-transparent'
+                    }
+                  >
+                    {festName}
+                  </span>
                 </h3>
-                <div className="w-20 h-1 bg-gradient-to-r from-[#00685f] to-[#006398] rounded-full mx-auto mt-2.5"></div>
-                <p className="text-xs sm:text-sm text-[#64748b] mt-2 font-medium">Festival overview</p>
+                <div
+                  className={`mx-auto mt-2.5 ${
+                    isVarsity ? 'w-24 h-1 bg-[#a47e3b] rounded-none' : 'w-20 h-1 bg-gradient-to-r from-[#00685f] to-[#006398] rounded-full'
+                  }`}
+                />
+                <p className={`text-xs sm:text-sm mt-2 ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b] font-medium'}`}>
+                  Festival overview
+                </p>
               </div>
 
               {/* 2-Column Split: Our Vision vs Festival Image */}
@@ -931,38 +1320,76 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                 <div className="space-y-6">
                   <div>
                     <div className="flex items-center gap-2 mb-3">
-                      <span className="w-1.5 h-6 bg-[#0d9488] rounded-full"></span>
-                      <h4 className="font-bold text-xl text-[#0f172a] font-display">Our Vision</h4>
+                      <span className={`w-1.5 h-6 ${isVarsity ? 'bg-[#782f40] rounded-none' : 'bg-[#0d9488] rounded-full'}`} />
+                      <h4 className={`text-xl font-bold ${isVarsity ? 'font-headline text-[#1c1c18]' : 'font-display text-[#0f172a]'}`}>
+                        Our Vision
+                      </h4>
                     </div>
-                    <p className="text-sm text-[#334155] leading-relaxed">
+                    <p className={`text-sm leading-relaxed ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#334155]'}`}>
                       Welcome to our festival platform. {fest?.description || pageData.hero.description || 'Welcome to our premier inter-collegiate arts and cultural championship. Designed to celebrate competitive spirit, creative expression, and authentic teamwork with real-time scoring and clash-free coordination.'}
                     </p>
                   </div>
 
                   {/* Highlights Grid */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                    <div className="p-4 rounded-2xl bg-white border border-[#e2e8f0] shadow-xs">
-                      <div className="w-8 h-8 rounded-xl bg-[#f0fdfa] text-[#0d9488] border border-[#ccfbf1] flex items-center justify-center mb-2">
+                    <div
+                      className={`p-4 ${
+                        isVarsity
+                          ? 'vh-card rounded-none border-2 border-[#1c1c18]'
+                          : 'rounded-2xl bg-white border border-[#e2e8f0] shadow-xs'
+                      }`}
+                    >
+                      <div
+                        className={`w-8 h-8 flex items-center justify-center mb-2 ${
+                          isVarsity
+                            ? 'bg-[#f7f3ed] text-[#782f40] border border-[#1c1c18] rounded-none'
+                            : 'rounded-xl bg-[#f0fdfa] text-[#0d9488] border border-[#ccfbf1]'
+                        }`}
+                      >
                         <Trophy className="w-4 h-4" />
                       </div>
-                      <h5 className="font-bold text-xs text-[#0f172a]">40+ Events</h5>
-                      <p className="text-[11px] text-[#64748b] mt-0.5">Stage & literary arts</p>
+                      <h5 className={`text-xs font-bold ${isVarsity ? 'font-headline text-[#1c1c18]' : 'text-[#0f172a]'}`}>40+ Events</h5>
+                      <p className={`text-[11px] mt-0.5 ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>Stage & literary arts</p>
                     </div>
 
-                    <div className="p-4 rounded-2xl bg-white border border-[#e2e8f0] shadow-xs">
-                      <div className="w-8 h-8 rounded-xl bg-[#f0f9ff] text-[#0284c7] border border-[#bae6fd] flex items-center justify-center mb-2">
+                    <div
+                      className={`p-4 ${
+                        isVarsity
+                          ? 'vh-card rounded-none border-2 border-[#1c1c18]'
+                          : 'rounded-2xl bg-white border border-[#e2e8f0] shadow-xs'
+                      }`}
+                    >
+                      <div
+                        className={`w-8 h-8 flex items-center justify-center mb-2 ${
+                          isVarsity
+                            ? 'bg-[#f7f3ed] text-[#1b365d] border border-[#1c1c18] rounded-none'
+                            : 'rounded-xl bg-[#f0f9ff] text-[#0284c7] border border-[#bae6fd]'
+                        }`}
+                      >
                         <Shield className="w-4 h-4" />
                       </div>
-                      <h5 className="font-bold text-xs text-[#0f172a]">Live Scoring</h5>
-                      <p className="text-[11px] text-[#64748b] mt-0.5">Transparent tallies</p>
+                      <h5 className={`text-xs font-bold ${isVarsity ? 'font-headline text-[#1c1c18]' : 'text-[#0f172a]'}`}>Live Scoring</h5>
+                      <p className={`text-[11px] mt-0.5 ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>Transparent tallies</p>
                     </div>
 
-                    <div className="p-4 rounded-2xl bg-white border border-[#e2e8f0] shadow-xs">
-                      <div className="w-8 h-8 rounded-xl bg-[#f0fdf4] text-[#10b981] border border-[#bbf7d0] flex items-center justify-center mb-2">
+                    <div
+                      className={`p-4 ${
+                        isVarsity
+                          ? 'vh-card rounded-none border-2 border-[#1c1c18]'
+                          : 'rounded-2xl bg-white border border-[#e2e8f0] shadow-xs'
+                      }`}
+                    >
+                      <div
+                        className={`w-8 h-8 flex items-center justify-center mb-2 ${
+                          isVarsity
+                            ? 'bg-[#f7f3ed] text-[#a47e3b] border border-[#1c1c18] rounded-none'
+                            : 'rounded-xl bg-[#f0fdf4] text-[#10b981] border border-[#bbf7d0]'
+                        }`}
+                      >
                         <Award className="w-4 h-4" />
                       </div>
-                      <h5 className="font-bold text-xs text-[#0f172a]">Honors</h5>
-                      <p className="text-[11px] text-[#64748b] mt-0.5">Medals & certs</p>
+                      <h5 className={`text-xs font-bold ${isVarsity ? 'font-headline text-[#1c1c18]' : 'text-[#0f172a]'}`}>Honors</h5>
+                      <p className={`text-[11px] mt-0.5 ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>Medals & certs</p>
                     </div>
                   </div>
                 </div>
@@ -972,7 +1399,11 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                   {mainFeaturedPhotos.length > 0 ? (
                     <div
                       onClick={() => setSelectedPhoto(mainFeaturedPhotos[0])}
-                      className="group cursor-pointer rounded-3xl overflow-hidden bg-white border border-[#e2e8f0] shadow-[0_8px_30px_rgba(15,23,42,0.06)] hover:border-[#99f6e4] transition-all relative aspect-16/10"
+                      className={`group cursor-pointer overflow-hidden bg-white relative aspect-16/10 ${
+                        isVarsity
+                          ? 'border-2 border-[#1c1c18] shadow-[6px_6px_0px_#782f40] rounded-none'
+                          : 'rounded-3xl border border-[#e2e8f0] shadow-[0_8px_30px_rgba(15,23,42,0.06)] hover:border-[#99f6e4] transition-all'
+                      }`}
                     >
                       <img
                         src={mainFeaturedPhotos[0].url}
@@ -981,7 +1412,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex items-end p-6">
                         <div>
-                          <h5 className="text-white font-bold text-sm">{mainFeaturedPhotos[0].caption}</h5>
+                          <h5 className={`text-white font-bold text-sm ${isVarsity ? 'font-headline' : ''}`}>{mainFeaturedPhotos[0].caption}</h5>
                           {mainFeaturedPhotos[0].description && (
                             <p className="text-xs text-white/80 mt-0.5 line-clamp-1">{mainFeaturedPhotos[0].description}</p>
                           )}
@@ -989,12 +1420,24 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                       </div>
                     </div>
                   ) : (
-                    <div className="bg-[#f8fafc] border-2 border-dashed border-[#e2e8f0] rounded-3xl p-8 sm:p-12 flex flex-col items-center justify-center text-center aspect-16/10">
-                      <div className="w-16 h-16 rounded-2xl bg-white border border-[#e2e8f0] text-[#0d9488] shadow-xs flex items-center justify-center mb-3">
+                    <div
+                      className={`p-8 sm:p-12 flex flex-col items-center justify-center text-center aspect-16/10 ${
+                        isVarsity
+                          ? 'bg-[#ffffff] border-2 border-[#1c1c18] shadow-[4px_4px_0px_#782f40] rounded-none'
+                          : 'bg-[#f8fafc] border-2 border-dashed border-[#e2e8f0] rounded-3xl'
+                      }`}
+                    >
+                      <div
+                        className={`w-16 h-16 flex items-center justify-center mb-3 ${
+                          isVarsity
+                            ? 'bg-[#f7f3ed] border-2 border-[#1c1c18] text-[#782f40] rounded-none shadow-[2px_2px_0px_#1c1c18]'
+                            : 'rounded-2xl bg-white border border-[#e2e8f0] text-[#0d9488] shadow-xs'
+                        }`}
+                      >
                         <ImageIcon className="w-8 h-8" />
                       </div>
-                      <h5 className="font-bold text-sm text-[#0f172a]">Festival Image</h5>
-                      <p className="text-[11px] text-[#64748b] mt-1">Image placeholder for festival showcase</p>
+                      <h5 className={`text-sm font-bold ${isVarsity ? 'font-headline text-[#1c1c18]' : 'text-[#0f172a]'}`}>Festival Image</h5>
+                      <p className={`text-[11px] mt-1 ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>Image placeholder for festival showcase</p>
                     </div>
                   )}
                 </div>
@@ -1010,33 +1453,49 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
             {/* Bento Row 1: Official Portals Gateway & Highlights */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-6 items-stretch">
               {/* Official Festival Brief Card */}
-              <div className="lg:col-span-2 bg-white rounded-3xl border border-[#e2e8f0] p-4 sm:p-8 shadow-[0_4px_16px_-4px_rgba(15,23,42,0.05)] flex flex-col justify-between">
+              <div
+                className={`lg:col-span-2 p-4 sm:p-8 flex flex-col justify-between ${
+                  isVarsity
+                    ? 'vh-card rounded-none border-2 border-[#1c1c18] shadow-[4px_4px_0px_#1b365d]'
+                    : 'bg-white rounded-3xl border border-[#e2e8f0] shadow-[0_4px_16px_-4px_rgba(15,23,42,0.05)]'
+                }`}
+              >
                 <div>
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f0fdfa] border border-[#99f6e4] text-[#0f766e] text-xs font-bold uppercase tracking-wider">
-                      <Sparkles className="w-3.5 h-3.5 text-[#0d9488]" />
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-bold uppercase tracking-wider ${
+                        isVarsity
+                          ? 'vh-pennant-burgundy rounded-none'
+                          : 'rounded-full bg-[#f0fdfa] border border-[#99f6e4] text-[#0f766e]'
+                      }`}
+                    >
+                      <Sparkles className={`w-3.5 h-3.5 ${isVarsity ? 'text-[#ffdeab]' : 'text-[#0d9488]'}`} />
                       <span>Official Festival Portal</span>
                     </span>
-                    <span className="text-xs text-[#64748b] font-semibold">
+                    <span className={`text-xs font-semibold ${isVarsity ? 'font-anton text-[#1b365d]' : 'text-[#64748b]'}`}>
                       {fest?.edition || settings.festEdition || '2026 Edition'}
                     </span>
                   </div>
 
-                  <h3 className="text-xl sm:text-3xl font-extrabold text-[#0f172a] tracking-tight leading-tight font-display break-words">
+                  <h3
+                    className={`text-xl sm:text-3xl font-bold tracking-tight leading-tight break-words ${
+                      isVarsity ? 'font-headline text-[#1c1c18]' : 'font-display font-extrabold text-[#0f172a]'
+                    }`}
+                  >
                     {pageData.content.welcomeTitle || `Welcome to ${festName}`}
                   </h3>
                   
-                  <p className="text-xs sm:text-sm text-[#334155] mt-2.5 leading-relaxed">
+                  <p className={`text-xs sm:text-sm mt-2.5 leading-relaxed ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#334155]'}`}>
                     {pageData.content.welcomeMessage || fest?.description || 'Join thousands of delegates, participants, and spectators across multiple stages and auditoriums in this premier inter-collegiate cultural and arts summit.'}
                   </p>
                 </div>
 
-                <div className="mt-6 pt-5 border-t border-[#e2e8f0] flex items-center justify-between text-xs text-[#64748b]">
+                <div className={`mt-6 pt-5 border-t flex items-center justify-between text-xs ${isVarsity ? 'border-[#1c1c18]/20 font-body-serif text-[#534345]' : 'border-[#e2e8f0] text-[#64748b]'}`}>
                   <span>Accredited Collegiate Championship</span>
                   <button
                     type="button"
                     onClick={() => setActiveTabSection('schedule')}
-                    className="font-bold text-[#0d9488] hover:text-[#0f766e] cursor-pointer"
+                    className={isVarsity ? 'vh-btn-brass px-3 py-1 text-xs' : 'font-bold text-[#0d9488] hover:text-[#0f766e] cursor-pointer'}
                   >
                     View Timetable →
                   </button>
@@ -1044,10 +1503,22 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               </div>
 
               {/* Bento Card 2: Official Portals Gateway */}
-              <div className="bg-gradient-to-br from-[#06332e] via-[#00685f] to-[#044c69] text-white rounded-3xl p-4 sm:p-7 shadow-xl border border-teal-700/40 flex flex-col justify-between">
+              <div
+                className={`p-4 sm:p-7 flex flex-col justify-between text-white ${
+                  isVarsity
+                    ? 'bg-[#1b365d] border-2 border-[#1c1c18] shadow-[6px_6px_0px_#782f40] rounded-none'
+                    : 'bg-gradient-to-br from-[#06332e] via-[#00685f] to-[#044c69] rounded-3xl shadow-xl border border-teal-700/40'
+                }`}
+              >
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#89f5e7] bg-white/15 border border-white/25 px-2.5 py-0.5 rounded-full">
+                    <span
+                      className={`text-[10px] font-bold uppercase tracking-wider ${
+                        isVarsity
+                          ? 'vh-pennant bg-[#a47e3b] text-white'
+                          : 'text-[#89f5e7] bg-white/15 border border-white/25 px-2.5 py-0.5 rounded-full'
+                      }`}
+                    >
                       Portals
                     </span>
                     <span className="flex items-center gap-1.5 text-[11px] font-medium text-[#6ffbbe]">
@@ -1056,10 +1527,10 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                     </span>
                   </div>
 
-                  <h4 className="text-lg font-bold text-white tracking-tight">
+                  <h4 className={`text-lg font-bold text-white tracking-tight ${isVarsity ? 'font-headline' : ''}`}>
                     Participant & Leader Portals
                   </h4>
-                  <p className="text-xs text-teal-100/80 mt-1.5 leading-relaxed">
+                  <p className={`text-xs mt-1.5 leading-relaxed ${isVarsity ? 'font-body-serif text-slate-200' : 'text-teal-100/80'}`}>
                     Access your live scores, view registered stage entries, or manage house contestant rosters.
                   </p>
 
@@ -1067,14 +1538,18 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                     <button
                       type="button"
                       onClick={() => openAuth('participant', 'signin')}
-                      className="w-full flex items-center justify-between p-3 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 transition-all text-xs font-semibold text-white group cursor-pointer"
+                      className={`w-full flex items-center justify-between p-3 transition-all text-xs font-semibold text-white group cursor-pointer ${
+                        isVarsity
+                          ? 'bg-white/10 hover:bg-white/20 border border-white/20 rounded-none'
+                          : 'rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15'
+                      }`}
                     >
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-white/15 text-[#89f5e7] flex items-center justify-center">
+                        <div className={`w-8 h-8 flex items-center justify-center ${isVarsity ? 'bg-white/15 text-[#ffdeab] rounded-none' : 'rounded-xl bg-white/15 text-[#89f5e7]'}`}>
                           <User className="w-4 h-4" />
                         </div>
                         <div className="text-left">
-                          <div className="text-xs font-bold text-white">Participant Dashboard</div>
+                          <div className={`text-xs font-bold text-white ${isVarsity ? 'font-headline' : ''}`}>Participant Dashboard</div>
                           <div className="text-[10px] text-teal-100/70">View chest # and events</div>
                         </div>
                       </div>
@@ -1084,14 +1559,18 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                     <button
                       type="button"
                       onClick={() => openAuth('team_leader', 'signin')}
-                      className="w-full flex items-center justify-between p-3 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 transition-all text-xs font-semibold text-white group cursor-pointer"
+                      className={`w-full flex items-center justify-between p-3 transition-all text-xs font-semibold text-white group cursor-pointer ${
+                        isVarsity
+                          ? 'bg-white/10 hover:bg-white/20 border border-white/20 rounded-none'
+                          : 'rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15'
+                      }`}
                     >
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-white/15 text-[#6ffbbe] flex items-center justify-center">
+                        <div className={`w-8 h-8 flex items-center justify-center ${isVarsity ? 'bg-white/15 text-[#ffdeab] rounded-none' : 'rounded-xl bg-white/15 text-[#6ffbbe]'}`}>
                           <Shield className="w-4 h-4" />
                         </div>
                         <div className="text-left">
-                          <div className="text-xs font-bold text-white">Team Leader Portal</div>
+                          <div className={`text-xs font-bold text-white ${isVarsity ? 'font-headline' : ''}`}>Team Leader Portal</div>
                           <div className="text-[10px] text-teal-100/70">Manage house contestants</div>
                         </div>
                       </div>
@@ -1102,11 +1581,15 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
                 {/* Fast registration CTA */}
                 <div className="mt-6 pt-5 border-t border-white/15 flex items-center justify-between">
-                  <span className="text-[11px] text-teal-100/80">New participant?</span>
+                  <span className={`text-[11px] ${isVarsity ? 'font-body-serif text-slate-200' : 'text-teal-100/80'}`}>New participant?</span>
                   <button
                     type="button"
                     onClick={() => openAuth('participant', 'register')}
-                    className="px-4 py-1.5 rounded-full bg-[#89f5e7] hover:bg-[#6bd8cb] text-[#00201d] font-bold text-xs transition-colors shadow-md cursor-pointer"
+                    className={
+                      isVarsity
+                        ? 'vh-btn-brass px-4 py-1.5 text-xs'
+                        : 'px-4 py-1.5 rounded-full bg-[#89f5e7] hover:bg-[#6bd8cb] text-[#00201d] font-bold text-xs transition-colors shadow-md cursor-pointer'
+                    }
                   >
                     Register Now →
                   </button>
@@ -1114,45 +1597,83 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               </div>
             </div>
 
-            {/* Bento Row 2: 3D Stepped Championship Podium (Olympic Style) */}
-            <div className="bg-white border border-[#e2e8f0] rounded-3xl p-4 sm:p-8 space-y-6 shadow-[0_4px_16px_-4px_rgba(15,23,42,0.05)] w-full max-w-full">
+            {/* Bento Row 2: 3D Stepped Championship Podium */}
+            <div
+              className={`p-4 sm:p-8 space-y-6 w-full max-w-full ${
+                isVarsity
+                  ? 'vh-card rounded-none border-2 border-[#1c1c18] shadow-[6px_6px_0px_#782f40]'
+                  : 'bg-white border border-[#e2e8f0] rounded-3xl shadow-[0_4px_16px_-4px_rgba(15,23,42,0.05)]'
+              }`}
+            >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold text-[#0f766e] bg-[#f0fdfa] border border-[#99f6e4] px-3 py-0.5 rounded-full uppercase tracking-wider">
+                    <span
+                      className={`text-[10px] font-bold uppercase tracking-wider ${
+                        isVarsity
+                          ? 'vh-pennant-burgundy'
+                          : 'text-[#0f766e] bg-[#f0fdfa] border border-[#99f6e4] px-3 py-0.5 rounded-full'
+                      }`}
+                    >
                       Live Championship Spotlight
                     </span>
                     <span className="w-2 h-2 rounded-full bg-[#10b981] animate-pulse"></span>
                   </div>
-                  <h4 className="text-xl sm:text-2xl font-extrabold text-[#0f172a] tracking-tight mt-1.5 font-display">
+                  <h4
+                    className={`text-xl sm:text-2xl font-bold tracking-tight mt-1.5 ${
+                      isVarsity ? 'font-headline text-[#1c1c18]' : 'font-display font-extrabold text-[#0f172a]'
+                    }`}
+                  >
                     3D Stepped Championship Podium
                   </h4>
-                  <p className="text-xs sm:text-sm text-[#64748b] mt-0.5">
+                  <p className={`text-xs sm:text-sm mt-0.5 ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>
                     Real-time ratified scores from stage competitions and house performances.
                   </p>
                 </div>
 
                 {/* Switcher: Top Teams vs Top Students */}
-                <div className="flex items-center gap-1.5 p-1 bg-[#f0fdfa] rounded-full border border-[#ccfbf1] shadow-2xs self-start sm:self-auto max-w-full overflow-x-auto scrollbar-none shrink-0">
+                <div
+                  className={`flex items-center gap-1.5 p-1 self-start sm:self-auto max-w-full overflow-x-auto scrollbar-none shrink-0 ${
+                    isVarsity
+                      ? 'bg-[#f7f3ed] border-2 border-[#1c1c18] rounded-none'
+                      : 'bg-[#f0fdfa] rounded-full border border-[#ccfbf1] shadow-2xs'
+                  }`}
+                >
                   <button
                     type="button"
                     onClick={() => setOverviewLeaderboardToggle('team')}
-                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                      overviewLeaderboardToggle === 'team'
-                        ? 'bg-[#0d9488] text-white shadow-xs'
-                        : 'text-[#0f766e] hover:text-[#0d9488]'
-                    }`}
+                    className={
+                      isVarsity
+                        ? `px-3.5 py-1.5 text-xs font-anton tracking-wider uppercase transition-all cursor-pointer whitespace-nowrap rounded-none ${
+                            overviewLeaderboardToggle === 'team'
+                              ? 'bg-[#782f40] text-white shadow-xs'
+                              : 'text-[#1c1c18] hover:text-[#782f40]'
+                          }`
+                        : `px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                            overviewLeaderboardToggle === 'team'
+                              ? 'bg-[#0d9488] text-white shadow-xs'
+                              : 'text-[#0f766e] hover:text-[#0d9488]'
+                          }`
+                    }
                   >
                     House Championship
                   </button>
                   <button
                     type="button"
                     onClick={() => setOverviewLeaderboardToggle('individual')}
-                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                      overviewLeaderboardToggle === 'individual'
-                        ? 'bg-[#0d9488] text-white shadow-xs'
-                        : 'text-[#0f766e] hover:text-[#0d9488]'
-                    }`}
+                    className={
+                      isVarsity
+                        ? `px-3.5 py-1.5 text-xs font-anton tracking-wider uppercase transition-all cursor-pointer whitespace-nowrap rounded-none ${
+                            overviewLeaderboardToggle === 'individual'
+                              ? 'bg-[#782f40] text-white shadow-xs'
+                              : 'text-[#1c1c18] hover:text-[#782f40]'
+                          }`
+                        : `px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                            overviewLeaderboardToggle === 'individual'
+                              ? 'bg-[#0d9488] text-white shadow-xs'
+                              : 'text-[#0f766e] hover:text-[#0d9488]'
+                          }`
+                    }
                   >
                     Star Contestants
                   </button>
@@ -1163,28 +1684,40 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               {overviewLeaderboardToggle === 'team' ? (
                 <div>
                   {leaderboard.length === 0 ? (
-                    <div className="p-8 text-center text-xs text-[#64748b] bg-white rounded-2xl border border-[#e2e8f0]">
+                    <div className={`p-8 text-center text-xs border ${isVarsity ? 'bg-[#ffffff] border-2 border-[#1c1c18] text-[#534345] font-body-serif rounded-none' : 'bg-white rounded-2xl border-[#e2e8f0] text-[#64748b]'}`}>
                       Championship house standings will appear once competitive events are ratified.
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 items-end pt-4">
                       {/* Step 2: Silver / 2nd Place (Left) */}
                       {leaderboard[1] && (
-                        <div className="order-2 md:order-1 bg-white border-2 border-[#e2e8f0] rounded-3xl p-4 sm:p-5 md:pt-7 md:pb-6 flex flex-col justify-between shadow-[0_4px_14px_rgba(15,23,42,0.05)] relative min-h-[220px]">
+                        <div
+                          className={`order-2 md:order-1 p-4 sm:p-5 md:pt-7 md:pb-6 flex flex-col justify-between relative min-h-[220px] ${
+                            isVarsity
+                              ? 'bg-[#ffffff] border-2 border-[#1c1c18] shadow-[4px_4px_0px_#1b365d] rounded-none'
+                              : 'bg-white border-2 border-[#e2e8f0] rounded-3xl shadow-[0_4px_14px_rgba(15,23,42,0.05)]'
+                          }`}
+                        >
                           <div>
                             <div className="flex items-center justify-between mb-3">
-                              <span className="text-xs font-black bg-[#f1f5f9] text-[#334155] px-3 py-1 rounded-full shadow-2xs flex items-center gap-1.5 border border-[#e2e8f0]">
+                              <span
+                                className={`text-xs font-black px-3 py-1 flex items-center gap-1.5 ${
+                                  isVarsity
+                                    ? 'bg-[#f1ede7] text-[#1c1c18] border border-[#1c1c18] rounded-none font-anton'
+                                    : 'bg-[#f1f5f9] text-[#334155] rounded-full border border-[#e2e8f0]'
+                                }`}
+                              >
                                 <Medal className="w-3.5 h-3.5 text-slate-700" />
                                 <span>2nd Place</span>
                               </span>
-                              <span className="font-mono font-black text-xl text-[#0f172a]">
+                              <span className={`text-xl ${isVarsity ? 'font-anton text-[#1b365d]' : 'font-mono font-black text-[#0f172a]'}`}>
                                 {leaderboard[1].totalPoints} pts
                               </span>
                             </div>
-                            <h5 className="font-black text-base text-[#0f172a]">{leaderboard[1].team.name}</h5>
-                            <p className="text-xs text-[#64748b] mt-0.5">{leaderboard[1].team.institution || 'Collegiate House'}</p>
+                            <h5 className={`text-base font-bold ${isVarsity ? 'font-headline text-[#1c1c18]' : 'font-black text-[#0f172a]'}`}>{leaderboard[1].team.name}</h5>
+                            <p className={`text-xs mt-0.5 ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>{leaderboard[1].team.institution || 'Collegiate House'}</p>
                           </div>
-                          <div className="mt-4 pt-3 border-t border-[#e2e8f0] flex items-center justify-between text-xs font-medium text-[#334155]">
+                          <div className={`mt-4 pt-3 border-t flex items-center justify-between text-xs ${isVarsity ? 'border-[#1c1c18]/20 font-body-serif text-[#1c1c18]' : 'border-[#e2e8f0] font-medium text-[#334155]'}`}>
                             <span>🥇 {leaderboard[1].firstPlaceCount} Gold</span>
                             <span>🥈 {leaderboard[1].secondPlaceCount} Silver</span>
                             <span>🥉 {leaderboard[1].thirdPlaceCount} Bronze</span>
@@ -1194,25 +1727,43 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
                       {/* Step 1: Gold / 1st Place Champion (Center - Elevated) */}
                       {leaderboard[0] && (
-                        <div className="order-1 md:order-2 bg-gradient-to-b from-[#f0fdfa] via-white to-white border-2 border-[#0d9488] rounded-3xl p-5 sm:p-6 md:pt-9 md:pb-7 flex flex-col justify-between shadow-[0_12px_30px_rgba(13,148,136,0.15)] relative ring-2 md:ring-4 ring-[#0d9488]/20 md:-translate-y-3 z-10 min-h-[250px]">
-                          <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#0d9488] text-white font-black text-[11px] px-4 py-1 rounded-full shadow-md flex items-center gap-1.5 uppercase tracking-wider whitespace-nowrap">
+                        <div
+                          className={`order-1 md:order-2 p-5 sm:p-6 md:pt-9 md:pb-7 flex flex-col justify-between relative md:-translate-y-3 z-10 min-h-[250px] ${
+                            isVarsity
+                              ? 'bg-[#fdf9f3] border-3 border-[#782f40] shadow-[6px_6px_0px_#a47e3b] rounded-none'
+                              : 'bg-gradient-to-b from-[#f0fdfa] via-white to-white border-2 border-[#0d9488] rounded-3xl shadow-[0_12px_30px_rgba(13,148,136,0.15)] ring-2 md:ring-4 ring-[#0d9488]/20'
+                          }`}
+                        >
+                          <div
+                            className={`absolute -top-3.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 uppercase tracking-wider whitespace-nowrap ${
+                              isVarsity
+                                ? 'vh-pennant-burgundy px-4 py-1 font-anton text-[11px] shadow-sm'
+                                : 'bg-[#0d9488] text-white font-black text-[11px] px-4 py-1 rounded-full shadow-md'
+                            }`}
+                          >
                             <Crown className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
                             <span>Championship Leader</span>
                           </div>
                           <div>
                             <div className="flex items-center justify-between mb-3 mt-1">
-                              <span className="text-xs font-black bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4] px-3.5 py-1.5 rounded-full shadow-xs flex items-center gap-1.5">
-                                <Trophy className="w-4 h-4 text-[#0d9488]" />
+                              <span
+                                className={`text-xs font-black px-3.5 py-1.5 flex items-center gap-1.5 ${
+                                  isVarsity
+                                    ? 'bg-[#a47e3b] text-white rounded-none font-anton'
+                                    : 'bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4] rounded-full shadow-xs'
+                                }`}
+                              >
+                                <Trophy className={`w-4 h-4 ${isVarsity ? 'text-amber-200' : 'text-[#0d9488]'}`} />
                                 <span>1st Place</span>
                               </span>
-                              <span className="font-mono font-black text-2xl text-[#0f172a]">
+                              <span className={`text-2xl ${isVarsity ? 'font-anton text-[#782f40]' : 'font-mono font-black text-[#0f172a]'}`}>
                                 {leaderboard[0].totalPoints} pts
                               </span>
                             </div>
-                            <h5 className="font-black text-lg text-[#0f172a]">{leaderboard[0].team.name}</h5>
-                            <p className="text-xs text-[#64748b] font-medium mt-0.5">{leaderboard[0].team.institution || 'Collegiate House'}</p>
+                            <h5 className={`text-lg font-bold ${isVarsity ? 'font-headline text-[#1c1c18]' : 'font-black text-[#0f172a]'}`}>{leaderboard[0].team.name}</h5>
+                            <p className={`text-xs font-medium mt-0.5 ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>{leaderboard[0].team.institution || 'Collegiate House'}</p>
                           </div>
-                          <div className="mt-4 pt-3 border-t border-[#ccfbf1] flex items-center justify-between text-xs font-bold text-[#0f766e]">
+                          <div className={`mt-4 pt-3 border-t flex items-center justify-between text-xs font-bold ${isVarsity ? 'border-[#782f40]/20 text-[#782f40] font-body-serif' : 'border-[#ccfbf1] text-[#0f766e]'}`}>
                             <span>🥇 {leaderboard[0].firstPlaceCount} Gold</span>
                             <span>🥈 {leaderboard[0].secondPlaceCount} Silver</span>
                             <span>🥉 {leaderboard[0].thirdPlaceCount} Bronze</span>
@@ -1222,21 +1773,33 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
                       {/* Step 3: Bronze / 3rd Place (Right) */}
                       {leaderboard[2] && (
-                        <div className="order-3 md:order-3 bg-white border-2 border-amber-200 rounded-3xl p-5 md:pt-6 md:pb-5 flex flex-col justify-between shadow-[0_4px_14px_rgba(15,23,42,0.04)] relative min-h-[200px]">
+                        <div
+                          className={`order-3 md:order-3 p-5 md:pt-6 md:pb-5 flex flex-col justify-between relative min-h-[200px] ${
+                            isVarsity
+                              ? 'bg-[#ffffff] border-2 border-[#1c1c18] shadow-[4px_4px_0px_#a47e3b] rounded-none'
+                              : 'bg-white border-2 border-amber-200 rounded-3xl shadow-[0_4px_14px_rgba(15,23,42,0.04)]'
+                          }`}
+                        >
                           <div>
                             <div className="flex items-center justify-between mb-3">
-                              <span className="text-xs font-black bg-amber-100 text-amber-900 border border-amber-200 px-3 py-1 rounded-full shadow-2xs flex items-center gap-1.5">
+                              <span
+                                className={`text-xs font-black px-3 py-1 flex items-center gap-1.5 ${
+                                  isVarsity
+                                    ? 'bg-[#f7f3ed] text-[#a47e3b] border border-[#1c1c18] rounded-none font-anton'
+                                    : 'bg-amber-100 text-amber-900 border border-amber-200 rounded-full shadow-2xs'
+                                }`}
+                              >
                                 <Medal className="w-3.5 h-3.5 text-amber-800" />
                                 <span>3rd Place</span>
                               </span>
-                              <span className="font-mono font-black text-xl text-[#0f172a]">
+                              <span className={`text-xl ${isVarsity ? 'font-anton text-[#a47e3b]' : 'font-mono font-black text-[#0f172a]'}`}>
                                 {leaderboard[2].totalPoints} pts
                               </span>
                             </div>
-                            <h5 className="font-black text-base text-[#0f172a]">{leaderboard[2].team.name}</h5>
-                            <p className="text-xs text-[#64748b] mt-0.5">{leaderboard[2].team.institution || 'Collegiate House'}</p>
+                            <h5 className={`text-base font-bold ${isVarsity ? 'font-headline text-[#1c1c18]' : 'font-black text-[#0f172a]'}`}>{leaderboard[2].team.name}</h5>
+                            <p className={`text-xs mt-0.5 ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>{leaderboard[2].team.institution || 'Collegiate House'}</p>
                           </div>
-                          <div className="mt-4 pt-3 border-t border-[#e2e8f0] flex items-center justify-between text-xs font-medium text-[#334155]">
+                          <div className={`mt-4 pt-3 border-t flex items-center justify-between text-xs ${isVarsity ? 'border-[#1c1c18]/20 font-body-serif text-[#1c1c18]' : 'border-[#e2e8f0] font-medium text-[#334155]'}`}>
                             <span>🥇 {leaderboard[2].firstPlaceCount} Gold</span>
                             <span>🥈 {leaderboard[2].secondPlaceCount} Silver</span>
                             <span>🥉 {leaderboard[2].thirdPlaceCount} Bronze</span>
@@ -1249,7 +1812,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               ) : (
                 <div>
                   {topIndividualContestants.length === 0 ? (
-                    <div className="p-8 text-center text-xs text-[#64748b] bg-white rounded-2xl border border-[#e2e8f0]">
+                    <div className={`p-8 text-center text-xs ${isVarsity ? 'vh-card font-body-serif text-[#534345]' : 'bg-white rounded-2xl border border-[#e2e8f0] text-[#64748b]'}`}>
                       Individual student standings will appear once competitive events are concluded.
                     </div>
                   ) : (
@@ -1261,23 +1824,27 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                             setSelectedStudentForModal(topIndividualContestants[1].participant);
                             setActiveTabSection('student_search');
                           }}
-                          className="order-2 md:order-1 bg-white border-2 border-[#e2e8f0] rounded-3xl p-4 sm:p-5 md:pt-7 md:pb-6 flex flex-col justify-between shadow-[0_4px_14px_rgba(15,23,42,0.05)] relative min-h-[220px] cursor-pointer hover:border-[#99f6e4] transition-all"
+                          className={`order-2 md:order-1 ${
+                            isVarsity
+                              ? 'vh-card rounded-none p-4 sm:p-5 md:pt-7 md:pb-6 flex flex-col justify-between relative min-h-[220px] cursor-pointer'
+                              : 'bg-white border-2 border-[#e2e8f0] rounded-3xl p-4 sm:p-5 md:pt-7 md:pb-6 flex flex-col justify-between shadow-[0_4px_14px_rgba(15,23,42,0.05)] relative min-h-[220px] cursor-pointer hover:border-[#99f6e4] transition-all'
+                          }`}
                         >
                           <div>
                             <div className="flex items-center justify-between mb-3">
-                              <span className="font-mono font-bold text-xs bg-[#f1f5f9] text-[#334155] border border-[#e2e8f0] px-3 py-1 rounded-full">
+                              <span className={isVarsity ? 'font-anton text-xs bg-[#e6e2dc] text-[#1c1c18] border border-[#1c1c18] px-3 py-1 uppercase tracking-wider' : 'font-mono font-bold text-xs bg-[#f1f5f9] text-[#334155] border border-[#e2e8f0] px-3 py-1 rounded-full'}>
                                 Chest #{topIndividualContestants[1].participant.chestNumber || topIndividualContestants[1].participant.id}
                               </span>
-                              <span className="font-mono font-black text-xl text-[#0f172a]">
+                              <span className={isVarsity ? 'font-anton text-2xl text-[#1c1c18]' : 'font-mono font-black text-xl text-[#0f172a]'}>
                                 {topIndividualContestants[1].totalPoints} pts
                               </span>
                             </div>
-                            <h5 className="font-black text-base text-[#0f172a]">{topIndividualContestants[1].participant.name}</h5>
-                            <p className="text-xs text-[#64748b] mt-0.5">
+                            <h5 className={isVarsity ? 'font-headline font-bold text-base text-[#1c1c18]' : 'font-black text-base text-[#0f172a]'}>{topIndividualContestants[1].participant.name}</h5>
+                            <p className={`text-xs mt-0.5 ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>
                               {topIndividualContestants[1].team?.name || 'Independent'} • {topIndividualContestants[1].category}
                             </p>
                           </div>
-                          <div className="mt-4 pt-3 border-t border-[#e2e8f0] flex items-center justify-between text-xs font-medium text-[#334155]">
+                          <div className={`mt-4 pt-3 border-t flex items-center justify-between text-xs ${isVarsity ? 'border-[#1c1c18]/20 font-body-serif text-[#1c1c18]' : 'border-[#e2e8f0] font-medium text-[#334155]'}`}>
                             <span>🥇 {topIndividualContestants[1].firstPlaceCount} 1st</span>
                             <span>🥈 {topIndividualContestants[1].secondPlaceCount} 2nd</span>
                             <span>🥉 {topIndividualContestants[1].thirdPlaceCount} 3rd</span>
@@ -1292,27 +1859,38 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                             setSelectedStudentForModal(topIndividualContestants[0].participant);
                             setActiveTabSection('student_search');
                           }}
-                          className="order-1 md:order-2 bg-gradient-to-b from-[#f0fdfa] via-white to-white border-2 border-[#0d9488] rounded-3xl p-5 sm:p-6 md:pt-9 md:pb-7 flex flex-col justify-between shadow-[0_12px_30px_rgba(13,148,136,0.15)] relative ring-2 md:ring-4 ring-[#0d9488]/20 md:-translate-y-3 z-10 min-h-[250px] cursor-pointer hover:border-[#0f766e] transition-all"
+                          className={`order-1 md:order-2 ${
+                            isVarsity
+                              ? 'bg-[#fdf9f3] border-2 border-[#782f40] p-5 sm:p-6 md:pt-9 md:pb-7 flex flex-col justify-between shadow-[6px_6px_0px_#782f40] relative md:-translate-y-3 z-10 min-h-[250px] cursor-pointer'
+                              : 'bg-gradient-to-b from-[#f0fdfa] via-white to-white border-2 border-[#0d9488] rounded-3xl p-5 sm:p-6 md:pt-9 md:pb-7 flex flex-col justify-between shadow-[0_12px_30px_rgba(13,148,136,0.15)] relative ring-2 md:ring-4 ring-[#0d9488]/20 md:-translate-y-3 z-10 min-h-[250px] cursor-pointer hover:border-[#0f766e] transition-all'
+                          }`}
                         >
-                          <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#0d9488] text-white font-black text-[11px] px-4 py-1 rounded-full shadow-md flex items-center gap-1.5 uppercase tracking-wider whitespace-nowrap">
-                            <Crown className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
-                            <span>Golden Performer</span>
-                          </div>
+                          {isVarsity ? (
+                            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 vh-pennant-burgundy px-4 py-1 text-[11px] flex items-center gap-1.5 uppercase whitespace-nowrap shadow-sm">
+                              <Crown className="w-3.5 h-3.5 text-[#dbb067] fill-[#dbb067]" />
+                              <span>Golden Performer</span>
+                            </div>
+                          ) : (
+                            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#0d9488] text-white font-black text-[11px] px-4 py-1 rounded-full shadow-md flex items-center gap-1.5 uppercase tracking-wider whitespace-nowrap">
+                              <Crown className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
+                              <span>Golden Performer</span>
+                            </div>
+                          )}
                           <div>
                             <div className="flex items-center justify-between mb-3 mt-1">
-                              <span className="font-mono font-bold text-xs bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4] px-3 py-1 rounded-full">
+                              <span className={isVarsity ? 'font-anton text-xs bg-[#ffd9de] text-[#5b192a] border border-[#782f40] px-3 py-1 uppercase tracking-wider' : 'font-mono font-bold text-xs bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4] px-3 py-1 rounded-full'}>
                                 Chest #{topIndividualContestants[0].participant.chestNumber || topIndividualContestants[0].participant.id}
                               </span>
-                              <span className="font-mono font-black text-2xl text-[#0f172a]">
+                              <span className={isVarsity ? 'font-anton text-3xl text-[#5b192a]' : 'font-mono font-black text-2xl text-[#0f172a]'}>
                                 {topIndividualContestants[0].totalPoints} pts
                               </span>
                             </div>
-                            <h5 className="font-black text-lg text-[#0f172a]">{topIndividualContestants[0].participant.name}</h5>
-                            <p className="text-xs text-[#64748b] font-medium mt-0.5">
+                            <h5 className={isVarsity ? 'font-headline font-bold text-lg text-[#1c1c18]' : 'font-black text-lg text-[#0f172a]'}>{topIndividualContestants[0].participant.name}</h5>
+                            <p className={`text-xs mt-0.5 ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b] font-medium'}`}>
                               {topIndividualContestants[0].team?.name || 'Independent'} • {topIndividualContestants[0].category}
                             </p>
                           </div>
-                          <div className="mt-4 pt-3 border-t border-[#ccfbf1] flex items-center justify-between text-xs font-bold text-[#0f766e]">
+                          <div className={`mt-4 pt-3 border-t flex items-center justify-between text-xs ${isVarsity ? 'border-[#782f40]/30 font-anton text-[#5b192a]' : 'border-[#ccfbf1] font-bold text-[#0f766e]'}`}>
                             <span>🥇 {topIndividualContestants[0].firstPlaceCount} 1st</span>
                             <span>🥈 {topIndividualContestants[0].secondPlaceCount} 2nd</span>
                             <span>🥉 {topIndividualContestants[0].thirdPlaceCount} 3rd</span>
@@ -1327,23 +1905,27 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                             setSelectedStudentForModal(topIndividualContestants[2].participant);
                             setActiveTabSection('student_search');
                           }}
-                          className="order-3 md:order-3 bg-white border-2 border-amber-200 rounded-3xl p-5 md:pt-6 md:pb-5 flex flex-col justify-between shadow-[0_4px_14px_rgba(15,23,42,0.04)] relative min-h-[200px] cursor-pointer hover:border-amber-300 transition-all"
+                          className={`order-3 md:order-3 ${
+                            isVarsity
+                              ? 'vh-card rounded-none p-5 md:pt-6 md:pb-5 flex flex-col justify-between relative min-h-[200px] cursor-pointer'
+                              : 'bg-white border-2 border-amber-200 rounded-3xl p-5 md:pt-6 md:pb-5 flex flex-col justify-between shadow-[0_4px_14px_rgba(15,23,42,0.04)] relative min-h-[200px] cursor-pointer hover:border-amber-300 transition-all'
+                          }`}
                         >
                           <div>
                             <div className="flex items-center justify-between mb-3">
-                              <span className="font-mono font-bold text-xs bg-amber-100 text-amber-900 border border-amber-200 px-3 py-1 rounded-full">
+                              <span className={isVarsity ? 'font-anton text-xs bg-[#ffdeab] text-[#432d00] border border-[#a47e3b] px-3 py-1 uppercase tracking-wider' : 'font-mono font-bold text-xs bg-amber-100 text-amber-900 border border-amber-200 px-3 py-1 rounded-full'}>
                                 Chest #{topIndividualContestants[2].participant.chestNumber || topIndividualContestants[2].participant.id}
                               </span>
-                              <span className="font-mono font-black text-xl text-[#0f172a]">
+                              <span className={isVarsity ? 'font-anton text-2xl text-[#1c1c18]' : 'font-mono font-black text-xl text-[#0f172a]'}>
                                 {topIndividualContestants[2].totalPoints} pts
                               </span>
                             </div>
-                            <h5 className="font-black text-base text-[#0f172a]">{topIndividualContestants[2].participant.name}</h5>
-                            <p className="text-xs text-[#64748b] mt-0.5">
+                            <h5 className={isVarsity ? 'font-headline font-bold text-base text-[#1c1c18]' : 'font-black text-base text-[#0f172a]'}>{topIndividualContestants[2].participant.name}</h5>
+                            <p className={`text-xs mt-0.5 ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>
                               {topIndividualContestants[2].team?.name || 'Independent'} • {topIndividualContestants[2].category}
                             </p>
                           </div>
-                          <div className="mt-4 pt-3 border-t border-[#e2e8f0] flex items-center justify-between text-xs font-medium text-[#334155]">
+                          <div className={`mt-4 pt-3 border-t flex items-center justify-between text-xs ${isVarsity ? 'border-[#1c1c18]/20 font-body-serif text-[#1c1c18]' : 'border-[#e2e8f0] font-medium text-[#334155]'}`}>
                             <span>🥇 {topIndividualContestants[2].firstPlaceCount} 1st</span>
                             <span>🥈 {topIndividualContestants[2].secondPlaceCount} 2nd</span>
                             <span>🥉 {topIndividualContestants[2].thirdPlaceCount} 3rd</span>
@@ -1359,7 +1941,11 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveTabSection('leaderboard')}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#f0fdfa] hover:bg-[#ccfbf1] text-xs sm:text-sm font-bold text-[#0d9488] border border-[#ccfbf1] transition-all cursor-pointer"
+                  className={`inline-flex items-center gap-1.5 px-4 py-2 text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                    isVarsity
+                      ? 'vh-btn-secondary rounded-none uppercase'
+                      : 'rounded-full bg-[#f0fdfa] hover:bg-[#ccfbf1] text-[#0d9488] border border-[#ccfbf1]'
+                  }`}
                 >
                   <span>View Full Championship Leaderboards</span>
                   <ChevronRight className="w-4 h-4" />
@@ -1371,21 +1957,21 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
               
               {/* Bento Card 4: Upcoming Schedule Highlights */}
-              <div className="lg:col-span-2 bg-white rounded-3xl border border-[#e2e8f0] p-4 sm:p-7 shadow-[0_4px_16px_-4px_rgba(15,23,42,0.05)] flex flex-col justify-between">
+              <div className={`lg:col-span-2 ${isVarsity ? 'vh-card rounded-none p-4 sm:p-7 flex flex-col justify-between' : 'bg-white rounded-3xl border border-[#e2e8f0] p-4 sm:p-7 shadow-[0_4px_16px_-4px_rgba(15,23,42,0.05)] flex flex-col justify-between'}`}>
                 <div>
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#0d9488] bg-[#f0fdfa] border border-[#ccfbf1] px-2.5 py-0.5 rounded-full">
+                      <span className={isVarsity ? 'vh-pennant px-2.5 py-0.5 text-[10px] inline-flex items-center gap-1 uppercase' : 'inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#0d9488] bg-[#f0fdfa] border border-[#ccfbf1] px-2.5 py-0.5 rounded-full'}>
                         Timetable
                       </span>
-                      <h4 className="text-lg font-bold text-[#0f172a] tracking-tight mt-1 font-display">
+                      <h4 className={`text-lg tracking-tight mt-1 ${isVarsity ? 'font-headline font-bold text-[#1c1c18]' : 'font-bold text-[#0f172a] font-display'}`}>
                         Upcoming Programme Schedule
                       </h4>
                     </div>
                     <button
                       type="button"
                       onClick={() => setActiveTabSection('schedule')}
-                      className="text-xs font-bold text-[#0d9488] hover:text-[#0f766e] flex items-center gap-1 cursor-pointer"
+                      className={`text-xs font-bold flex items-center gap-1 cursor-pointer ${isVarsity ? 'font-anton text-[#5b192a] hover:text-[#782f40] tracking-wider uppercase' : 'text-[#0d9488] hover:text-[#0f766e]'}`}
                     >
                       <span>Full Schedule</span>
                       <ChevronRight className="w-3.5 h-3.5" />
@@ -1396,47 +1982,51 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                     {publishedProgrammes.slice(0, 3).map((prg) => (
                       <div
                         key={prg.id}
-                        className="p-3.5 rounded-2xl bg-[#faf8ff] border border-[#e2e8f0] flex items-center justify-between gap-3 hover:bg-[#f0fdfa] hover:border-[#99f6e4] transition-colors"
+                        className={`p-3.5 flex items-center justify-between gap-3 transition-colors ${
+                          isVarsity
+                            ? 'vh-ticket-stub rounded-none border border-[#1c1c18]/20 bg-[#f7f3ed] hover:border-[#782f40]'
+                            : 'rounded-2xl bg-[#faf8ff] border border-[#e2e8f0] hover:bg-[#f0fdfa] hover:border-[#99f6e4]'
+                        }`}
                       >
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <h5 className="font-bold text-xs sm:text-sm text-[#0f172a] truncate">{prg.name}</h5>
-                            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-white border border-[#e2e8f0] text-[#0f766e] shrink-0">
+                            <h5 className={`truncate ${isVarsity ? 'font-headline font-bold text-xs sm:text-sm text-[#1c1c18]' : 'font-bold text-xs sm:text-sm text-[#0f172a]'}`}>{prg.name}</h5>
+                            <span className={isVarsity ? 'font-anton text-[10px] px-2 py-0.5 bg-[#ffd9de] text-[#5b192a] border border-[#782f40] uppercase tracking-wider shrink-0' : 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-white border border-[#e2e8f0] text-[#0f766e] shrink-0'}>
                               {prg.category}
                             </span>
                           </div>
-                          <div className="flex items-center gap-3 text-xs text-[#64748b] mt-1">
+                          <div className={`flex items-center gap-3 text-xs mt-1 ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>
                             <span className="flex items-center gap-1">
-                              <Clock className="w-3 h-3 text-[#0d9488]" />
+                              <Clock className={`w-3 h-3 ${isVarsity ? 'text-[#782f40]' : 'text-[#0d9488]'}`} />
                               {prg.startTime} - {prg.endTime}
                             </span>
                             <span>•</span>
                             <span className="flex items-center gap-1 truncate">
-                              <MapPin className="w-3 h-3 text-[#0d9488]" />
+                              <MapPin className={`w-3 h-3 ${isVarsity ? 'text-[#782f40]' : 'text-[#0d9488]'}`} />
                               {prg.venue} ({prg.stage})
                             </span>
                           </div>
                         </div>
 
-                        <span className="text-[11px] font-semibold px-3 py-1 rounded-full bg-white border border-[#e2e8f0] text-[#0f766e] shrink-0">
+                        <span className={isVarsity ? 'font-anton text-[11px] px-2.5 py-0.5 bg-[#d6e3ff] text-[#1b365d] border border-[#1b365d] uppercase tracking-wider shrink-0' : 'text-[11px] font-semibold px-3 py-1 rounded-full bg-white border border-[#e2e8f0] text-[#0f766e] shrink-0'}>
                           {prg.type === 'individual' ? 'Solo' : 'Group'}
                         </span>
                       </div>
                     ))}
                     {publishedProgrammes.length === 0 && (
-                      <p className="text-xs text-[#64748b] italic py-6 text-center">
+                      <p className={`text-xs italic py-6 text-center ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>
                         Detailed stage schedules are currently being synchronized by the coordinators.
                       </p>
                     )}
                   </div>
                 </div>
 
-                <div className="mt-4 pt-4 border-t border-[#e2e8f0] flex items-center justify-between text-xs text-[#64748b]">
+                <div className={`mt-4 pt-4 border-t flex items-center justify-between text-xs ${isVarsity ? 'border-[#1c1c18]/20 font-body-serif text-[#534345]' : 'border-[#e2e8f0] text-[#64748b]'}`}>
                   <span>Auditoriums, open amphitheatre & main stages</span>
                   <button
                     type="button"
                     onClick={() => setActiveTabSection('schedule')}
-                    className="font-bold text-[#0d9488] hover:text-[#0f766e] cursor-pointer"
+                    className={`cursor-pointer ${isVarsity ? 'font-anton text-[#5b192a] hover:text-[#782f40] uppercase tracking-wider' : 'font-bold text-[#0d9488] hover:text-[#0f766e]'}`}
                   >
                     View all stages →
                   </button>
@@ -1444,58 +2034,58 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               </div>
 
               {/* Bento Card 5: Festival Campus & Stage Locations */}
-              <div className="bg-gradient-to-br from-[#06332e] via-[#00685f] to-[#044c69] text-white rounded-3xl p-4 sm:p-7 shadow-xl border border-teal-700/40 flex flex-col justify-between">
+              <div className={`${isVarsity ? 'bg-[#1b365d] text-[#fdf9f3] border-2 border-[#1c1c18] rounded-none p-4 sm:p-7 shadow-[6px_6px_0px_#a47e3b] flex flex-col justify-between' : 'bg-gradient-to-br from-[#06332e] via-[#00685f] to-[#044c69] text-white rounded-3xl p-4 sm:p-7 shadow-xl border border-teal-700/40 flex flex-col justify-between'}`}>
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#89f5e7] bg-white/15 border border-white/25 px-2.5 py-0.5 rounded-full">
+                  <span className={isVarsity ? 'vh-pennant px-2.5 py-0.5 text-[10px] inline-flex items-center gap-1 uppercase' : 'text-[10px] font-bold uppercase tracking-wider text-[#89f5e7] bg-white/15 border border-white/25 px-2.5 py-0.5 rounded-full'}>
                     Festival Grounds
                   </span>
                   
-                  <h4 className="text-lg font-bold text-white tracking-tight mt-2.5 font-display">
+                  <h4 className={`text-lg tracking-tight mt-2.5 ${isVarsity ? 'font-headline font-bold text-[#fdf9f3]' : 'font-bold text-white font-display'}`}>
                     Campus Grounds & Stages
                   </h4>
-                  <p className="text-xs text-teal-100/80 mt-1 leading-relaxed">
+                  <p className={`text-xs mt-1 leading-relaxed ${isVarsity ? 'font-body-serif text-[#fdf9f3]/80' : 'text-teal-100/80'}`}>
                     Official venues, stage distribution, and campus grounds for all accredited festival events.
                   </p>
 
                   <div className="space-y-2.5 mt-4 text-xs">
-                    <div className="p-3 rounded-2xl bg-white/10 border border-white/15 space-y-1">
-                      <div className="flex items-center gap-2 text-[#89f5e7] font-semibold text-[11px]">
+                    <div className={`p-3 space-y-1 ${isVarsity ? 'bg-[#142948] border border-[#a47e3b]/40 rounded-none' : 'rounded-2xl bg-white/10 border border-white/15'}`}>
+                      <div className={`flex items-center gap-2 font-semibold text-[11px] ${isVarsity ? 'font-anton text-[#ffdeab] uppercase tracking-wider' : 'text-[#89f5e7]'}`}>
                         <MapPin className="w-3.5 h-3.5" />
                         <span>Festival Venue</span>
                       </div>
-                      <div className="font-bold text-white text-sm">
+                      <div className={`font-bold text-sm ${isVarsity ? 'font-body-serif text-[#fdf9f3]' : 'text-white'}`}>
                         {fest ? `${fest.venue || ''}${fest.institution ? `, ${fest.institution}` : ''}` : (pageData.content.venueInfo || settings.venue || 'Grand Campus Convention Center')}
                       </div>
                     </div>
 
-                    <div className="p-3 rounded-2xl bg-white/10 border border-white/15 space-y-1">
-                      <div className="flex items-center gap-2 text-[#89f5e7] font-semibold text-[11px]">
+                    <div className={`p-3 space-y-1 ${isVarsity ? 'bg-[#142948] border border-[#a47e3b]/40 rounded-none' : 'rounded-2xl bg-white/10 border border-white/15'}`}>
+                      <div className={`flex items-center gap-2 font-semibold text-[11px] ${isVarsity ? 'font-anton text-[#ffdeab] uppercase tracking-wider' : 'text-[#89f5e7]'}`}>
                         <Calendar className="w-3.5 h-3.5" />
                         <span>Festival Dates</span>
                       </div>
-                      <div className="font-bold text-white">
+                      <div className={`font-bold ${isVarsity ? 'font-body-serif text-[#fdf9f3]' : 'text-white'}`}>
                         {fest?.startDate || settings.startDate} to {fest?.endDate || settings.endDate}
                       </div>
                     </div>
 
-                    <div className="p-3 rounded-2xl bg-white/10 border border-white/15 space-y-1">
-                      <div className="flex items-center gap-2 text-[#89f5e7] font-semibold text-[11px]">
+                    <div className={`p-3 space-y-1 ${isVarsity ? 'bg-[#142948] border border-[#a47e3b]/40 rounded-none' : 'rounded-2xl bg-white/10 border border-white/15'}`}>
+                      <div className={`flex items-center gap-2 font-semibold text-[11px] ${isVarsity ? 'font-anton text-[#ffdeab] uppercase tracking-wider' : 'text-[#89f5e7]'}`}>
                         <Layers className="w-3.5 h-3.5" />
                         <span>Official Stages</span>
                       </div>
-                      <div className="text-teal-100/80 text-xs">
+                      <div className={`text-xs ${isVarsity ? 'font-body-serif text-[#fdf9f3]/80' : 'text-teal-100/80'}`}>
                         Main Stage, Open Amphitheatre, Cultural Hall & Seminar Stage
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-5 pt-4 border-t border-white/15 flex items-center justify-between text-[11px] text-teal-100/80">
+                <div className={`mt-5 pt-4 border-t flex items-center justify-between text-[11px] ${isVarsity ? 'border-[#a47e3b]/30 font-body-serif text-[#fdf9f3]/80' : 'border-white/15 text-teal-100/80'}`}>
                   <span>Entry open to contestants & delegates</span>
                   <button
                     type="button"
                     onClick={() => setActiveTabSection('schedule')}
-                    className="text-[#89f5e7] hover:text-white font-bold cursor-pointer"
+                    className={`cursor-pointer ${isVarsity ? 'font-anton text-[#ffdeab] hover:text-[#ffffff] uppercase tracking-wider' : 'text-[#89f5e7] hover:text-white font-bold'}`}
                   >
                     View Schedule →
                   </button>
@@ -1509,31 +2099,31 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
           {/* ================================================================ */}
           <section id="contact" className="py-16 max-w-3xl mx-auto px-4 sm:px-8">
             <div className="text-center mb-8">
-              <h3 className="text-3xl sm:text-4xl font-extrabold text-[#0f172a] tracking-tight font-display">
+              <h3 className={`text-3xl sm:text-4xl font-extrabold tracking-tight ${isVarsity ? 'font-headline text-[#1c1c18]' : 'text-[#0f172a] font-display'}`}>
                 Get in Touch
               </h3>
-              <div className="w-16 h-1 bg-gradient-to-r from-[#00685f] to-[#006398] rounded-full mx-auto mt-2.5"></div>
-              <p className="text-xs sm:text-sm text-[#64748b] mt-2">
+              <div className={`w-16 h-1 mx-auto mt-2.5 ${isVarsity ? 'bg-[#a47e3b] rounded-none' : 'bg-gradient-to-r from-[#00685f] to-[#006398] rounded-full'}`}></div>
+              <p className={`text-xs sm:text-sm mt-2 ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>
                 Have questions? Want to collaborate? We'd love to hear from you!
               </p>
             </div>
 
-            <div className="bg-white rounded-3xl border border-[#e2e8f0] p-6 sm:p-8 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.06)]">
+            <div className={isVarsity ? 'vh-card rounded-none p-6 sm:p-8' : 'bg-white rounded-3xl border border-[#e2e8f0] p-6 sm:p-8 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.06)]'}>
               <div className="flex items-center gap-2 mb-5">
-                <span className="w-1.5 h-5 bg-[#0d9488] rounded-full"></span>
-                <h4 className="font-bold text-base text-[#0f172a]">Send us a Message</h4>
+                <span className={`w-1.5 h-5 ${isVarsity ? 'bg-[#782f40] rounded-none' : 'bg-[#0d9488] rounded-full'}`}></span>
+                <h4 className={`font-bold text-base ${isVarsity ? 'font-headline text-[#1c1c18]' : 'text-[#0f172a]'}`}>Send us a Message</h4>
               </div>
 
               {contactSent && (
-                <div className="mb-4 p-4 rounded-2xl bg-[#f0fdfa] border border-[#99f6e4] text-[#0f766e] text-xs font-semibold flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-[#0d9488]" />
+                <div className={`mb-4 p-4 text-xs font-semibold flex items-center gap-2 ${isVarsity ? 'bg-[#ffd9de] border-2 border-[#782f40] text-[#5b192a] font-body-serif rounded-none' : 'rounded-2xl bg-[#f0fdfa] border border-[#99f6e4] text-[#0f766e]'}`}>
+                  <CheckCircle2 className={`w-4 h-4 ${isVarsity ? 'text-[#782f40]' : 'text-[#0d9488]'}`} />
                   <span>Thank you! Your message has been sent to the festival convenors.</span>
                 </div>
               )}
 
               <form onSubmit={handleContactSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1 ml-1">Your Name</label>
+                  <label className={`block text-xs font-semibold mb-1 ml-1 ${isVarsity ? 'font-anton uppercase tracking-wider text-[#1c1c18]' : 'text-slate-700'}`}>Your Name</label>
                   <div className="relative flex items-center">
                     <span className="absolute left-4 text-slate-400">
                       <User className="w-4 h-4" />
@@ -1544,13 +2134,13 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                       value={contactName}
                       onChange={(e) => setContactName(e.target.value)}
                       placeholder="Enter your full name"
-                      className="w-full pl-11 pr-4 py-3 bg-[#faf8ff] rounded-2xl border border-[#e2e8f0] focus:border-[#0d9488] focus:bg-white focus:outline-none text-xs sm:text-sm transition-all"
+                      className={`w-full pl-11 pr-4 py-3 text-xs sm:text-sm transition-all ${isVarsity ? 'bg-[#fdf9f3] rounded-none border-2 border-[#1c1c18] focus:border-[#782f40] focus:bg-[#ffffff] focus:outline-none font-body-serif text-[#1c1c18]' : 'bg-[#faf8ff] rounded-2xl border border-[#e2e8f0] focus:border-[#0d9488] focus:bg-white focus:outline-none'}`}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1 ml-1">Email Address</label>
+                  <label className={`block text-xs font-semibold mb-1 ml-1 ${isVarsity ? 'font-anton uppercase tracking-wider text-[#1c1c18]' : 'text-slate-700'}`}>Email Address</label>
                   <div className="relative flex items-center">
                     <span className="absolute left-4 text-slate-400">
                       <Mail className="w-4 h-4" />
@@ -1561,13 +2151,13 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                       value={contactEmail}
                       onChange={(e) => setContactEmail(e.target.value)}
                       placeholder="Enter your email address"
-                      className="w-full pl-11 pr-4 py-3 bg-[#faf8ff] rounded-2xl border border-[#e2e8f0] focus:border-[#0d9488] focus:bg-white focus:outline-none text-xs sm:text-sm transition-all"
+                      className={`w-full pl-11 pr-4 py-3 text-xs sm:text-sm transition-all ${isVarsity ? 'bg-[#fdf9f3] rounded-none border-2 border-[#1c1c18] focus:border-[#782f40] focus:bg-[#ffffff] focus:outline-none font-body-serif text-[#1c1c18]' : 'bg-[#faf8ff] rounded-2xl border border-[#e2e8f0] focus:border-[#0d9488] focus:bg-white focus:outline-none'}`}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1 ml-1">Your Message</label>
+                  <label className={`block text-xs font-semibold mb-1 ml-1 ${isVarsity ? 'font-anton uppercase tracking-wider text-[#1c1c18]' : 'text-slate-700'}`}>Your Message</label>
                   <div className="relative">
                     <span className="absolute left-4 top-3.5 text-slate-400">
                       <FileText className="w-4 h-4" />
@@ -1578,14 +2168,18 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                       value={contactMessage}
                       onChange={(e) => setContactMessage(e.target.value)}
                       placeholder="Tell us how we can help you..."
-                      className="w-full pl-11 pr-4 py-3 bg-[#faf8ff] rounded-2xl border border-[#e2e8f0] focus:border-[#0d9488] focus:bg-white focus:outline-none text-xs sm:text-sm transition-all resize-none"
+                      className={`w-full pl-11 pr-4 py-3 text-xs sm:text-sm transition-all resize-none ${isVarsity ? 'bg-[#fdf9f3] rounded-none border-2 border-[#1c1c18] focus:border-[#782f40] focus:bg-[#ffffff] focus:outline-none font-body-serif text-[#1c1c18]' : 'bg-[#faf8ff] rounded-2xl border border-[#e2e8f0] focus:border-[#0d9488] focus:bg-white focus:outline-none'}`}
                     />
                   </div>
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full py-3.5 px-6 rounded-full bg-gradient-to-r from-[#00685f] to-[#006398] hover:from-[#0f766e] hover:to-[#0284c7] text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  className={`w-full py-3.5 px-6 text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    isVarsity
+                      ? 'vh-btn-primary rounded-none uppercase'
+                      : 'rounded-full bg-gradient-to-r from-[#00685f] to-[#006398] hover:from-[#0f766e] hover:to-[#0284c7] text-white shadow-md hover:shadow-lg active:scale-[0.98]'
+                  }`}
                 >
                   <Send className="w-4 h-4" />
                   <span>Send Message</span>
@@ -1603,42 +2197,52 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
         <section className="py-8 sm:py-12 max-w-7xl mx-auto px-3.5 sm:px-8 space-y-6 sm:space-y-8 w-full max-w-full overflow-hidden">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#e2e8f0] pb-5">
             <div>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f0fdfa] border border-[#99f6e4] text-[#0f766e] text-xs font-bold uppercase tracking-wider">
+              <span className={isVarsity ? 'vh-pennant uppercase' : 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f0fdfa] border border-[#99f6e4] text-[#0f766e] text-xs font-bold uppercase tracking-wider'}>
                 Championship Standings
               </span>
-              <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#0f172a] mt-2 font-display">
+              <h3 className={`text-2xl sm:text-3xl font-extrabold tracking-tight mt-2 ${isVarsity ? 'font-headline text-[#1c1c18]' : 'text-[#0f172a] font-display'}`}>
                 Official Festival Leaderboards
               </h3>
-              <p className="text-xs sm:text-sm text-[#64748b] mt-1">
+              <p className={`text-xs sm:text-sm mt-1 ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>
                 Real-time verified standings for competing houses and top individual student performers.
               </p>
             </div>
 
             {/* Main Leaderboard Switcher: Team vs Individual */}
-            <div className="flex items-center gap-1.5 p-1 bg-[#f0fdfa] rounded-full border border-[#ccfbf1] self-start sm:self-auto shadow-2xs max-w-full overflow-x-auto scrollbar-none shrink-0">
+            <div className={`flex items-center gap-1.5 p-1 self-start sm:self-auto max-w-full overflow-x-auto scrollbar-none shrink-0 ${
+              isVarsity ? 'bg-[#f7f3ed] border-2 border-[#1c1c18] rounded-none' : 'bg-[#f0fdfa] rounded-full border border-[#ccfbf1] shadow-2xs'
+            }`}>
               <button
                 type="button"
                 onClick={() => setLeaderboardType('team')}
-                className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-                  leaderboardType === 'team'
-                    ? 'bg-[#0d9488] text-white shadow-xs'
-                    : 'text-[#0f766e] hover:text-[#0d9488]'
+                className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                  isVarsity
+                    ? leaderboardType === 'team'
+                      ? 'bg-[#5b192a] text-white font-anton uppercase tracking-wider rounded-none'
+                      : 'text-[#5b192a] hover:bg-[#ffd9de]/50 font-anton uppercase tracking-wider rounded-none'
+                    : leaderboardType === 'team'
+                    ? 'bg-[#0d9488] text-white shadow-xs rounded-full'
+                    : 'text-[#0f766e] hover:text-[#0d9488] rounded-full'
                 }`}
               >
-                <Trophy className="w-4 h-4 text-amber-300" />
+                <Trophy className={`w-4 h-4 ${isVarsity ? 'text-[#ffdeab]' : 'text-amber-300'}`} />
                 <span>Team Leaderboard</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setLeaderboardType('individual')}
-                className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-                  leaderboardType === 'individual'
-                    ? 'bg-[#0d9488] text-white shadow-xs'
-                    : 'text-[#0f766e] hover:text-[#0d9488]'
+                className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                  isVarsity
+                    ? leaderboardType === 'individual'
+                      ? 'bg-[#5b192a] text-white font-anton uppercase tracking-wider rounded-none'
+                      : 'text-[#5b192a] hover:bg-[#ffd9de]/50 font-anton uppercase tracking-wider rounded-none'
+                    : leaderboardType === 'individual'
+                    ? 'bg-[#0d9488] text-white shadow-xs rounded-full'
+                    : 'text-[#0f766e] hover:text-[#0d9488] rounded-full'
                 }`}
               >
-                <Award className="w-4 h-4 text-teal-200" />
+                <Award className={`w-4 h-4 ${isVarsity ? 'text-[#ffdeab]' : 'text-teal-200'}`} />
                 <span>Individual Leaderboard</span>
               </button>
             </div>
@@ -1651,20 +2255,20 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               {leaderboard.length >= 3 && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* 2nd Place */}
-                  <div className="order-2 md:order-1 bg-white border border-[#e2e8f0] rounded-3xl p-5 flex flex-col justify-between shadow-[0_4px_14px_rgba(15,23,42,0.05)]">
+                  <div className={`order-2 md:order-1 ${isVarsity ? 'vh-card rounded-none p-5 flex flex-col justify-between' : 'bg-white border border-[#e2e8f0] rounded-3xl p-5 flex flex-col justify-between shadow-[0_4px_14px_rgba(15,23,42,0.05)]'}`}>
                     <div>
                       <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs font-black bg-[#f1f5f9] text-[#334155] border border-[#e2e8f0] px-3 py-1 rounded-full">
+                        <span className={isVarsity ? 'font-anton text-xs bg-[#e6e2dc] text-[#1c1c18] border border-[#1c1c18] px-3 py-1 uppercase tracking-wider' : 'text-xs font-black bg-[#f1f5f9] text-[#334155] border border-[#e2e8f0] px-3 py-1 rounded-full'}>
                           🥈 2nd Place
                         </span>
-                        <span className="font-mono font-black text-xl text-[#0f172a]">
+                        <span className={isVarsity ? 'font-anton text-2xl text-[#1c1c18]' : 'font-mono font-black text-xl text-[#0f172a]'}>
                           {leaderboard[1].totalPoints} pts
                         </span>
                       </div>
-                      <h4 className="text-lg font-black text-[#0f172a]">{leaderboard[1].team.name}</h4>
-                      <p className="text-xs text-[#64748b] mt-0.5">{leaderboard[1].team.institution || 'Collegiate House'}</p>
+                      <h4 className={isVarsity ? 'font-headline font-bold text-lg text-[#1c1c18]' : 'text-lg font-black text-[#0f172a]'}>{leaderboard[1].team.name}</h4>
+                      <p className={`text-xs mt-0.5 ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>{leaderboard[1].team.institution || 'Collegiate House'}</p>
                     </div>
-                    <div className="mt-4 pt-3 border-t border-[#e2e8f0] flex items-center justify-between text-xs font-semibold text-[#334155]">
+                    <div className={`mt-4 pt-3 border-t flex items-center justify-between text-xs ${isVarsity ? 'border-[#1c1c18]/20 font-body-serif text-[#1c1c18]' : 'border-[#e2e8f0] font-semibold text-[#334155]'}`}>
                       <span>🥇 {leaderboard[1].firstPlaceCount} Gold</span>
                       <span>🥈 {leaderboard[1].secondPlaceCount} Silver</span>
                       <span>🥉 {leaderboard[1].thirdPlaceCount} Bronze</span>
@@ -1672,24 +2276,34 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                   </div>
 
                   {/* 1st Place Champion */}
-                  <div className="order-1 md:order-2 bg-gradient-to-b from-[#f0fdfa] via-white to-white border-2 border-[#0d9488] rounded-3xl p-6 flex flex-col justify-between shadow-[0_12px_30px_rgba(13,148,136,0.15)] relative -translate-y-1 ring-4 ring-[#0d9488]/20">
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#0d9488] text-white font-black text-[11px] uppercase tracking-wider px-3.5 py-0.5 rounded-full shadow-xs">
-                      Fest Leader
-                    </div>
+                  <div className={`order-1 md:order-2 ${
+                    isVarsity
+                      ? 'bg-[#fdf9f3] border-2 border-[#782f40] rounded-none p-6 flex flex-col justify-between shadow-[6px_6px_0px_#782f40] relative -translate-y-1'
+                      : 'bg-gradient-to-b from-[#f0fdfa] via-white to-white border-2 border-[#0d9488] rounded-3xl p-6 flex flex-col justify-between shadow-[0_12px_30px_rgba(13,148,136,0.15)] relative -translate-y-1 ring-4 ring-[#0d9488]/20'
+                  }`}>
+                    {isVarsity ? (
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 vh-pennant-burgundy px-3.5 py-0.5 text-[11px] uppercase tracking-wider">
+                        Fest Leader
+                      </div>
+                    ) : (
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#0d9488] text-white font-black text-[11px] uppercase tracking-wider px-3.5 py-0.5 rounded-full shadow-xs">
+                        Fest Leader
+                      </div>
+                    )}
                     <div>
                       <div className="flex items-center justify-between mb-3 mt-1">
-                        <span className="text-xs font-black bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4] px-3 py-1 rounded-full flex items-center gap-1">
-                          <Trophy className="w-3.5 h-3.5 text-[#0d9488]" />
+                        <span className={isVarsity ? 'font-anton text-xs bg-[#ffd9de] text-[#5b192a] border border-[#782f40] px-3 py-1 uppercase tracking-wider flex items-center gap-1' : 'text-xs font-black bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4] px-3 py-1 rounded-full flex items-center gap-1'}>
+                          <Trophy className={`w-3.5 h-3.5 ${isVarsity ? 'text-[#782f40]' : 'text-[#0d9488]'}`} />
                           1st Place Champion
                         </span>
-                        <span className="font-mono font-black text-2xl text-[#0f172a]">
+                        <span className={isVarsity ? 'font-anton text-3xl text-[#5b192a]' : 'font-mono font-black text-2xl text-[#0f172a]'}>
                           {leaderboard[0].totalPoints} pts
                         </span>
                       </div>
-                      <h4 className="text-xl font-black text-[#0f172a]">{leaderboard[0].team.name}</h4>
-                      <p className="text-xs text-[#64748b] mt-0.5">{leaderboard[0].team.institution || 'Collegiate House'}</p>
+                      <h4 className={isVarsity ? 'font-headline font-bold text-xl text-[#1c1c18]' : 'text-xl font-black text-[#0f172a]'}>{leaderboard[0].team.name}</h4>
+                      <p className={`text-xs mt-0.5 ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>{leaderboard[0].team.institution || 'Collegiate House'}</p>
                     </div>
-                    <div className="mt-4 pt-3 border-t border-[#ccfbf1] flex items-center justify-between text-xs font-bold text-[#0f766e]">
+                    <div className={`mt-4 pt-3 border-t flex items-center justify-between text-xs ${isVarsity ? 'border-[#782f40]/30 font-anton text-[#5b192a]' : 'border-[#ccfbf1] font-bold text-[#0f766e]'}`}>
                       <span>🥇 {leaderboard[0].firstPlaceCount} Gold</span>
                       <span>🥈 {leaderboard[0].secondPlaceCount} Silver</span>
                       <span>🥉 {leaderboard[0].thirdPlaceCount} Bronze</span>
@@ -1697,20 +2311,20 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                   </div>
 
                   {/* 3rd Place */}
-                  <div className="order-3 bg-white border border-amber-200 rounded-3xl p-5 flex flex-col justify-between shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
+                  <div className={`order-3 ${isVarsity ? 'vh-card rounded-none p-5 flex flex-col justify-between' : 'bg-white border border-amber-200 rounded-3xl p-5 flex flex-col justify-between shadow-[0_4px_14px_rgba(15,23,42,0.04)]'}`}>
                     <div>
                       <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs font-black bg-amber-100 text-amber-900 border border-amber-200 px-3 py-1 rounded-full">
+                        <span className={isVarsity ? 'font-anton text-xs bg-[#ffdeab] text-[#432d00] border border-[#a47e3b] px-3 py-1 uppercase tracking-wider' : 'text-xs font-black bg-amber-100 text-amber-900 border border-amber-200 px-3 py-1 rounded-full'}>
                           🥉 3rd Place
                         </span>
-                        <span className="font-mono font-black text-xl text-[#0f172a]">
+                        <span className={isVarsity ? 'font-anton text-2xl text-[#1c1c18]' : 'font-mono font-black text-xl text-[#0f172a]'}>
                           {leaderboard[2].totalPoints} pts
                         </span>
                       </div>
-                      <h4 className="text-lg font-black text-[#0f172a]">{leaderboard[2].team.name}</h4>
-                      <p className="text-xs text-[#64748b] mt-0.5">{leaderboard[2].team.institution || 'Collegiate House'}</p>
+                      <h4 className={isVarsity ? 'font-headline font-bold text-lg text-[#1c1c18]' : 'text-lg font-black text-[#0f172a]'}>{leaderboard[2].team.name}</h4>
+                      <p className={`text-xs mt-0.5 ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>{leaderboard[2].team.institution || 'Collegiate House'}</p>
                     </div>
-                    <div className="mt-4 pt-3 border-t border-[#e2e8f0] flex items-center justify-between text-xs font-semibold text-[#334155]">
+                    <div className={`mt-4 pt-3 border-t flex items-center justify-between text-xs ${isVarsity ? 'border-[#1c1c18]/20 font-body-serif text-[#1c1c18]' : 'border-[#e2e8f0] font-semibold text-[#334155]'}`}>
                       <span>🥇 {leaderboard[2].firstPlaceCount} Gold</span>
                       <span>🥈 {leaderboard[2].secondPlaceCount} Silver</span>
                       <span>🥉 {leaderboard[2].thirdPlaceCount} Bronze</span>
@@ -1720,17 +2334,21 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               )}
 
               {/* Complete Team Leaderboard Table */}
-              <div className="bg-white border border-[#e2e8f0] rounded-2xl overflow-hidden shadow-xs">
-                <div className="p-4 bg-[#f0fdfa] border-b border-[#ccfbf1] text-xs text-[#0f766e] flex items-center justify-between">
-                  <span className="font-bold text-[#0f172a]">
+              <div className={isVarsity ? 'bg-[#fdf9f3] border-2 border-[#1c1c18] rounded-none overflow-hidden shadow-[4px_4px_0px_#1c1c18]' : 'bg-white border border-[#e2e8f0] rounded-2xl overflow-hidden shadow-xs'}>
+                <div className={`p-4 border-b text-xs flex items-center justify-between ${
+                  isVarsity ? 'bg-[#e6e2dc] border-[#1c1c18] text-[#1c1c18]' : 'bg-[#f0fdfa] border-[#ccfbf1] text-[#0f766e]'
+                }`}>
+                  <span className={`font-bold ${isVarsity ? 'font-headline text-[#1c1c18]' : 'text-[#0f172a]'}`}>
                     House Championship Standings — Cumulative Points from Individual & Team Programmes
                   </span>
-                  <span className="font-mono text-[11px] text-[#0f766e] font-bold">Live Ratified</span>
+                  <span className={`font-mono text-[11px] font-bold ${isVarsity ? 'text-[#5b192a]' : 'text-[#0f766e]'}`}>Live Ratified</span>
                 </div>
                 <div className="overflow-x-auto w-full max-w-full">
                   <table className="w-full text-left text-xs min-w-[560px]">
                     <thead>
-                      <tr className="border-b border-[#e2e8f0] text-[#64748b] uppercase tracking-wider text-[11px] bg-[#faf8ff]">
+                      <tr className={`border-b text-[11px] ${
+                        isVarsity ? 'border-[#1c1c18] text-[#1c1c18] font-anton uppercase tracking-wider bg-[#f1ede7]' : 'border-[#e2e8f0] text-[#64748b] uppercase tracking-wider bg-[#faf8ff]'
+                      }`}>
                         <th className="py-3 px-4 text-center w-16">Rank</th>
                         <th className="py-3 px-4">House / Team</th>
                         <th className="py-3 px-4">Institution</th>
@@ -1740,29 +2358,37 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                         <th className="py-3 px-4 text-right">Ratified Points</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#f1f5f9]">
+                    <tbody className={`divide-y ${isVarsity ? 'divide-[#1c1c18]/15 font-body-serif' : 'divide-[#f1f5f9]'}`}>
                       {leaderboard.map((entry) => (
-                        <tr key={entry.team.id} className="hover:bg-[#f0fdfa]/60 transition-colors">
+                        <tr key={entry.team.id} className={isVarsity ? 'hover:bg-[#ffd9de]/20 transition-colors' : 'hover:bg-[#f0fdfa]/60 transition-colors'}>
                           <td className="py-3.5 px-4 text-center font-mono font-bold">
                             <span
-                              className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${
-                                entry.rank === 1
-                                  ? 'bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4]'
+                              className={`inline-flex items-center justify-center w-7 h-7 text-xs font-bold ${
+                                isVarsity
+                                  ? entry.rank === 1
+                                    ? 'bg-[#ffd9de] text-[#5b192a] border border-[#782f40] rounded-none font-anton'
+                                    : entry.rank === 2
+                                    ? 'bg-[#d6e3ff] text-[#1b365d] border border-[#1b365d] rounded-none font-anton'
+                                    : entry.rank === 3
+                                    ? 'bg-[#ffdeab] text-[#432d00] border border-[#a47e3b] rounded-none font-anton'
+                                    : 'bg-[#e6e2dc] text-[#1c1c18] rounded-none font-anton'
+                                  : entry.rank === 1
+                                  ? 'bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4] rounded-full'
                                   : entry.rank === 2
-                                  ? 'bg-slate-200 text-slate-900'
+                                  ? 'bg-slate-200 text-slate-900 rounded-full'
                                   : entry.rank === 3
-                                  ? 'bg-amber-100 text-amber-900 border border-amber-200'
-                                  : 'bg-slate-100 text-slate-600'
+                                  ? 'bg-amber-100 text-amber-900 border border-amber-200 rounded-full'
+                                  : 'bg-slate-100 text-slate-600 rounded-full'
                               }`}
                             >
                               #{entry.rank}
                             </span>
                           </td>
                           <td className="py-3.5 px-4">
-                            <div className="font-bold text-[#0f172a]">{entry.team.name}</div>
-                            <div className="font-mono text-[10px] text-[#64748b]">{entry.team.code}</div>
+                            <div className={`font-bold ${isVarsity ? 'font-headline text-[#1c1c18]' : 'text-[#0f172a]'}`}>{entry.team.name}</div>
+                            <div className={`text-[10px] ${isVarsity ? 'font-anton text-[#534345]' : 'font-mono text-[#64748b]'}`}>{entry.team.code}</div>
                           </td>
-                          <td className="py-3.5 px-4 text-[#334155]">
+                          <td className={`py-3.5 px-4 ${isVarsity ? 'text-[#534345]' : 'text-[#334155]'}`}>
                             {entry.team.institution || 'Collegiate House'}
                           </td>
                           <td className="py-3.5 px-3 text-center font-mono font-bold text-amber-700">
@@ -1774,7 +2400,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                           <td className="py-3.5 px-3 text-center font-mono font-bold text-amber-800">
                             {entry.thirdPlaceCount}
                           </td>
-                          <td className="py-3.5 px-4 text-right font-mono font-bold text-base text-[#0f172a]">
+                          <td className={`py-3.5 px-4 text-right font-bold text-base ${isVarsity ? 'font-anton text-[#5b192a]' : 'font-mono text-[#0f172a]'}`}>
                             {entry.totalPoints} pts
                           </td>
                         </tr>
@@ -1790,15 +2416,19 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
           {leaderboardType === 'individual' && (
             <div className="space-y-6">
               {/* Category Filter Pills */}
-              <div className="flex flex-wrap items-center gap-2 pb-2 border-b border-[#e2e8f0]">
-                <span className="text-xs font-bold text-[#64748b] mr-1 uppercase tracking-wider">Category:</span>
+              <div className={`flex flex-wrap items-center gap-2 pb-2 border-b ${isVarsity ? 'border-[#1c1c18]/20' : 'border-[#e2e8f0]'}`}>
+                <span className={`text-xs font-bold mr-1 uppercase tracking-wider ${isVarsity ? 'font-anton text-[#1c1c18]' : 'text-[#64748b]'}`}>Category:</span>
                 <button
                   type="button"
                   onClick={() => setLeaderboardCategory('all')}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                    leaderboardCategory === 'all'
-                      ? 'bg-[#0d9488] text-white shadow-xs'
-                      : 'bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1] hover:bg-[#ccfbf1]'
+                  className={`px-3.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                    isVarsity
+                      ? leaderboardCategory === 'all'
+                        ? 'bg-[#5b192a] text-white font-anton uppercase tracking-wider rounded-none'
+                        : 'bg-[#f7f3ed] text-[#5b192a] border border-[#1c1c18] font-anton uppercase tracking-wider rounded-none hover:bg-[#ffd9de]/40'
+                      : leaderboardCategory === 'all'
+                      ? 'bg-[#0d9488] text-white shadow-xs rounded-full'
+                      : 'bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1] hover:bg-[#ccfbf1] rounded-full'
                   }`}
                 >
                   All Categories (Overall Champions)
@@ -1808,10 +2438,14 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                     key={c.id}
                     type="button"
                     onClick={() => setLeaderboardCategory(c.name)}
-                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                      leaderboardCategory.toLowerCase() === c.name.toLowerCase()
-                        ? 'bg-[#0d9488] text-white shadow-xs'
-                        : 'bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1] hover:bg-[#ccfbf1]'
+                    className={`px-3.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                      isVarsity
+                        ? leaderboardCategory.toLowerCase() === c.name.toLowerCase()
+                          ? 'bg-[#5b192a] text-white font-anton uppercase tracking-wider rounded-none'
+                          : 'bg-[#f7f3ed] text-[#5b192a] border border-[#1c1c18] font-anton uppercase tracking-wider rounded-none hover:bg-[#ffd9de]/40'
+                        : leaderboardCategory.toLowerCase() === c.name.toLowerCase()
+                        ? 'bg-[#0d9488] text-white shadow-xs rounded-full'
+                        : 'bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1] hover:bg-[#ccfbf1] rounded-full'
                     }`}
                   >
                     {c.name}
@@ -1823,82 +2457,92 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               {individualLeaderboardData.length >= 3 && individualLeaderboardData[0].totalPoints > 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* 2nd Place Individual */}
-                  <div className="order-2 md:order-1 bg-white border border-[#e2e8f0] rounded-3xl p-5 flex flex-col justify-between shadow-[0_4px_14px_rgba(15,23,42,0.05)]">
+                  <div className={`order-2 md:order-1 ${isVarsity ? 'vh-card rounded-none p-5 flex flex-col justify-between' : 'bg-white border border-[#e2e8f0] rounded-3xl p-5 flex flex-col justify-between shadow-[0_4px_14px_rgba(15,23,42,0.05)]'}`}>
                     <div>
                       <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs font-black bg-[#f1f5f9] text-[#334155] border border-[#e2e8f0] px-3 py-1 rounded-full">
+                        <span className={isVarsity ? 'font-anton text-xs bg-[#e6e2dc] text-[#1c1c18] border border-[#1c1c18] px-3 py-1 uppercase tracking-wider' : 'text-xs font-black bg-[#f1f5f9] text-[#334155] border border-[#e2e8f0] px-3 py-1 rounded-full'}>
                           🥈 2nd Place
                         </span>
-                        <span className="font-mono font-bold text-xs bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4] px-2.5 py-0.5 rounded-full">
+                        <span className={isVarsity ? 'font-anton text-xs bg-[#e6e2dc] text-[#1c1c18] border border-[#1c1c18] px-2.5 py-0.5 uppercase tracking-wider' : 'font-mono font-bold text-xs bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4] px-2.5 py-0.5 rounded-full'}>
                           Chest #{individualLeaderboardData[1].participant.chestNumber || individualLeaderboardData[1].participant.id}
                         </span>
                       </div>
-                      <h4 className="text-lg font-black text-[#0f172a]">{individualLeaderboardData[1].participant.name}</h4>
-                      <p className="text-xs text-[#64748b] mt-0.5">
+                      <h4 className={isVarsity ? 'font-headline font-bold text-lg text-[#1c1c18]' : 'text-lg font-black text-[#0f172a]'}>{individualLeaderboardData[1].participant.name}</h4>
+                      <p className={`text-xs mt-0.5 ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>
                         {individualLeaderboardData[1].team?.name || 'Independent'} • {individualLeaderboardData[1].category}
                       </p>
                     </div>
-                    <div className="mt-4 pt-3 border-t border-[#e2e8f0] flex items-center justify-between">
-                      <span className="text-xs text-[#64748b] font-medium">
+                    <div className={`mt-4 pt-3 border-t flex items-center justify-between ${isVarsity ? 'border-[#1c1c18]/20 font-body-serif' : 'border-[#e2e8f0]'}`}>
+                      <span className={`text-xs ${isVarsity ? 'text-[#534345]' : 'text-[#64748b] font-medium'}`}>
                         🥇 {individualLeaderboardData[1].firstPlaceCount} • 🥈 {individualLeaderboardData[1].secondPlaceCount} • 🥉 {individualLeaderboardData[1].thirdPlaceCount}
                       </span>
-                      <span className="font-mono font-black text-lg text-[#0f172a]">
+                      <span className={`font-bold ${isVarsity ? 'font-anton text-2xl text-[#1c1c18]' : 'font-mono font-black text-lg text-[#0f172a]'}`}>
                         {individualLeaderboardData[1].totalPoints} pts
                       </span>
                     </div>
                   </div>
 
                   {/* 1st Place Individual Champion */}
-                  <div className="order-1 md:order-2 bg-gradient-to-b from-[#f0fdfa] via-white to-white border-2 border-[#0d9488] rounded-3xl p-6 flex flex-col justify-between shadow-[0_12px_30px_rgba(13,148,136,0.15)] relative -translate-y-1 ring-4 ring-[#0d9488]/20">
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#0d9488] text-white font-black text-[11px] uppercase tracking-wider px-3.5 py-0.5 rounded-full shadow-xs">
-                      Category Champion
-                    </div>
+                  <div className={`order-1 md:order-2 ${
+                    isVarsity
+                      ? 'bg-[#fdf9f3] border-2 border-[#782f40] rounded-none p-6 flex flex-col justify-between shadow-[6px_6px_0px_#782f40] relative -translate-y-1'
+                      : 'bg-gradient-to-b from-[#f0fdfa] via-white to-white border-2 border-[#0d9488] rounded-3xl p-6 flex flex-col justify-between shadow-[0_12px_30px_rgba(13,148,136,0.15)] relative -translate-y-1 ring-4 ring-[#0d9488]/20'
+                  }`}>
+                    {isVarsity ? (
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 vh-pennant-burgundy px-3.5 py-0.5 text-[11px] uppercase tracking-wider">
+                        Category Champion
+                      </div>
+                    ) : (
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#0d9488] text-white font-black text-[11px] uppercase tracking-wider px-3.5 py-0.5 rounded-full shadow-xs">
+                        Category Champion
+                      </div>
+                    )}
                     <div>
                       <div className="flex items-center justify-between mb-3 mt-1">
-                        <span className="text-xs font-black bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4] px-3 py-1 rounded-full flex items-center gap-1">
-                          <Trophy className="w-3.5 h-3.5 text-[#0d9488]" />
+                        <span className={isVarsity ? 'font-anton text-xs bg-[#ffd9de] text-[#5b192a] border border-[#782f40] px-3 py-1 uppercase tracking-wider flex items-center gap-1' : 'text-xs font-black bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4] px-3 py-1 rounded-full flex items-center gap-1'}>
+                          <Trophy className={`w-3.5 h-3.5 ${isVarsity ? 'text-[#782f40]' : 'text-[#0d9488]'}`} />
                           1st Place Champion
                         </span>
-                        <span className="font-mono font-bold text-xs bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4] px-2.5 py-1 rounded-full">
+                        <span className={isVarsity ? 'font-anton text-xs bg-[#ffd9de] text-[#5b192a] border border-[#782f40] px-2.5 py-0.5 uppercase tracking-wider' : 'font-mono font-bold text-xs bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4] px-2.5 py-1 rounded-full'}>
                           Chest #{individualLeaderboardData[0].participant.chestNumber || individualLeaderboardData[0].participant.id}
                         </span>
                       </div>
-                      <h4 className="text-xl font-black text-[#0f172a]">{individualLeaderboardData[0].participant.name}</h4>
-                      <p className="text-xs text-[#64748b] mt-0.5">
+                      <h4 className={isVarsity ? 'font-headline font-bold text-xl text-[#1c1c18]' : 'text-xl font-black text-[#0f172a]'}>{individualLeaderboardData[0].participant.name}</h4>
+                      <p className={`text-xs mt-0.5 ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>
                         {individualLeaderboardData[0].team?.name || 'Independent'} • {individualLeaderboardData[0].category}
                       </p>
                     </div>
-                    <div className="mt-4 pt-3 border-t border-[#ccfbf1] flex items-center justify-between">
-                      <span className="text-xs text-[#0f766e] font-bold">
+                    <div className={`mt-4 pt-3 border-t flex items-center justify-between ${isVarsity ? 'border-[#782f40]/30 font-anton text-[#5b192a]' : 'border-[#ccfbf1] text-[#0f766e] font-bold'}`}>
+                      <span className="text-xs">
                         🥇 {individualLeaderboardData[0].firstPlaceCount} • 🥈 {individualLeaderboardData[0].secondPlaceCount} • 🥉 {individualLeaderboardData[0].thirdPlaceCount}
                       </span>
-                      <span className="font-mono font-black text-2xl text-[#0f172a]">
+                      <span className={isVarsity ? 'font-anton text-3xl text-[#5b192a]' : 'font-mono font-black text-2xl text-[#0f172a]'}>
                         {individualLeaderboardData[0].totalPoints} pts
                       </span>
                     </div>
                   </div>
 
                   {/* 3rd Place Individual */}
-                  <div className="order-3 bg-white border border-amber-200 rounded-3xl p-5 flex flex-col justify-between shadow-[0_4px_14px_rgba(15,23,42,0.04)]">
+                  <div className={`order-3 ${isVarsity ? 'vh-card rounded-none p-5 flex flex-col justify-between' : 'bg-white border border-amber-200 rounded-3xl p-5 flex flex-col justify-between shadow-[0_4px_14px_rgba(15,23,42,0.04)]'}`}>
                     <div>
                       <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs font-black bg-amber-100 text-amber-900 border border-amber-200 px-3 py-1 rounded-full">
+                        <span className={isVarsity ? 'font-anton text-xs bg-[#ffdeab] text-[#432d00] border border-[#a47e3b] px-3 py-1 uppercase tracking-wider' : 'text-xs font-black bg-amber-100 text-amber-900 border border-amber-200 px-3 py-1 rounded-full'}>
                           🥉 3rd Place
                         </span>
-                        <span className="font-mono font-bold text-xs bg-amber-100 text-amber-900 border border-amber-200 px-2.5 py-0.5 rounded-full">
+                        <span className={isVarsity ? 'font-anton text-xs bg-[#ffdeab] text-[#432d00] border border-[#a47e3b] px-2.5 py-0.5 uppercase tracking-wider' : 'font-mono font-bold text-xs bg-amber-100 text-amber-900 border border-amber-200 px-2.5 py-0.5 rounded-full'}>
                           Chest #{individualLeaderboardData[2].participant.chestNumber || individualLeaderboardData[2].participant.id}
                         </span>
                       </div>
-                      <h4 className="text-lg font-black text-[#0f172a]">{individualLeaderboardData[2].participant.name}</h4>
-                      <p className="text-xs text-[#64748b] mt-0.5">
+                      <h4 className={isVarsity ? 'font-headline font-bold text-lg text-[#1c1c18]' : 'text-lg font-black text-[#0f172a]'}>{individualLeaderboardData[2].participant.name}</h4>
+                      <p className={`text-xs mt-0.5 ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>
                         {individualLeaderboardData[2].team?.name || 'Independent'} • {individualLeaderboardData[2].category}
                       </p>
                     </div>
-                    <div className="mt-4 pt-3 border-t border-[#e2e8f0] flex items-center justify-between">
-                      <span className="text-xs text-[#64748b] font-medium">
+                    <div className={`mt-4 pt-3 border-t flex items-center justify-between ${isVarsity ? 'border-[#1c1c18]/20 font-body-serif' : 'border-[#e2e8f0]'}`}>
+                      <span className={`text-xs ${isVarsity ? 'text-[#534345]' : 'text-[#64748b] font-medium'}`}>
                         🥇 {individualLeaderboardData[2].firstPlaceCount} • 🥈 {individualLeaderboardData[2].secondPlaceCount} • 🥉 {individualLeaderboardData[2].thirdPlaceCount}
                       </span>
-                      <span className="font-mono font-black text-lg text-[#0f172a]">
+                      <span className={`font-bold ${isVarsity ? 'font-anton text-2xl text-[#1c1c18]' : 'font-mono font-black text-lg text-[#0f172a]'}`}>
                         {individualLeaderboardData[2].totalPoints} pts
                       </span>
                     </div>
@@ -1907,19 +2551,23 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               )}
 
               {/* Complete Individual Leaderboard Table */}
-              <div className="bg-white border border-[#e2e8f0] rounded-2xl overflow-hidden shadow-xs">
-                <div className="p-4 bg-[#f0fdfa] border-b border-[#ccfbf1] text-xs text-[#0f766e] flex items-center justify-between">
-                  <span className="font-bold text-[#0f172a]">
+              <div className={isVarsity ? 'bg-[#fdf9f3] border-2 border-[#1c1c18] rounded-none overflow-hidden shadow-[4px_4px_0px_#1c1c18]' : 'bg-white border border-[#e2e8f0] rounded-2xl overflow-hidden shadow-xs'}>
+                <div className={`p-4 border-b text-xs flex items-center justify-between ${
+                  isVarsity ? 'bg-[#e6e2dc] border-[#1c1c18] text-[#1c1c18]' : 'bg-[#f0fdfa] border-[#ccfbf1] text-[#0f766e]'
+                }`}>
+                  <span className={`font-bold ${isVarsity ? 'font-headline text-[#1c1c18]' : 'text-[#0f172a]'}`}>
                     Individual Contestants Standings — {leaderboardCategory === 'all' ? 'All Categories' : `${leaderboardCategory} Category`}
                   </span>
-                  <span className="font-mono text-[11px] text-[#0f766e] font-bold">
+                  <span className={`font-mono text-[11px] font-bold ${isVarsity ? 'text-[#5b192a]' : 'text-[#0f766e]'}`}>
                     Tie-breaker: Points &gt; 1st &gt; 2nd &gt; Marks
                   </span>
                 </div>
                 <div className="overflow-x-auto w-full max-w-full">
                   <table className="w-full text-left text-xs min-w-[560px]">
                     <thead>
-                      <tr className="border-b border-[#e2e8f0] text-[#64748b] uppercase tracking-wider text-[11px] bg-[#faf8ff]">
+                      <tr className={`border-b text-[11px] ${
+                        isVarsity ? 'border-[#1c1c18] text-[#1c1c18] font-anton uppercase tracking-wider bg-[#f1ede7]' : 'border-[#e2e8f0] text-[#64748b] uppercase tracking-wider bg-[#faf8ff]'
+                      }`}>
                         <th className="py-3 px-3 text-center w-16">Rank</th>
                         <th className="py-3 px-4">Chest #</th>
                         <th className="py-3 px-4">Contestant</th>
@@ -1932,16 +2580,16 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                         <th className="py-3 px-4 text-right">Individual Points</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#f1f5f9]">
+                    <tbody className={`divide-y ${isVarsity ? 'divide-[#1c1c18]/15 font-body-serif' : 'divide-[#f1f5f9]'}`}>
                       {individualLeaderboardData.length === 0 ? (
                         <tr>
-                          <td colSpan={10} className="py-12 text-center text-[#64748b]">
+                          <td colSpan={10} className={`py-12 text-center ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>
                             No participants scored yet in this category.
                           </td>
                         </tr>
                       ) : (
                         individualLeaderboardData.map((entry) => (
-                          <tr key={entry.participant.id} className="hover:bg-[#f0fdfa]/60 transition-colors">
+                          <tr key={entry.participant.id} className={isVarsity ? 'hover:bg-[#ffd9de]/20 transition-colors' : 'hover:bg-[#f0fdfa]/60 transition-colors'}>
                             <td className="py-3.5 px-3 text-center font-mono font-bold">
                               {entry.totalPoints > 0 ? (
                                 <span className="inline-flex items-center gap-1">
@@ -1949,24 +2597,32 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                                   #{entry.rank}
                                 </span>
                               ) : (
-                                <span className="text-[#64748b] font-normal">-</span>
+                                <span className={isVarsity ? 'text-[#534345] font-normal' : 'text-[#64748b] font-normal'}>-</span>
                               )}
                             </td>
                             <td className="py-3.5 px-4 font-mono">
-                              <span className="font-mono font-bold text-xs bg-[#ccfbf1] text-[#0f766e] px-2.5 py-1 rounded-full border border-[#99f6e4] shadow-2xs">
+                              <span className={`font-mono font-bold text-xs px-2.5 py-1 ${
+                                isVarsity
+                                  ? 'bg-[#e6e2dc] text-[#1c1c18] border border-[#1c1c18] rounded-none font-anton'
+                                  : 'bg-[#ccfbf1] text-[#0f766e] rounded-full border border-[#99f6e4] shadow-2xs'
+                              }`}>
                                 #{entry.participant.chestNumber || entry.participant.id}
                               </span>
                             </td>
                             <td className="py-3.5 px-4">
-                              <div className="font-bold text-[#0f172a]">{entry.participant.name}</div>
-                              <div className="font-mono text-[10px] text-[#64748b]">ID: {entry.participant.id}</div>
+                              <div className={`font-bold ${isVarsity ? 'font-headline text-[#1c1c18]' : 'text-[#0f172a]'}`}>{entry.participant.name}</div>
+                              <div className={`text-[10px] ${isVarsity ? 'font-anton text-[#534345]' : 'font-mono text-[#64748b]'}`}>ID: {entry.participant.id}</div>
                             </td>
                             <td className="py-3.5 px-4">
-                              <div className="font-semibold text-[#0f172a]">{entry.team?.name || 'Independent'}</div>
-                              <div className="text-[10px] text-[#64748b]">{entry.team?.institution}</div>
+                              <div className={`font-semibold ${isVarsity ? 'text-[#1c1c18]' : 'text-[#0f172a]'}`}>{entry.team?.name || 'Independent'}</div>
+                              <div className={`text-[10px] ${isVarsity ? 'text-[#534345]' : 'text-[#64748b]'}`}>{entry.team?.institution}</div>
                             </td>
                             <td className="py-3.5 px-3">
-                              <span className="px-2.5 py-0.5 rounded-full bg-[#f0fdfa] border border-[#ccfbf1] text-[#0f766e] font-medium">
+                              <span className={`px-2.5 py-0.5 ${
+                                isVarsity
+                                  ? 'bg-[#ffd9de] text-[#5b192a] border border-[#782f40] rounded-none font-anton text-[10px] uppercase'
+                                  : 'rounded-full bg-[#f0fdfa] border border-[#ccfbf1] text-[#0f766e] font-medium'
+                              }`}>
                                 {entry.category}
                               </span>
                             </td>
@@ -1982,7 +2638,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                             <td className="py-3.5 px-2 text-center font-mono text-[#334155]">
                               {entry.totalMarks}
                             </td>
-                            <td className="py-3.5 px-4 text-right font-mono font-bold text-[#0f172a] text-sm">
+                            <td className={`py-3.5 px-4 text-right font-bold text-base ${isVarsity ? 'font-anton text-[#5b192a]' : 'font-mono text-[#0f172a]'}`}>
                               {entry.totalPoints} pts
                             </td>
                           </tr>
@@ -2005,19 +2661,19 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
           <div className="border-b border-[#e2e8f0] pb-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f0fdfa] border border-[#99f6e4] text-[#0f766e] text-xs font-bold uppercase tracking-wider">
+                <span className={isVarsity ? 'vh-pennant uppercase' : 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f0fdfa] border border-[#99f6e4] text-[#0f766e] text-xs font-bold uppercase tracking-wider'}>
                   Official Student Directory & Live Search
                 </span>
-                <h3 className="text-xl sm:text-3xl font-extrabold tracking-tight text-[#0f172a] mt-2 font-display break-words">
+                <h3 className={`text-xl sm:text-3xl font-extrabold tracking-tight mt-2 break-words ${isVarsity ? 'font-headline text-[#1c1c18]' : 'text-[#0f172a] font-display'}`}>
                   Student & Contestant Lookup
                 </h3>
-                <p className="text-xs sm:text-sm text-[#64748b] mt-1">
+                <p className={`text-xs sm:text-sm mt-1 ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>
                   Search any student by Chest Number or Name to inspect event schedules, registered programmes, and live points won.
                 </p>
               </div>
 
               <div className="flex items-center gap-2 self-start sm:self-auto">
-                <span className="text-xs font-bold bg-[#f0fdfa] text-[#0f766e] px-3.5 py-1.5 rounded-full border border-[#ccfbf1]">
+                <span className={isVarsity ? 'font-anton text-xs bg-[#e6e2dc] text-[#1c1c18] px-3.5 py-1.5 border border-[#1c1c18] uppercase tracking-wider' : 'text-xs font-bold bg-[#f0fdfa] text-[#0f766e] px-3.5 py-1.5 rounded-full border border-[#ccfbf1]'}>
                   {festParticipants.length} Contestants Enrolled
                 </span>
               </div>
@@ -2025,16 +2681,22 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
             {/* Search Input Bar */}
             <div className="mt-5 sm:mt-6 max-w-2xl w-full">
-              <div className="relative flex items-center bg-white border-2 border-[#e2e8f0] focus-within:border-[#0d9488] focus-within:ring-3 focus-within:ring-[#0d9488]/15 rounded-2xl shadow-xs transition-colors">
-                <div className="pl-4 text-[#0d9488]">
-                  <Search className="w-5 h-5 text-[#0d9488]" />
+              <div className={`relative flex items-center border-2 transition-colors ${
+                isVarsity
+                  ? 'bg-[#fdf9f3] border-[#1c1c18] rounded-none focus-within:border-[#782f40] shadow-[4px_4px_0px_#1c1c18]'
+                  : 'bg-white border-[#e2e8f0] focus-within:border-[#0d9488] focus-within:ring-3 focus-within:ring-[#0d9488]/15 rounded-2xl shadow-xs'
+              }`}>
+                <div className={`pl-4 ${isVarsity ? 'text-[#782f40]' : 'text-[#0d9488]'}`}>
+                  <Search className="w-5 h-5" />
                 </div>
                 <input
                   type="text"
                   value={studentSearchQuery}
                   onChange={(e) => setStudentSearchQuery(e.target.value)}
                   placeholder="Search by Chest Number (e.g. 104, PT-104) or Student Name..."
-                  className="w-full pl-3 pr-10 py-3 text-base text-[#0f172a] bg-transparent focus:outline-none placeholder:text-[#64748b] font-medium"
+                  className={`w-full pl-3 pr-10 py-3 text-base bg-transparent focus:outline-none font-medium ${
+                    isVarsity ? 'font-body-serif text-[#1c1c18] placeholder:text-[#534345]' : 'text-[#0f172a] placeholder:text-[#64748b]'
+                  }`}
                   autoFocus
                 />
                 {studentSearchQuery && (
@@ -2058,14 +2720,18 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
             if (queryPresent && studentsToDisplay.length === 0) {
               return (
-                <div className="p-16 text-center border-2 border-dashed border-[#e2e8f0] rounded-3xl bg-[#faf8ff] space-y-3">
-                  <div className="w-12 h-12 rounded-2xl bg-[#f0fdfa] text-[#0d9488] border border-[#ccfbf1] flex items-center justify-center mx-auto">
+                <div className={`p-16 text-center border-2 space-y-3 ${
+                  isVarsity ? 'vh-card rounded-none' : 'border-dashed border-[#e2e8f0] rounded-3xl bg-[#faf8ff]'
+                }`}>
+                  <div className={`w-12 h-12 flex items-center justify-center mx-auto ${
+                    isVarsity ? 'bg-[#ffd9de] text-[#5b192a] border border-[#782f40]' : 'rounded-2xl bg-[#f0fdfa] text-[#0d9488] border border-[#ccfbf1]'
+                  }`}>
                     <Search className="w-6 h-6" />
                   </div>
-                  <h4 className="text-base font-bold text-[#0f172a]">
+                  <h4 className={`text-base font-bold ${isVarsity ? 'font-headline text-[#1c1c18]' : 'text-[#0f172a]'}`}>
                     No participant found matching "{studentSearchQuery}"
                   </h4>
-                  <p className="text-xs text-[#64748b] max-w-md mx-auto">
+                  <p className={`text-xs max-w-md mx-auto ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>
                     Please verify the chest number (e.g. 101, CH-12) or try searching by the participant's full name.
                   </p>
                 </div>
@@ -2074,7 +2740,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
             return (
               <div className="space-y-4">
-                <div className="flex items-center justify-between text-xs text-[#64748b] font-medium">
+                <div className={`flex items-center justify-between text-xs font-medium ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>
                   <span>
                     Showing {studentsToDisplay.length} {studentsToDisplay.length === 1 ? 'student' : 'students'}
                     {queryPresent ? ` for "${studentSearchQuery}"` : ''}
@@ -2092,46 +2758,50 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                     return (
                       <div
                         key={student.id}
-                        className="bg-white border border-[#e2e8f0] rounded-2xl p-5 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04)] hover:shadow-[0_8px_20px_-4px_rgba(13,148,136,0.12)] hover:border-[#99f6e4] transition-all flex flex-col justify-between space-y-4"
+                        className={isVarsity ? 'vh-card rounded-none p-5 flex flex-col justify-between space-y-4' : 'bg-white border border-[#e2e8f0] rounded-2xl p-5 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04)] hover:shadow-[0_8px_20px_-4px_rgba(13,148,136,0.12)] hover:border-[#99f6e4] transition-all flex flex-col justify-between space-y-4'}
                       >
                         <div>
                           {/* Top Badges */}
                           <div className="flex items-center justify-between gap-2 mb-3">
-                            <span className="font-mono font-bold text-xs bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4] px-3 py-1 rounded-full shadow-2xs">
+                            <span className={isVarsity ? 'font-anton text-xs bg-[#ffd9de] text-[#5b192a] border border-[#782f40] px-3 py-1 uppercase tracking-wider' : 'font-mono font-bold text-xs bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4] px-3 py-1 rounded-full shadow-2xs'}>
                               Chest #{student.chestNumber || student.id}
                             </span>
-                            <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1]">
+                            <span className={isVarsity ? 'font-anton text-[11px] px-2.5 py-0.5 bg-[#d6e3ff] text-[#1b365d] border border-[#1b365d] uppercase tracking-wider' : 'text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1]'}>
                               {student.category}
                             </span>
                           </div>
 
                           {/* Student Info */}
                           <div className="flex items-start gap-3">
-                            <div className="w-10 h-10 rounded-full bg-[#0d9488] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
+                            <div className={`w-10 h-10 flex items-center justify-center font-bold text-sm shrink-0 shadow-xs ${
+                              isVarsity ? 'bg-[#5b192a] text-white font-anton rounded-none' : 'rounded-full bg-[#0d9488] text-white'
+                            }`}>
                               {student.name.charAt(0)}
                             </div>
                             <div className="min-w-0">
-                              <h4 className="font-bold text-base text-[#0f172a] truncate">{student.name}</h4>
-                              <p className="text-xs text-[#334155] mt-0.5">
-                                House: <strong className="text-[#0f172a]">{team?.name || 'Team'}</strong>
+                              <h4 className={`font-bold text-base truncate ${isVarsity ? 'font-headline text-[#1c1c18]' : 'text-[#0f172a]'}`}>{student.name}</h4>
+                              <p className={`text-xs mt-0.5 ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#334155]'}`}>
+                                House: <strong className={isVarsity ? 'text-[#1c1c18]' : 'text-[#0f172a]'}>{team?.name || 'Team'}</strong>
                               </p>
                               {team?.institution && (
-                                <p className="text-[11px] text-[#64748b] truncate">{team.institution}</p>
+                                <p className={`text-[11px] truncate ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>{team.institution}</p>
                               )}
                             </div>
                           </div>
 
                           {/* Points & Medals Strip */}
-                          <div className="mt-4 p-3 bg-[#faf8ff] border border-[#e2e8f0] rounded-xl flex items-center justify-between">
+                          <div className={`mt-4 p-3 border flex items-center justify-between ${
+                            isVarsity ? 'bg-[#f7f3ed] border-[#1c1c18]/20 rounded-none' : 'bg-[#faf8ff] border-[#e2e8f0] rounded-xl'
+                          }`}>
                             <div>
-                              <span className="text-[10px] text-[#64748b] uppercase font-bold tracking-wider block">Total Points</span>
-                              <span className="font-mono font-black text-base text-[#0f172a]">
+                              <span className={`text-[10px] uppercase font-bold tracking-wider block ${isVarsity ? 'font-anton text-[#534345]' : 'text-[#64748b]'}`}>Total Points</span>
+                              <span className={`font-black text-base ${isVarsity ? 'font-anton text-xl text-[#5b192a]' : 'font-mono text-[#0f172a]'}`}>
                                 {stats.totalPoints} pts
                               </span>
                             </div>
                             <div className="text-right">
-                              <span className="text-[10px] text-[#64748b] uppercase font-bold tracking-wider block">Medals Won</span>
-                              <span className="text-xs font-bold text-[#334155]">
+                              <span className={`text-[10px] uppercase font-bold tracking-wider block ${isVarsity ? 'font-anton text-[#534345]' : 'text-[#64748b]'}`}>Medals Won</span>
+                              <span className={`text-xs font-bold ${isVarsity ? 'font-body-serif text-[#1c1c18]' : 'text-[#334155]'}`}>
                                 🥇 {stats.goldCount} · 🥈 {stats.silverCount} · 🥉 {stats.bronzeCount}
                               </span>
                             </div>
@@ -2139,28 +2809,32 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
                           {/* Registered Programmes */}
                           <div className="mt-3.5 space-y-1.5">
-                            <span className="text-[10px] text-[#64748b] uppercase font-bold tracking-wider block">
+                            <span className={`text-[10px] uppercase font-bold tracking-wider block ${isVarsity ? 'font-anton text-[#534345]' : 'text-[#64748b]'}`}>
                               Events ({studentProgs.length})
                             </span>
                             {studentProgs.length === 0 ? (
-                              <p className="text-xs text-[#64748b] italic">No events assigned yet.</p>
+                              <p className={`text-xs italic ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>No events assigned yet.</p>
                             ) : (
                               studentProgs.slice(0, 3).map((prg) => {
                                 const res = stats.studentResults.find((r) => r.programmeId === prg.id);
                                 return (
                                   <div
                                     key={prg.id}
-                                    className="flex items-center justify-between text-xs py-1.5 px-2.5 rounded-lg bg-[#faf8ff] border border-[#e2e8f0]"
+                                    className={`flex items-center justify-between text-xs py-1.5 px-2.5 border ${
+                                      isVarsity
+                                        ? 'bg-[#f7f3ed] border-[#1c1c18]/20 rounded-none font-body-serif text-[#1c1c18]'
+                                        : 'rounded-lg bg-[#faf8ff] border-[#e2e8f0]'
+                                    }`}
                                   >
-                                    <span className="font-medium text-[#0f172a] truncate max-w-[170px]">
+                                    <span className="font-medium truncate max-w-[170px]">
                                       {prg.name}
                                     </span>
                                     {res ? (
-                                      <span className="font-mono font-bold text-[11px] text-[#0f766e] bg-[#ccfbf1] px-2 py-0.5 rounded-full border border-[#99f6e4]">
+                                      <span className={isVarsity ? 'font-anton text-[11px] text-[#5b192a] bg-[#ffd9de] px-2 py-0.5 border border-[#782f40] uppercase' : 'font-mono font-bold text-[11px] text-[#0f766e] bg-[#ccfbf1] px-2 py-0.5 rounded-full border border-[#99f6e4]'}>
                                         Rank #{res.rank} (+{res.pointsAwarded} pts)
                                       </span>
                                     ) : (
-                                      <span className="text-[10px] text-[#64748b] font-medium">
+                                      <span className={`text-[10px] font-medium ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>
                                         {prg.venue || 'Scheduled'}
                                       </span>
                                     )}
@@ -2169,7 +2843,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                               })
                             )}
                             {studentProgs.length > 3 && (
-                              <span className="text-[11px] text-[#64748b] block pt-0.5">
+                              <span className={`text-[11px] block pt-0.5 ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>
                                 +{studentProgs.length - 3} more events
                               </span>
                             )}
@@ -2177,13 +2851,17 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                         </div>
 
                         {/* View Card Button */}
-                        <div className="pt-2 border-t border-[#e2e8f0]">
+                        <div className={`pt-2 border-t ${isVarsity ? 'border-[#1c1c18]/20' : 'border-[#e2e8f0]'}`}>
                           <button
                             type="button"
                             onClick={() => setSelectedStudentForModal(student)}
-                            className="w-full py-2 px-3 text-xs font-bold text-[#0f766e] bg-[#f0fdfa] border border-[#ccfbf1] rounded-full hover:bg-[#ccfbf1] transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                            className={`w-full py-2 px-3 text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
+                              isVarsity
+                                ? 'vh-btn-secondary rounded-none uppercase'
+                                : 'text-[#0f766e] bg-[#f0fdfa] border border-[#ccfbf1] rounded-full hover:bg-[#ccfbf1]'
+                            }`}
                           >
-                            <User className="w-3.5 h-3.5 text-[#0d9488]" />
+                            <User className="w-3.5 h-3.5" />
                             <span>View Full Student Card</span>
                           </button>
                         </div>
@@ -2204,10 +2882,10 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
         <section className="py-8 sm:py-12 max-w-7xl mx-auto px-3.5 sm:px-8 space-y-6 w-full max-w-full overflow-hidden">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#e2e8f0] pb-4">
             <div>
-              <h3 className="text-2xl font-extrabold tracking-tight text-[#0f172a] font-display">
+              <h3 className={`text-2xl font-extrabold tracking-tight ${isVarsity ? 'font-headline text-[#1c1c18]' : 'text-[#0f172a] font-display'}`}>
                 Official Photo Gallery
               </h3>
-              <p className="text-xs text-[#64748b] mt-1">
+              <p className={`text-xs mt-1 ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>
                 Admin-curated captures and stage recordings across all festival programs.
               </p>
             </div>
@@ -2218,10 +2896,14 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                 <button
                   key={cat}
                   onClick={() => setActiveCategory(cat)}
-                  className={`px-3.5 py-1.5 rounded-full transition-all whitespace-nowrap cursor-pointer ${
-                    activeCategory === cat
-                      ? 'bg-[#0d9488] text-white shadow-xs font-bold'
-                      : 'bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1] hover:bg-[#ccfbf1]'
+                  className={`px-3.5 py-1.5 transition-all whitespace-nowrap cursor-pointer ${
+                    isVarsity
+                      ? activeCategory === cat
+                        ? 'bg-[#5b192a] text-white font-anton uppercase tracking-wider rounded-none'
+                        : 'bg-[#f7f3ed] text-[#5b192a] border border-[#1c1c18] font-anton uppercase tracking-wider rounded-none hover:bg-[#ffd9de]/40'
+                      : activeCategory === cat
+                      ? 'bg-[#0d9488] text-white shadow-xs font-bold rounded-full'
+                      : 'bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1] hover:bg-[#ccfbf1] rounded-full'
                   }`}
                 >
                   {cat}
@@ -2231,9 +2913,9 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
           </div>
 
           {filteredGalleryPhotos.length === 0 ? (
-            <div className="p-16 text-center border-2 border-dashed border-[#e2e8f0] rounded-2xl bg-[#faf8ff]">
-              <ImageIcon className="w-10 h-10 text-[#0d9488]/40 mx-auto mb-2" />
-              <p className="text-xs font-bold text-[#0f172a]">No photos in this category</p>
+            <div className={`p-16 text-center border-2 ${isVarsity ? 'vh-card rounded-none' : 'border-dashed border-[#e2e8f0] rounded-2xl bg-[#faf8ff]'}`}>
+              <ImageIcon className={`w-10 h-10 mx-auto mb-2 ${isVarsity ? 'text-[#782f40]/40' : 'text-[#0d9488]/40'}`} />
+              <p className={`text-xs font-bold ${isVarsity ? 'font-headline text-[#1c1c18]' : 'text-[#0f172a]'}`}>No photos in this category</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -2241,7 +2923,11 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                 <div
                   key={photo.id}
                   onClick={() => setSelectedPhoto(photo)}
-                  className="group cursor-pointer rounded-2xl overflow-hidden bg-white border border-[#e2e8f0] shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04)] hover:shadow-[0_8px_20px_-4px_rgba(13,148,136,0.12)] hover:border-[#99f6e4] transition-all flex flex-col"
+                  className={`group cursor-pointer overflow-hidden transition-all flex flex-col ${
+                    isVarsity
+                      ? 'vh-card rounded-none hover:border-[#782f40]'
+                      : 'rounded-2xl bg-white border border-[#e2e8f0] shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04)] hover:shadow-[0_8px_20px_-4px_rgba(13,148,136,0.12)] hover:border-[#99f6e4]'
+                  }`}
                 >
                   <div className="aspect-4/3 w-full bg-slate-100 overflow-hidden relative">
                     <img
@@ -2253,11 +2939,13 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                       <Maximize2 className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md" />
                     </div>
                   </div>
-                  <div className="p-3 bg-white">
-                    <span className="text-[10px] font-bold text-[#0d9488] uppercase tracking-wider block">
+                  <div className={`p-3 ${isVarsity ? 'bg-[#fdf9f3]' : 'bg-white'}`}>
+                    <span className={`text-[10px] font-bold uppercase tracking-wider block ${isVarsity ? 'font-anton text-[#5b192a]' : 'text-[#0d9488]'}`}>
                       {photo.category || 'General'}
                     </span>
-                    <h4 className="text-xs font-bold text-[#0f172a] mt-0.5 truncate group-hover:text-[#0d9488] transition-colors">
+                    <h4 className={`text-xs font-bold mt-0.5 truncate transition-colors ${
+                      isVarsity ? 'font-headline text-[#1c1c18] group-hover:text-[#782f40]' : 'text-[#0f172a] group-hover:text-[#0d9488]'
+                    }`}>
                       {photo.caption}
                     </h4>
                   </div>
@@ -2276,33 +2964,35 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
           {/* Results Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#e2e8f0] pb-5">
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0d9488]/10 text-[#0d9488] font-bold text-xs uppercase tracking-wider mb-2">
-                <Trophy className="w-3.5 h-3.5" />
+              <div className={isVarsity ? 'vh-pennant uppercase text-xs inline-flex items-center gap-1.5 px-3 py-1 mb-2' : 'inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0d9488]/10 text-[#0d9488] font-bold text-xs uppercase tracking-wider mb-2'}>
+                <Trophy className={`w-3.5 h-3.5 ${isVarsity ? 'text-[#ffdeab]' : 'text-[#0d9488]'}`} />
                 Live Ratified Standings
               </div>
-              <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#0f172a] font-display">
+              <h3 className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${isVarsity ? 'font-headline text-[#1c1c18]' : 'text-[#0f172a] font-display'}`}>
                 Official Published Results
               </h3>
-              <p className="text-xs sm:text-sm text-[#64748b] mt-1">
+              <p className={`text-xs sm:text-sm mt-1 ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>
                 Official podium winners and ratified scores consolidated by competition event.
               </p>
             </div>
 
             {/* Quick Metrics */}
             <div className="flex items-center gap-3">
-              <div className="px-4 py-2 bg-[#f0fdfa] border border-[#ccfbf1] rounded-2xl text-center">
-                <span className="text-[10px] text-[#0f766e] font-semibold uppercase tracking-wider block">Events Published</span>
-                <span className="font-mono font-black text-lg text-[#0f172a]">{new Set(publishedResults.map(r => r.programmeId)).size}</span>
+              <div className={`px-4 py-2 text-center ${isVarsity ? 'bg-[#f7f3ed] border border-[#1c1c18] rounded-none' : 'bg-[#f0fdfa] border border-[#ccfbf1] rounded-2xl'}`}>
+                <span className={`text-[10px] font-semibold uppercase tracking-wider block ${isVarsity ? 'font-anton text-[#534345]' : 'text-[#0f766e]'}`}>Events Published</span>
+                <span className={`font-black text-lg ${isVarsity ? 'font-anton text-[#1c1c18]' : 'font-mono text-[#0f172a]'}`}>{new Set(publishedResults.map(r => r.programmeId)).size}</span>
               </div>
-              <div className="px-4 py-2 bg-amber-50/70 border border-amber-200 rounded-2xl text-center">
-                <span className="text-[10px] text-amber-800 font-semibold uppercase tracking-wider block">Total Winners</span>
-                <span className="font-mono font-black text-lg text-amber-900">{publishedResults.length}</span>
+              <div className={`px-4 py-2 text-center ${isVarsity ? 'bg-[#ffd9de]/30 border border-[#782f40] rounded-none' : 'bg-amber-50/70 border border-amber-200 rounded-2xl'}`}>
+                <span className={`text-[10px] font-semibold uppercase tracking-wider block ${isVarsity ? 'font-anton text-[#5b192a]' : 'text-amber-800'}`}>Total Winners</span>
+                <span className={`font-black text-lg ${isVarsity ? 'font-anton text-[#5b192a]' : 'font-mono text-amber-900'}`}>{publishedResults.length}</span>
               </div>
             </div>
           </div>
 
           {/* Search & Category Filter Controls */}
-          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 p-3 bg-white border border-[#e2e8f0] rounded-2xl shadow-xs">
+          <div className={`flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 p-3 shadow-xs ${
+            isVarsity ? 'vh-card rounded-none' : 'bg-white border border-[#e2e8f0] rounded-2xl'
+          }`}>
             <div className="relative flex-1">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
@@ -2310,7 +3000,9 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                 placeholder="Search event name, winner, chest number, or team..."
                 value={publicResultsSearch}
                 onChange={(e) => setPublicResultsSearch(e.target.value)}
-                className="w-full pl-9 pr-8 py-2 text-xs sm:text-sm bg-transparent border-0 focus:outline-none text-[#0f172a] placeholder:text-slate-400 font-medium"
+                className={`w-full pl-9 pr-8 py-2 text-xs sm:text-sm bg-transparent border-0 focus:outline-none placeholder:text-slate-400 font-medium ${
+                  isVarsity ? 'font-body-serif text-[#1c1c18]' : 'text-[#0f172a]'
+                }`}
               />
               {publicResultsSearch && (
                 <button
@@ -2328,10 +3020,14 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                 <button
                   type="button"
                   onClick={() => setPublicResultsFilterCat('all')}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
-                    publicResultsFilterCat === 'all'
-                      ? 'bg-[#0d9488] text-white shadow-xs font-bold'
-                      : 'bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1] hover:bg-[#ccfbf1]'
+                  className={`px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
+                    isVarsity
+                      ? publicResultsFilterCat === 'all'
+                        ? 'bg-[#5b192a] text-white font-anton uppercase tracking-wider rounded-none'
+                        : 'bg-[#f7f3ed] text-[#5b192a] border border-[#1c1c18] font-anton uppercase tracking-wider rounded-none hover:bg-[#ffd9de]/40'
+                      : publicResultsFilterCat === 'all'
+                      ? 'bg-[#0d9488] text-white shadow-xs font-bold rounded-full'
+                      : 'bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1] hover:bg-[#ccfbf1] rounded-full'
                   }`}
                 >
                   All Categories
@@ -2341,10 +3037,14 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                     key={cat}
                     type="button"
                     onClick={() => setPublicResultsFilterCat(cat)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
-                      publicResultsFilterCat.toLowerCase() === cat.toLowerCase()
-                        ? 'bg-[#0d9488] text-white shadow-xs font-bold'
-                        : 'bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1] hover:bg-[#ccfbf1]'
+                    className={`px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
+                      isVarsity
+                        ? publicResultsFilterCat.toLowerCase() === cat.toLowerCase()
+                          ? 'bg-[#5b192a] text-white font-anton uppercase tracking-wider rounded-none'
+                          : 'bg-[#f7f3ed] text-[#5b192a] border border-[#1c1c18] font-anton uppercase tracking-wider rounded-none hover:bg-[#ffd9de]/40'
+                        : publicResultsFilterCat.toLowerCase() === cat.toLowerCase()
+                        ? 'bg-[#0d9488] text-white shadow-xs font-bold rounded-full'
+                        : 'bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1] hover:bg-[#ccfbf1] rounded-full'
                     }`}
                   >
                     {cat}
@@ -2356,12 +3056,14 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
           {/* Grouped Event Results List */}
           {groupedPublishedResults.length === 0 ? (
-            <div className="p-12 text-center border border-[#e2e8f0] rounded-3xl bg-white shadow-xs">
-              <div className="w-12 h-12 rounded-full bg-[#f0fdfa] border border-[#ccfbf1] text-[#0d9488] flex items-center justify-center mx-auto mb-3">
-                <Trophy className="w-6 h-6 text-[#0d9488]" />
+            <div className={`p-12 text-center shadow-xs ${isVarsity ? 'vh-card rounded-none' : 'border border-[#e2e8f0] rounded-3xl bg-white'}`}>
+              <div className={`w-12 h-12 flex items-center justify-center mx-auto mb-3 ${
+                isVarsity ? 'bg-[#ffd9de] text-[#5b192a] border border-[#782f40] rounded-none' : 'rounded-full bg-[#f0fdfa] border border-[#ccfbf1] text-[#0d9488]'
+              }`}>
+                <Trophy className="w-6 h-6" />
               </div>
-              <h4 className="text-base font-bold text-[#0f172a]">No Results Found</h4>
-              <p className="text-xs text-[#64748b] mt-1 max-w-sm mx-auto">
+              <h4 className={`text-base font-bold ${isVarsity ? 'font-headline text-[#1c1c18]' : 'text-[#0f172a]'}`}>No Results Found</h4>
+              <p className={`text-xs mt-1 max-w-sm mx-auto ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>
                 {publicResultsSearch || publicResultsFilterCat !== 'all'
                   ? 'No published event results match your search and filter criteria.'
                   : 'Official results have not been ratified and published yet. Please check back as events conclude.'}
@@ -2377,19 +3079,21 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                 return (
                   <div
                     key={group.programmeId}
-                    className="bg-white border border-[#e2e8f0] rounded-3xl shadow-[0_2px_12px_-2px_rgba(15,23,42,0.06)] overflow-hidden transition-all hover:border-[#99f6e4]"
+                    className={isVarsity ? 'vh-card rounded-none overflow-hidden transition-all' : 'bg-white border border-[#e2e8f0] rounded-3xl shadow-[0_2px_12px_-2px_rgba(15,23,42,0.06)] overflow-hidden transition-all hover:border-[#99f6e4]'}
                   >
                     {/* Unified Event Header */}
-                    <div className="p-4 sm:p-5 bg-gradient-to-r from-[#f0fdfa]/90 via-white to-[#faf8ff] border-b border-[#e2e8f0] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className={`p-4 sm:p-5 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                      isVarsity ? 'bg-[#e6e2dc] border-[#1c1c18]' : 'bg-gradient-to-r from-[#f0fdfa]/90 via-white to-[#faf8ff] border-[#e2e8f0]'
+                    }`}>
                       <div className="space-y-1">
                         <div className="flex flex-wrap items-center gap-2">
                           {group.programme?.code && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4]">
+                            <span className={isVarsity ? 'px-2 py-0.5 text-[10px] font-anton bg-[#5b192a] text-white rounded-none uppercase' : 'px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4]'}>
                               {group.programme.code}
                             </span>
                           )}
                           <span
-                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                            className={isVarsity ? 'px-2.5 py-0.5 text-[10px] font-anton bg-[#d6e3ff] text-[#1b365d] border border-[#1b365d] rounded-none uppercase' : `px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
                               isTeam
                                 ? 'bg-[#f0f9ff] text-[#0284c7] border border-[#bae6fd]'
                                 : 'bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1]'
@@ -2398,30 +3102,30 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                             {isTeam ? 'Team Event' : 'Individual'}
                           </span>
                           {group.category && (
-                            <span className="px-2.5 py-0.5 rounded-full text-[10px] bg-slate-100 text-slate-700 font-medium">
+                            <span className={isVarsity ? 'px-2.5 py-0.5 text-[10px] font-anton bg-[#ffd9de] text-[#5b192a] border border-[#782f40] rounded-none uppercase' : 'px-2.5 py-0.5 rounded-full text-[10px] bg-slate-100 text-slate-700 font-medium'}>
                               {group.category}
                             </span>
                           )}
                           {group.programme?.venue && (
-                            <span className="text-[11px] text-slate-500 hidden sm:inline flex items-center gap-1">
-                              <MapPin className="w-3 h-3 inline text-slate-400" />
+                            <span className={`text-[11px] hidden sm:inline flex items-center gap-1 ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-slate-500'}`}>
+                              <MapPin className={`w-3 h-3 inline ${isVarsity ? 'text-[#782f40]' : 'text-slate-400'}`} />
                               {group.programme.venue} {group.programme.stage ? `(${group.programme.stage})` : ''}
                             </span>
                           )}
                         </div>
 
-                        <h4 className="text-lg sm:text-xl font-extrabold text-[#0f172a] font-display">
+                        <h4 className={`text-lg sm:text-xl font-extrabold ${isVarsity ? 'font-headline text-[#1c1c18]' : 'text-[#0f172a] font-display'}`}>
                           {group.programmeName}
                         </h4>
                       </div>
 
-                      <div className="flex items-center gap-2 text-xs font-semibold text-[#0f766e] shrink-0">
-                        <span className="inline-flex items-center gap-1.5 bg-[#ccfbf1]/70 px-3 py-1 rounded-full text-[11px] font-bold text-[#0f766e] border border-[#99f6e4]">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-[#0d9488]" />
+                      <div className="flex items-center gap-2 text-xs font-semibold shrink-0">
+                        <span className={isVarsity ? 'vh-pennant uppercase text-[10px] inline-flex items-center gap-1.5' : 'inline-flex items-center gap-1.5 bg-[#ccfbf1]/70 px-3 py-1 rounded-full text-[11px] font-bold text-[#0f766e] border border-[#99f6e4]'}>
+                          <CheckCircle2 className={`w-3.5 h-3.5 ${isVarsity ? 'text-[#a47e3b]' : 'text-[#0d9488]'}`} />
                           Official Ratified
                         </span>
                         {group.totalPointsAwarded > 0 && (
-                          <span className="font-mono text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-full">
+                          <span className={isVarsity ? 'font-anton text-xs text-[#5b192a] bg-[#ffd9de] border border-[#782f40] px-2.5 py-0.5 rounded-none uppercase' : 'font-mono text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-full'}>
                             {group.totalPointsAwarded} pts pool
                           </span>
                         )}
@@ -2443,28 +3147,46 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                           return (
                             <div
                               key={r.id}
-                              className={`rounded-2xl p-4 border transition-all flex flex-col justify-between ${
-                                isGold
-                                  ? 'bg-gradient-to-b from-amber-50/70 to-amber-50/20 border-amber-200 ring-1 ring-amber-400/20'
+                              className={`p-4 transition-all flex flex-col justify-between ${
+                                isVarsity
+                                  ? isGold
+                                    ? 'bg-[#fdf9f3] border-2 border-[#a47e3b] shadow-[4px_4px_0px_#a47e3b] rounded-none'
+                                    : isSilver
+                                    ? 'bg-[#f7f3ed] border-2 border-[#1c1c18] rounded-none'
+                                    : isBronze
+                                    ? 'bg-[#f7f3ed] border-2 border-[#1c1c18]/40 rounded-none'
+                                    : 'bg-[#fdf9f3] border border-[#1c1c18] rounded-none'
+                                  : isGold
+                                  ? 'rounded-2xl border bg-gradient-to-b from-amber-50/70 to-amber-50/20 border-amber-200 ring-1 ring-amber-400/20'
                                   : isSilver
-                                  ? 'bg-gradient-to-b from-slate-50 to-white border-slate-200'
+                                  ? 'rounded-2xl border bg-gradient-to-b from-slate-50 to-white border-slate-200'
                                   : isBronze
-                                  ? 'bg-gradient-to-b from-orange-50/60 to-white border-orange-200'
-                                  : 'bg-white border-slate-200'
+                                  ? 'rounded-2xl border bg-gradient-to-b from-orange-50/60 to-white border-orange-200'
+                                  : 'rounded-2xl border bg-white border-slate-200'
                               }`}
                             >
                               <div className="space-y-2">
                                 <div className="flex items-center justify-between">
                                   <span
-                                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-mono font-bold ${
+                                    className={isVarsity ? (
                                       isGold
-                                        ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                        ? 'vh-pennant px-2 py-0.5 text-xs uppercase'
                                         : isSilver
-                                        ? 'bg-slate-200 text-slate-800 border border-slate-300'
+                                        ? 'font-anton text-xs bg-[#e6e2dc] text-[#1c1c18] border border-[#1c1c18] px-2 py-0.5 uppercase'
                                         : isBronze
-                                        ? 'bg-orange-100 text-orange-900 border border-orange-200'
-                                        : 'bg-slate-100 text-slate-700'
-                                    }`}
+                                        ? 'font-anton text-xs bg-[#ffdeab] text-[#432d00] border border-[#a47e3b] px-2 py-0.5 uppercase'
+                                        : 'font-anton text-xs bg-[#f7f3ed] text-[#1c1c18] px-2 py-0.5 uppercase'
+                                    ) : (
+                                      `inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-mono font-bold ${
+                                        isGold
+                                          ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                          : isSilver
+                                          ? 'bg-slate-200 text-slate-800 border border-slate-300'
+                                          : isBronze
+                                          ? 'bg-orange-100 text-orange-900 border border-orange-200'
+                                          : 'bg-slate-100 text-slate-700'
+                                      }`
+                                    )}
                                   >
                                     {isGold
                                       ? '🥇 1st Place'
@@ -2475,13 +3197,13 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                                       : `Rank #${r.rank}`}
                                   </span>
 
-                                  <span className="font-mono font-bold text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                                  <span className={isVarsity ? 'font-anton text-xs text-[#5b192a] bg-[#ffd9de] border border-[#782f40] px-2 py-0.5 uppercase' : 'font-mono font-bold text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full'}>
                                     +{r.pointsAwarded} pts
                                   </span>
                                 </div>
 
                                 <div>
-                                  <div className="font-extrabold text-sm sm:text-base text-slate-900 leading-tight">
+                                  <div className={`font-extrabold text-sm sm:text-base leading-tight ${isVarsity ? 'font-headline text-[#1c1c18]' : 'text-slate-900'}`}>
                                     {isTeam
                                       ? r.entryName || 'Squad Entry'
                                       : r.participantName || participant?.name || 'Contestant'}
@@ -2489,13 +3211,13 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
                                   {chestNumber && (
                                     <div className="mt-1">
-                                      <span className="inline-block font-mono text-[10px] font-bold text-[#0f766e] bg-[#ccfbf1] border border-[#99f6e4] px-1.5 py-0.5 rounded">
+                                      <span className={isVarsity ? 'inline-block font-anton text-[10px] text-[#5b192a] bg-[#ffd9de] border border-[#782f40] px-1.5 py-0.5 uppercase' : 'inline-block font-mono text-[10px] font-bold text-[#0f766e] bg-[#ccfbf1] border border-[#99f6e4] px-1.5 py-0.5 rounded'}>
                                         Chest #{chestNumber}
                                       </span>
                                     </div>
                                   )}
 
-                                  <div className="text-xs text-slate-600 mt-1.5 flex items-center gap-1.5 font-medium">
+                                  <div className={`text-xs mt-1.5 flex items-center gap-1.5 font-medium ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-slate-600'}`}>
                                     <Users className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                                     <span className="truncate">{r.teamName || 'House / Team'}</span>
                                   </div>
@@ -2503,9 +3225,9 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                               </div>
 
                               {r.finalScore !== undefined && r.finalScore > 0 && (
-                                <div className="mt-3 pt-2.5 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-slate-500 font-mono">
+                                <div className={`mt-3 pt-2.5 border-t flex items-center justify-between text-[11px] ${isVarsity ? 'border-[#1c1c18]/20 font-anton text-[#534345]' : 'border-slate-200/60 font-mono text-slate-500'}`}>
                                   <span>Final Score</span>
-                                  <span className="font-bold text-slate-800">{r.finalScore} marks</span>
+                                  <span className={`font-bold ${isVarsity ? 'text-[#1c1c18]' : 'text-slate-800'}`}>{r.finalScore} marks</span>
                                 </div>
                               )}
                             </div>
@@ -2515,24 +3237,28 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
                       {/* Additional Positions beyond Rank 3 (if applicable) */}
                       {extraResults.length > 0 && (
-                        <div className="mt-4 pt-3 border-t border-slate-100">
-                          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-2">
+                        <div className={`mt-4 pt-3 border-t ${isVarsity ? 'border-[#1c1c18]/20' : 'border-slate-100'}`}>
+                          <span className={`text-[11px] font-bold uppercase tracking-wider block mb-2 ${isVarsity ? 'font-anton text-[#534345]' : 'text-slate-500'}`}>
                             Additional Positions
                           </span>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             {extraResults.map((r) => (
                               <div
                                 key={r.id}
-                                className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200 text-xs"
+                                className={`flex items-center justify-between p-2 text-xs ${
+                                  isVarsity
+                                    ? 'bg-[#f7f3ed] border border-[#1c1c18]/20 rounded-none font-body-serif'
+                                    : 'rounded-xl bg-slate-50 border border-slate-200'
+                                }`}
                               >
                                 <div className="flex items-center gap-2 min-w-0">
-                                  <span className="font-mono font-bold text-slate-500 text-[11px]">#{r.rank}</span>
-                                  <span className="font-semibold text-slate-800 truncate">
+                                  <span className={`font-bold text-[11px] ${isVarsity ? 'font-anton text-[#1c1c18]' : 'font-mono text-slate-500'}`}>#{r.rank}</span>
+                                  <span className={`font-semibold truncate ${isVarsity ? 'font-headline text-[#1c1c18]' : 'text-slate-800'}`}>
                                     {r.participantName || r.entryName}
                                   </span>
                                   <span className="text-slate-400 text-[10px] truncate">({r.teamName})</span>
                                 </div>
-                                <span className="font-mono font-bold text-emerald-700 shrink-0">
+                                <span className={`font-bold shrink-0 ${isVarsity ? 'font-anton text-[#5b192a]' : 'font-mono text-emerald-700'}`}>
                                   +{r.pointsAwarded} pts
                                 </span>
                               </div>
@@ -2555,40 +3281,40 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       {activeTabSection === 'schedule' && (
         <section className="py-8 sm:py-10 max-w-7xl mx-auto px-3.5 sm:px-8 space-y-6 sm:space-y-8 pb-8 sm:pb-12 w-full max-w-full overflow-hidden">
           {/* Header & Overview Stats */}
-          <div className="bg-gradient-to-br from-[#f8fafc] via-white to-[#f0fdfa] border border-[#e2e8f0] rounded-3xl p-6 sm:p-8 shadow-xs">
+          <div className={isVarsity ? 'vh-card rounded-none p-6 sm:p-8' : 'bg-gradient-to-br from-[#f8fafc] via-white to-[#f0fdfa] border border-[#e2e8f0] rounded-3xl p-6 sm:p-8 shadow-xs'}>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div>
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0d9488]/10 text-[#0d9488] font-bold text-xs uppercase tracking-wider mb-2">
-                  <Clock className="w-3.5 h-3.5" />
+                <div className={isVarsity ? 'vh-pennant uppercase text-xs inline-flex items-center gap-1.5 px-3 py-1 mb-2' : 'inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0d9488]/10 text-[#0d9488] font-bold text-xs uppercase tracking-wider mb-2'}>
+                  <Clock className={`w-3.5 h-3.5 ${isVarsity ? 'text-[#ffdeab]' : 'text-[#0d9488]'}`} />
                   Official Festival Programme
                 </div>
-                <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#0f172a] font-display">
+                <h3 className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${isVarsity ? 'font-headline text-[#1c1c18]' : 'text-[#0f172a] font-display'}`}>
                   Festival Timetable & Stages
                 </h3>
-                <p className="text-sm text-[#64748b] mt-1 max-w-2xl">
+                <p className={`text-sm mt-1 max-w-2xl ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>
                   Explore all competition stages, venues, timings, and rules organized by age division and category.
                 </p>
               </div>
 
               {/* Quick Stat Badges */}
               <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
-                <div className="bg-white border border-[#e2e8f0] rounded-2xl px-4 py-2.5 shadow-2xs">
-                  <div className="text-xs font-semibold text-[#64748b]">Total Events</div>
-                  <div className="text-xl font-black text-[#0f172a] font-mono">{publishedProgrammes.length}</div>
+                <div className={isVarsity ? 'bg-[#f7f3ed] border border-[#1c1c18] rounded-none px-4 py-2.5' : 'bg-white border border-[#e2e8f0] rounded-2xl px-4 py-2.5 shadow-2xs'}>
+                  <div className={`text-xs font-semibold ${isVarsity ? 'font-anton uppercase tracking-wider text-[#534345]' : 'text-[#64748b]'}`}>Total Events</div>
+                  <div className={`text-xl font-black ${isVarsity ? 'font-anton text-[#1c1c18]' : 'text-[#0f172a] font-mono'}`}>{publishedProgrammes.length}</div>
                 </div>
-                <div className="bg-white border border-[#e2e8f0] rounded-2xl px-4 py-2.5 shadow-2xs">
-                  <div className="text-xs font-semibold text-[#64748b]">Divisions</div>
-                  <div className="text-xl font-black text-[#0d9488] font-mono">{availableScheduleCategories.length}</div>
+                <div className={isVarsity ? 'bg-[#ffd9de]/30 border border-[#782f40] rounded-none px-4 py-2.5' : 'bg-white border border-[#e2e8f0] rounded-2xl px-4 py-2.5 shadow-2xs'}>
+                  <div className={`text-xs font-semibold ${isVarsity ? 'font-anton uppercase tracking-wider text-[#782f40]' : 'text-[#64748b]'}`}>Divisions</div>
+                  <div className={`text-xl font-black ${isVarsity ? 'font-anton text-[#5b192a]' : 'text-[#0d9488] font-mono'}`}>{availableScheduleCategories.length}</div>
                 </div>
-                <div className="bg-white border border-[#e2e8f0] rounded-2xl px-4 py-2.5 shadow-2xs">
-                  <div className="text-xs font-semibold text-[#64748b]">On-Stage</div>
-                  <div className="text-xl font-black text-teal-700 font-mono">
+                <div className={isVarsity ? 'bg-[#d6e3ff]/30 border border-[#1b365d] rounded-none px-4 py-2.5' : 'bg-white border border-[#e2e8f0] rounded-2xl px-4 py-2.5 shadow-2xs'}>
+                  <div className={`text-xs font-semibold ${isVarsity ? 'font-anton uppercase tracking-wider text-[#1b365d]' : 'text-[#64748b]'}`}>On-Stage</div>
+                  <div className={`text-xl font-black ${isVarsity ? 'font-anton text-[#1b365d]' : 'text-teal-700 font-mono'}`}>
                     {publishedProgrammes.filter((p) => p.stageType !== 'off_stage').length}
                   </div>
                 </div>
-                <div className="bg-white border border-[#e2e8f0] rounded-2xl px-4 py-2.5 shadow-2xs">
-                  <div className="text-xs font-semibold text-[#64748b]">Off-Stage</div>
-                  <div className="text-xl font-black text-amber-700 font-mono">
+                <div className={isVarsity ? 'bg-[#ffdeab]/30 border border-[#a47e3b] rounded-none px-4 py-2.5' : 'bg-white border border-[#e2e8f0] rounded-2xl px-4 py-2.5 shadow-2xs'}>
+                  <div className={`text-xs font-semibold ${isVarsity ? 'font-anton uppercase tracking-wider text-[#a47e3b]' : 'text-[#64748b]'}`}>Off-Stage</div>
+                  <div className={`text-xl font-black ${isVarsity ? 'font-anton text-[#432d00]' : 'text-amber-700 font-mono'}`}>
                     {publishedProgrammes.filter((p) => p.stageType === 'off_stage').length}
                   </div>
                 </div>
@@ -2597,7 +3323,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
           </div>
 
           {/* Interactive Filtering & Search Control Toolbar */}
-          <div className="bg-white border border-[#e2e8f0] rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
+          <div className={isVarsity ? 'vh-card rounded-none p-4 sm:p-5 space-y-4' : 'bg-white border border-[#e2e8f0] rounded-2xl p-4 sm:p-5 shadow-xs space-y-4'}>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
               {/* Search Bar */}
               <div className="relative flex-1">
@@ -2607,7 +3333,11 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                   placeholder="Search by event name, code (e.g. LOZ-01), venue..."
                   value={scheduleSearchQuery}
                   onChange={(e) => setScheduleSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-9 py-2.5 text-sm bg-[#f8fafc] border border-[#e2e8f0] rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0d9488] focus:border-transparent transition-all"
+                  className={`w-full pl-10 pr-9 py-2.5 text-sm transition-all focus:outline-none ${
+                    isVarsity
+                      ? 'bg-[#fdf9f3] border-2 border-[#1c1c18] rounded-none focus:border-[#782f40] font-body-serif text-[#1c1c18]'
+                      : 'bg-[#f8fafc] border border-[#e2e8f0] rounded-xl focus:bg-white focus:ring-2 focus:ring-[#0d9488] focus:border-transparent'
+                  }`}
                 />
                 {scheduleSearchQuery && (
                   <button
@@ -2620,14 +3350,20 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               </div>
 
               {/* Stage Type Toggle */}
-              <div className="flex items-center gap-1 bg-[#f1f5f9] p-1 rounded-xl max-w-full overflow-x-auto scrollbar-none shrink-0">
+              <div className={`flex items-center gap-1 p-1 max-w-full overflow-x-auto scrollbar-none shrink-0 ${
+                isVarsity ? 'bg-[#e6e2dc] border border-[#1c1c18] rounded-none' : 'bg-[#f1f5f9] rounded-xl'
+              }`}>
                 <button
                   type="button"
                   onClick={() => setScheduleStageFilter('all')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
-                    scheduleStageFilter === 'all'
-                      ? 'bg-white text-[#0f172a] shadow-xs'
-                      : 'text-[#64748b] hover:text-[#0f172a]'
+                  className={`px-3 py-1.5 text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
+                    isVarsity
+                      ? scheduleStageFilter === 'all'
+                        ? 'bg-[#5b192a] text-white font-anton uppercase tracking-wider rounded-none'
+                        : 'text-[#1c1c18] hover:bg-[#ffd9de]/40 font-anton uppercase tracking-wider rounded-none'
+                      : scheduleStageFilter === 'all'
+                      ? 'bg-white text-[#0f172a] shadow-xs rounded-lg'
+                      : 'text-[#64748b] hover:text-[#0f172a] rounded-lg'
                   }`}
                 >
                   All ({publishedProgrammes.length})
@@ -2635,10 +3371,14 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                 <button
                   type="button"
                   onClick={() => setScheduleStageFilter('stage')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
-                    scheduleStageFilter === 'stage'
-                      ? 'bg-white text-teal-800 shadow-xs'
-                      : 'text-[#64748b] hover:text-[#0f172a]'
+                  className={`px-3 py-1.5 text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
+                    isVarsity
+                      ? scheduleStageFilter === 'stage'
+                        ? 'bg-[#5b192a] text-white font-anton uppercase tracking-wider rounded-none'
+                        : 'text-[#1c1c18] hover:bg-[#ffd9de]/40 font-anton uppercase tracking-wider rounded-none'
+                      : scheduleStageFilter === 'stage'
+                      ? 'bg-white text-teal-800 shadow-xs rounded-lg'
+                      : 'text-[#64748b] hover:text-[#0f172a] rounded-lg'
                   }`}
                 >
                   🎭 On-Stage ({publishedProgrammes.filter((p) => p.stageType !== 'off_stage').length})
@@ -2646,10 +3386,14 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                 <button
                   type="button"
                   onClick={() => setScheduleStageFilter('off_stage')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
-                    scheduleStageFilter === 'off_stage'
-                      ? 'bg-white text-amber-800 shadow-xs'
-                      : 'text-[#64748b] hover:text-[#0f172a]'
+                  className={`px-3 py-1.5 text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
+                    isVarsity
+                      ? scheduleStageFilter === 'off_stage'
+                        ? 'bg-[#5b192a] text-white font-anton uppercase tracking-wider rounded-none'
+                        : 'text-[#1c1c18] hover:bg-[#ffd9de]/40 font-anton uppercase tracking-wider rounded-none'
+                      : scheduleStageFilter === 'off_stage'
+                      ? 'bg-white text-amber-800 shadow-xs rounded-lg'
+                      : 'text-[#64748b] hover:text-[#0f172a] rounded-lg'
                   }`}
                 >
                   🎨 Off-Stage ({publishedProgrammes.filter((p) => p.stageType === 'off_stage').length})
@@ -2658,19 +3402,25 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
             </div>
 
             {/* Category Division Pills */}
-            <div className="pt-2 border-t border-[#f1f5f9]">
-              <div className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                <SlidersHorizontal className="w-3.5 h-3.5 text-[#0d9488]" />
+            <div className={`pt-2 border-t ${isVarsity ? 'border-[#1c1c18]/20' : 'border-[#f1f5f9]'}`}>
+              <div className={`text-[11px] font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5 ${
+                isVarsity ? 'font-anton text-[#1c1c18]' : 'text-[#64748b]'
+              }`}>
+                <SlidersHorizontal className={`w-3.5 h-3.5 ${isVarsity ? 'text-[#782f40]' : 'text-[#0d9488]'}`} />
                 Filter by Category Division:
               </div>
               <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
                 <button
                   type="button"
                   onClick={() => setScheduleCategoryFilter('All')}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0 ${
-                    scheduleCategoryFilter === 'All'
-                      ? 'bg-[#0f172a] text-white shadow-xs'
-                      : 'bg-[#f8fafc] text-[#475569] border border-[#e2e8f0] hover:bg-slate-100'
+                  className={`px-3.5 py-1.5 text-xs font-bold whitespace-nowrap transition-all shrink-0 ${
+                    isVarsity
+                      ? scheduleCategoryFilter === 'All'
+                        ? 'bg-[#5b192a] text-white font-anton uppercase tracking-wider rounded-none'
+                        : 'bg-[#f7f3ed] text-[#5b192a] border border-[#1c1c18] font-anton uppercase tracking-wider rounded-none hover:bg-[#ffd9de]/40'
+                      : scheduleCategoryFilter === 'All'
+                      ? 'bg-[#0f172a] text-white shadow-xs rounded-xl'
+                      : 'bg-[#f8fafc] text-[#475569] border border-[#e2e8f0] hover:bg-slate-100 rounded-xl'
                   }`}
                 >
                   All Divisions ({publishedProgrammes.length})
@@ -2693,21 +3443,27 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                       key={catName}
                       type="button"
                       onClick={() => setScheduleCategoryFilter(catName)}
-                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 ${
-                        isSelected
-                          ? 'bg-[#0d9488] text-white shadow-xs'
-                          : 'bg-[#f8fafc] text-[#475569] border border-[#e2e8f0] hover:bg-slate-100'
+                      className={`px-3.5 py-1.5 text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 ${
+                        isVarsity
+                          ? isSelected
+                            ? 'bg-[#5b192a] text-white font-anton uppercase tracking-wider rounded-none'
+                            : 'bg-[#f7f3ed] text-[#5b192a] border border-[#1c1c18] font-anton uppercase tracking-wider rounded-none hover:bg-[#ffd9de]/40'
+                          : isSelected
+                          ? 'bg-[#0d9488] text-white shadow-xs rounded-xl'
+                          : 'bg-[#f8fafc] text-[#475569] border border-[#e2e8f0] hover:bg-slate-100 rounded-xl'
                       }`}
                     >
                       <span>{catName}</span>
                       {ageLabel && (
-                        <span className={`text-[10px] font-normal ${isSelected ? 'text-teal-100' : 'text-[#94a3b8]'}`}>
+                        <span className={`text-[10px] font-normal ${isSelected ? 'text-white/80' : 'text-[#94a3b8]'}`}>
                           ({ageLabel})
                         </span>
                       )}
                       <span
-                        className={`text-[10px] font-black px-1.5 py-0.2 rounded-full ${
-                          isSelected ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+                        className={`text-[10px] font-black px-1.5 py-0.2 ${
+                          isVarsity
+                            ? isSelected ? 'bg-white/20 text-white rounded-none font-anton' : 'bg-[#e6e2dc] text-[#1c1c18] rounded-none font-anton'
+                            : isSelected ? 'bg-white/20 text-white rounded-full' : 'bg-slate-200 text-slate-700 rounded-full'
                         }`}
                       >
                         {count}
@@ -2755,34 +3511,38 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               return (
                 <div
                   key={p.id}
-                  className="bg-white border border-[#e2e8f0] hover:border-[#0d9488]/40 hover:shadow-md transition-all duration-200 rounded-2xl p-5 flex flex-col justify-between group"
+                  className={`transition-all duration-200 p-5 flex flex-col justify-between group ${
+                    isVarsity
+                      ? 'vh-ticket-stub rounded-none border-2 border-[#1c1c18] bg-[#f7f3ed] hover:border-[#782f40]'
+                      : 'bg-white border border-[#e2e8f0] hover:border-[#0d9488]/40 hover:shadow-md rounded-2xl'
+                  }`}
                 >
                   <div className="space-y-3">
                     {/* Header badge row */}
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-mono text-xs font-bold px-2.5 py-0.5 rounded-md bg-[#0f172a] text-white tracking-wider shadow-2xs">
+                        <span className={isVarsity ? 'font-anton text-xs bg-[#5b192a] text-white px-2.5 py-0.5 rounded-none uppercase tracking-wider' : 'font-mono text-xs font-bold px-2.5 py-0.5 rounded-md bg-[#0f172a] text-white tracking-wider shadow-2xs'}>
                           {p.code}
                         </span>
                         {isOffStage ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                          <span className={isVarsity ? 'font-anton text-[11px] px-2 py-0.5 uppercase tracking-wider bg-[#ffdeab] text-[#432d00] border border-[#a47e3b] rounded-none' : 'inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200'}>
                             🎨 Off-Stage
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-teal-50 text-teal-800 border border-teal-200">
+                          <span className={isVarsity ? 'font-anton text-[11px] px-2 py-0.5 uppercase tracking-wider bg-[#ffd9de] text-[#5b192a] border border-[#782f40] rounded-none' : 'inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-teal-50 text-teal-800 border border-teal-200'}>
                             🎭 On-Stage
                           </span>
                         )}
-                        <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                        <span className={isVarsity ? 'font-anton text-[11px] px-2 py-0.5 uppercase tracking-wider bg-[#d6e3ff] text-[#1b365d] border border-[#1b365d] rounded-none' : 'text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200'}>
                           {isTeam ? '👥 Team' : '👤 Individual'}
                         </span>
                       </div>
                       {p.status === 'ongoing' ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 animate-pulse">
+                        <span className={isVarsity ? 'vh-pennant-burgundy px-2 py-0.5 text-[10px] animate-pulse uppercase' : 'inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 animate-pulse'}>
                           LIVE NOW
                         </span>
                       ) : p.status === 'completed' ? (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
+                        <span className={isVarsity ? 'font-anton text-[10px] px-2 py-0.5 bg-[#e6e2dc] text-[#1c1c18] border border-[#1c1c18] rounded-none uppercase' : 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700'}>
                           Concluded
                         </span>
                       ) : null}
@@ -2790,21 +3550,23 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
                     {/* Programme Title */}
                     <div>
-                      <h4 className="text-base font-bold text-[#0f172a] group-hover:text-[#0d9488] transition-colors leading-snug">
+                      <h4 className={`text-base font-bold leading-snug transition-colors ${
+                        isVarsity ? 'font-headline text-[#1c1c18] group-hover:text-[#782f40]' : 'text-[#0f172a] group-hover:text-[#0d9488]'
+                      }`}>
                         {p.name}
                       </h4>
-                      <p className="text-xs font-medium text-[#0d9488] mt-0.5">{p.category}</p>
+                      <p className={`text-xs mt-0.5 ${isVarsity ? 'font-body-serif text-[#534345]' : 'font-medium text-[#0d9488]'}`}>{p.category}</p>
                     </div>
 
                     {/* Details: Venue & Timing */}
-                    <div className="space-y-2 pt-1 border-t border-[#f1f5f9]">
-                      <div className="flex items-center gap-2 text-xs text-[#334155]">
-                        <MapPin className="w-4 h-4 text-[#0d9488] shrink-0" />
+                    <div className={`space-y-2 pt-1 border-t ${isVarsity ? 'border-[#1c1c18]/15' : 'border-[#f1f5f9]'}`}>
+                      <div className={`flex items-center gap-2 text-xs ${isVarsity ? 'font-body-serif text-[#1c1c18]' : 'text-[#334155]'}`}>
+                        <MapPin className={`w-4 h-4 shrink-0 ${isVarsity ? 'text-[#782f40]' : 'text-[#0d9488]'}`} />
                         <span className="font-medium truncate">{p.venue || slot?.venue || 'Auditorium / Main Hall'}</span>
                       </div>
 
-                      <div className="flex items-center gap-2 text-xs text-[#334155]">
-                        <Clock className="w-4 h-4 text-[#0284c7] shrink-0" />
+                      <div className={`flex items-center gap-2 text-xs ${isVarsity ? 'font-body-serif text-[#1c1c18]' : 'text-[#334155]'}`}>
+                        <Clock className={`w-4 h-4 shrink-0 ${isVarsity ? 'text-[#1b365d]' : 'text-[#0284c7]'}`} />
                         <span className="font-medium">
                           {slotDate ? `${slotDate} • ` : ''}
                           {timeDisplay}
@@ -2814,14 +3576,16 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                   </div>
 
                   {/* Footer info: Limits */}
-                  <div className="mt-4 pt-3 border-t border-[#f8fafc] flex items-center justify-between text-[11px] text-[#64748b]">
+                  <div className={`mt-4 pt-3 border-t flex items-center justify-between text-[11px] ${
+                    isVarsity ? 'border-[#1c1c18]/15 font-body-serif text-[#534345]' : 'border-[#f8fafc] text-[#64748b]'
+                  }`}>
                     <span>
                       {isTeam
                         ? `Min ${p.minTeamMembers || 2} - Max ${p.maxTeamMembers || 6} / house`
                         : `Max ${p.maxParticipantsPerTeam || 1} participant / house`}
                     </span>
                     {p.rules && (
-                      <span className="text-[#0d9488] font-medium" title={p.rules}>
+                      <span className={isVarsity ? 'font-anton text-[#5b192a] uppercase tracking-wider' : 'text-[#0d9488] font-medium'} title={p.rules}>
                         Rules available
                       </span>
                     )}
@@ -2834,12 +3598,12 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
             if (scheduleCategoryFilter === 'All' && !scheduleSearchQuery.trim() && scheduleStageFilter === 'all') {
               if (publishedProgrammes.length === 0) {
                 return (
-                  <div className="bg-white border border-[#e2e8f0] rounded-3xl p-12 text-center max-w-lg mx-auto">
-                    <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 mx-auto flex items-center justify-center mb-3">
+                  <div className={`p-12 text-center max-w-lg mx-auto ${isVarsity ? 'vh-card rounded-none' : 'bg-white border border-[#e2e8f0] rounded-3xl'}`}>
+                    <div className={`w-12 h-12 mx-auto flex items-center justify-center mb-3 ${isVarsity ? 'bg-[#ffd9de] text-[#5b192a] border border-[#782f40] rounded-none' : 'rounded-2xl bg-slate-100 text-slate-400'}`}>
                       <Clock className="w-6 h-6" />
                     </div>
-                    <h4 className="text-base font-bold text-[#0f172a]">No Programmes Published Yet</h4>
-                    <p className="text-xs text-[#64748b] mt-1">
+                    <h4 className={`text-base font-bold ${isVarsity ? 'font-headline text-[#1c1c18]' : 'text-[#0f172a]'}`}>No Programmes Published Yet</h4>
+                    <p className={`text-xs mt-1 ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>
                       The official festival timetable is currently being finalized by the organizing committee.
                     </p>
                   </div>
@@ -2867,19 +3631,21 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                     return (
                       <div key={catName} className="space-y-4">
                         {/* Category Section Header Banner */}
-                        <div className="flex items-center justify-between gap-4 pb-3 border-b-2 border-[#0d9488]/20">
+                        <div className={`flex items-center justify-between gap-4 pb-3 border-b-2 ${isVarsity ? 'border-[#1c1c18]' : 'border-[#0d9488]/20'}`}>
                           <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl bg-[#0d9488]/10 text-[#0d9488] flex items-center justify-center font-black text-sm">
+                            <div className={`w-9 h-9 flex items-center justify-center font-black text-sm ${
+                              isVarsity ? 'bg-[#5b192a] text-white font-anton rounded-none' : 'rounded-xl bg-[#0d9488]/10 text-[#0d9488]'
+                            }`}>
                               {catName.charAt(0)}
                             </div>
                             <div>
-                              <h4 className="text-xl font-extrabold text-[#0f172a] tracking-tight">{catName}</h4>
+                              <h4 className={`text-xl font-extrabold tracking-tight ${isVarsity ? 'font-headline text-[#1c1c18]' : 'text-[#0f172a]'}`}>{catName}</h4>
                               {ageLabel && (
-                                <p className="text-xs text-[#64748b]">Age Division: {ageLabel}</p>
+                                <p className={`text-xs ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>Age Division: {ageLabel}</p>
                               )}
                             </div>
                           </div>
-                          <span className="text-xs font-bold px-3 py-1 rounded-full bg-[#f1f5f9] text-[#334155] border border-[#e2e8f0]">
+                          <span className={isVarsity ? 'font-anton text-xs px-3 py-1 bg-[#e6e2dc] text-[#1c1c18] border border-[#1c1c18] rounded-none uppercase' : 'text-xs font-bold px-3 py-1 rounded-full bg-[#f1f5f9] text-[#334155] border border-[#e2e8f0]'}>
                             {catProgrammes.length} {catProgrammes.length === 1 ? 'Competition' : 'Competitions'}
                           </span>
                         </div>
@@ -2943,10 +3709,10 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       {activeTabSection === 'teams' && (
         <section className="py-8 sm:py-12 max-w-7xl mx-auto px-3.5 sm:px-8 space-y-6 w-full max-w-full overflow-hidden">
           <div className="border-b border-[#e2e8f0] pb-4">
-            <h3 className="text-2xl font-extrabold tracking-tight text-[#0f172a] font-display">
+            <h3 className={`text-2xl font-extrabold tracking-tight ${isVarsity ? 'font-headline text-[#1c1c18]' : 'text-[#0f172a] font-display'}`}>
               Participating Houses & Teams
             </h3>
-            <p className="text-xs text-[#64748b] mt-1">
+            <p className={`text-xs mt-1 ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>
               Official houses competing in {settings.festName}.
             </p>
           </div>
@@ -2955,19 +3721,21 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
             {teams.map((t) => (
               <div
                 key={t.id}
-                className="bg-white border border-[#e2e8f0] rounded-2xl p-5 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04)] space-y-3 hover:border-[#99f6e4] transition-colors"
+                className={isVarsity ? 'vh-card rounded-none p-5 space-y-3' : 'bg-white border border-[#e2e8f0] rounded-2xl p-5 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04)] space-y-3 hover:border-[#99f6e4] transition-colors'}
               >
                 <div className="flex items-center justify-between">
-                  <div className="w-8 h-8 rounded-xl bg-[#0d9488] text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                  <div className={`w-8 h-8 flex items-center justify-center font-bold text-xs shadow-xs ${
+                    isVarsity ? 'bg-[#5b192a] text-white font-anton rounded-none' : 'rounded-xl bg-[#0d9488] text-white'
+                  }`}>
                     {t.code}
                   </div>
-                  <span className="text-xs font-mono font-bold text-[#0d9488]">
+                  <span className={isVarsity ? 'text-xs font-anton text-[#5b192a]' : 'text-xs font-mono font-bold text-[#0d9488]'}>
                     {(t.totalPoints ?? t.totalScore) ?? results.filter((r) => r.teamId === t.id && r.published).reduce((sum, r) => sum + (r.pointsAwarded || 0), 0)} pts
                   </span>
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-[#0f172a]">{t.name}</h4>
-                  <p className="text-xs text-[#64748b] mt-0.5">{t.institution || 'Collegiate House'}</p>
+                  <h4 className={`text-sm font-bold ${isVarsity ? 'font-headline text-[#1c1c18]' : 'text-[#0f172a]'}`}>{t.name}</h4>
+                  <p className={`text-xs mt-0.5 ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>{t.institution || 'Collegiate House'}</p>
                 </div>
               </div>
             ))}
@@ -2981,16 +3749,16 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       {activeTabSection === 'bulletin' && (
         <section className="py-8 sm:py-12 max-w-7xl mx-auto px-3.5 sm:px-8 space-y-6 w-full max-w-full overflow-hidden">
           <div className="border-b border-[#e2e8f0] pb-4">
-            <h3 className="text-2xl font-extrabold tracking-tight text-[#0f172a] font-display">
+            <h3 className={`text-2xl font-extrabold tracking-tight ${isVarsity ? 'font-headline text-[#1c1c18]' : 'text-[#0f172a] font-display'}`}>
               Official Bulletins & Notices
             </h3>
-            <p className="text-xs text-[#64748b] mt-1">
+            <p className={`text-xs mt-1 ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>
               Real-time notices and schedule updates from the Fest Administration.
             </p>
           </div>
 
           {publicAnnouncements.length === 0 ? (
-            <div className="p-12 text-center border border-[#e2e8f0] rounded-2xl bg-[#faf8ff] text-xs text-[#64748b]">
+            <div className={`p-12 text-center text-xs ${isVarsity ? 'vh-card rounded-none font-body-serif text-[#534345]' : 'border border-[#e2e8f0] rounded-2xl bg-[#faf8ff] text-[#64748b]'}`}>
               No public notices posted at this moment.
             </div>
           ) : (
@@ -2998,17 +3766,17 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               {publicAnnouncements.map((a) => (
                 <div
                   key={a.id}
-                  className="bg-white border border-[#e2e8f0] rounded-2xl p-5 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04)] space-y-2 hover:border-[#99f6e4] transition-colors"
+                  className={isVarsity ? 'vh-card rounded-none p-5 space-y-2' : 'bg-white border border-[#e2e8f0] rounded-2xl p-5 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.04)] space-y-2 hover:border-[#99f6e4] transition-colors'}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-[#0d9488] flex items-center gap-1.5">
-                      <Bell className="w-3.5 h-3.5 text-[#0d9488]" />
+                    <span className={`text-xs font-bold flex items-center gap-1.5 ${isVarsity ? 'font-anton text-[#5b192a] uppercase tracking-wider' : 'text-[#0d9488]'}`}>
+                      <Bell className={`w-3.5 h-3.5 ${isVarsity ? 'text-[#782f40]' : 'text-[#0d9488]'}`} />
                       {a.category || 'General Notice'}
                     </span>
-                    <span className="text-xs text-[#64748b]">{a.createdAt?.slice(0, 10)}</span>
+                    <span className={`text-xs ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>{a.createdAt?.slice(0, 10)}</span>
                   </div>
-                  <h4 className="text-base font-bold text-[#0f172a]">{a.title}</h4>
-                  <p className="text-xs text-[#334155] leading-relaxed whitespace-pre-line">{a.content}</p>
+                  <h4 className={`text-base font-bold ${isVarsity ? 'font-headline text-[#1c1c18]' : 'text-[#0f172a]'}`}>{a.title}</h4>
+                  <p className={`text-xs leading-relaxed whitespace-pre-line ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#334155]'}`}>{a.content}</p>
                 </div>
               ))}
             </div>
@@ -3060,35 +3828,41 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       )}
 
       {/* ==================================================================== */}
-      {/* 10. DARK FESTIVAL FOOTER (MATCHING REFERENCE MODEL)                  */}
+      {/* 10. FESTIVAL FOOTER                                                  */}
       {/* ==================================================================== */}
-      <footer className="mt-auto bg-[#0b1120] text-slate-300 pt-12 sm:pt-16 pb-12 sm:pb-16 border-t border-slate-800 w-full max-w-full overflow-hidden">
+      <footer className={`mt-auto pt-12 sm:pt-16 pb-12 sm:pb-16 w-full max-w-full overflow-hidden ${
+        isVarsity
+          ? 'bg-[#1b365d] text-[#fdf9f3] border-t-4 border-[#782f40]'
+          : 'bg-[#0b1120] text-slate-300 border-t border-slate-800'
+      }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 pb-12 border-b border-slate-800">
+          <div className={`grid grid-cols-1 md:grid-cols-3 gap-10 pb-12 border-b ${isVarsity ? 'border-[#a47e3b]/30' : 'border-slate-800'}`}>
             {/* Col 1: Fest Brand & Copyright */}
             <div className="space-y-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#00685f] to-[#0d9488] flex items-center justify-center text-white font-black text-sm shadow-md select-none">
+                <div className={`w-9 h-9 flex items-center justify-center text-white font-black text-sm shadow-md select-none ${
+                  isVarsity ? 'bg-[#5b192a] border border-[#a47e3b] font-anton rounded-none' : 'rounded-xl bg-gradient-to-tr from-[#00685f] to-[#0d9488]'
+                }`}>
                   <span>{festName.charAt(0) || 'F'}</span>
                 </div>
-                <span className="text-xl font-black text-white tracking-tight font-display">
+                <span className={`text-xl font-black tracking-tight ${isVarsity ? 'font-headline text-[#fdf9f3]' : 'text-white font-display'}`}>
                   {festName}
                 </span>
               </div>
-              <p className="text-xs text-slate-400 leading-relaxed max-w-sm">
+              <p className={`text-xs leading-relaxed max-w-sm ${isVarsity ? 'font-body-serif text-[#fdf9f3]/80' : 'text-slate-400'}`}>
                 {fest?.description || 'The official autonomous digital festival portal powered by Festoria OS.'}
               </p>
-              <div className="text-[11px] text-slate-500 pt-1">
+              <div className={`text-[11px] pt-1 ${isVarsity ? 'font-body-serif text-[#fdf9f3]/60' : 'text-slate-500'}`}>
                 © {new Date().getFullYear()} {festName}. All rights reserved.
               </div>
             </div>
 
             {/* Col 2: Quick Links */}
             <div>
-              <h5 className="text-xs font-bold text-white uppercase tracking-wider mb-4">
+              <h5 className={`text-xs uppercase tracking-wider mb-4 ${isVarsity ? 'font-anton text-[#ffdeab]' : 'font-bold text-white'}`}>
                 Quick Links
               </h5>
-              <ul className="space-y-2.5 text-xs text-slate-400">
+              <ul className={`space-y-2.5 text-xs ${isVarsity ? 'font-body-serif text-[#fdf9f3]/80' : 'text-slate-400'}`}>
                 <li>
                   <button
                     type="button"
@@ -3139,24 +3913,30 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
             {/* Col 3: Made with Festoria Platform */}
             <div className="space-y-3">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+              <span className={`text-xs uppercase tracking-wider ${isVarsity ? 'font-anton text-[#ffdeab]' : 'font-bold text-slate-400'}`}>
                 Made with
               </span>
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-white font-extrabold text-xs shadow-xs">
+                <div className={`w-7 h-7 flex items-center justify-center text-white font-extrabold text-xs shadow-xs ${
+                  isVarsity ? 'bg-[#5b192a] font-anton rounded-none border border-[#a47e3b]' : 'rounded-lg bg-gradient-to-tr from-emerald-500 to-teal-400'
+                }`}>
                   <span>F</span>
                 </div>
-                <span className="font-extrabold text-white text-base font-display">
+                <span className={`font-extrabold text-base ${isVarsity ? 'font-headline text-[#fdf9f3]' : 'font-display text-white'}`}>
                   Festoria
                 </span>
               </div>
-              <p className="text-xs text-slate-400 leading-relaxed">
+              <p className={`text-xs leading-relaxed ${isVarsity ? 'font-body-serif text-[#fdf9f3]/80' : 'text-slate-400'}`}>
                 Manage registrations, scheduling, scoring, and results — all in one platform. No paperwork, no chaos. Just smooth fests, every time.
               </p>
               <div className="pt-2">
                 <a
                   href={getAppUrl()}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-gradient-to-r from-[#00685f] to-[#0d9488] hover:from-[#0f766e] hover:to-[#0f766e] text-white text-xs font-bold shadow-md hover:shadow-lg transition-all"
+                  className={`inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold transition-all ${
+                    isVarsity
+                      ? 'vh-btn-brass rounded-none uppercase'
+                      : 'rounded-full bg-gradient-to-r from-[#00685f] to-[#0d9488] hover:from-[#0f766e] text-white shadow-md hover:shadow-lg'
+                  }`}
                 >
                   <span>Create Your Own Fest</span>
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -3166,17 +3946,17 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
           </div>
 
           {/* Sub Footer */}
-          <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+          <div className={`pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs ${isVarsity ? 'text-[#fdf9f3]/60 font-body-serif' : 'text-slate-500'}`}>
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-[10px] text-slate-400 font-mono">
+              <div className={`w-6 h-6 flex items-center justify-center text-[10px] font-mono ${isVarsity ? 'bg-[#142948] text-[#ffdeab] rounded-none' : 'rounded-full bg-slate-800 text-slate-400'}`}>
                 OS
               </div>
               <span>Powered by Festoria Festival Operating System</span>
             </div>
             <div className="flex flex-wrap items-center justify-center sm:justify-end gap-4 sm:gap-6">
-              <a href="#" className="hover:text-slate-300 transition-colors">Privacy Policy</a>
-              <a href="#" className="hover:text-slate-300 transition-colors">Terms and Conditions</a>
-              <a href="#contact" className="hover:text-slate-300 transition-colors">Contact Us</a>
+              <a href="#" className={`transition-colors ${isVarsity ? 'hover:text-[#ffdeab]' : 'hover:text-slate-300'}`}>Privacy Policy</a>
+              <a href="#" className={`transition-colors ${isVarsity ? 'hover:text-[#ffdeab]' : 'hover:text-slate-300'}`}>Terms and Conditions</a>
+              <a href="#contact" className={`transition-colors ${isVarsity ? 'hover:text-[#ffdeab]' : 'hover:text-slate-300'}`}>Contact Us</a>
             </div>
           </div>
         </div>
@@ -3197,51 +3977,55 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
             onClick={() => setSelectedStudentForModal(null)}
           >
             <div
-              className="max-w-lg w-full bg-white rounded-3xl overflow-hidden shadow-2xl border border-[#e2e8f0]"
+              className={`max-w-lg w-full overflow-hidden shadow-2xl ${
+                isVarsity ? 'bg-[#fdf9f3] border-2 border-[#1c1c18] rounded-none' : 'bg-white rounded-3xl border border-[#e2e8f0]'
+              }`}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header Banner */}
-              <div className="bg-gradient-to-r from-[#06332e] to-[#00685f] text-white p-6 relative">
+              <div className={`p-6 relative text-white ${isVarsity ? 'bg-[#5b192a] border-b-2 border-[#1c1c18]' : 'bg-gradient-to-r from-[#06332e] to-[#00685f]'}`}>
                 <button
                   type="button"
                   onClick={() => setSelectedStudentForModal(null)}
-                  className="absolute top-4 right-4 p-1.5 text-teal-200 hover:text-white rounded-full hover:bg-white/10 transition-colors cursor-pointer"
+                  className={`absolute top-4 right-4 p-1.5 rounded-full hover:bg-white/10 transition-colors cursor-pointer ${isVarsity ? 'text-[#ffd9de] hover:text-white' : 'text-teal-200 hover:text-white'}`}
                 >
                   <X className="w-5 h-5" />
                 </button>
 
                 <div className="flex items-center gap-2 mb-3">
-                  <span className="font-mono font-bold text-xs bg-[#ccfbf1] text-[#0f766e] px-3.5 py-1 rounded-full shadow-xs">
+                  <span className={isVarsity ? 'font-anton text-xs bg-[#ffd9de] text-[#5b192a] px-3.5 py-1 rounded-none uppercase tracking-wider' : 'font-mono font-bold text-xs bg-[#ccfbf1] text-[#0f766e] px-3.5 py-1 rounded-full shadow-xs'}>
                     Chest #{student.chestNumber || student.id}
                   </span>
-                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-white/15 text-teal-100">
+                  <span className={isVarsity ? 'font-anton text-[11px] px-2.5 py-0.5 bg-[#d6e3ff] text-[#1b365d] rounded-none uppercase' : 'text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-white/15 text-teal-100'}>
                     {student.category}
                   </span>
-                  <span className="text-[10px] font-mono text-teal-200/70">ID: {student.id}</span>
+                  <span className={`text-[10px] font-mono ${isVarsity ? 'text-[#ffd9de]/80' : 'text-teal-200/70'}`}>ID: {student.id}</span>
                 </div>
 
-                <h3 className="text-xl sm:text-2xl font-extrabold text-white font-display">{student.name}</h3>
-                <p className="text-xs text-teal-100/90 mt-1">
+                <h3 className={`text-xl sm:text-2xl font-extrabold ${isVarsity ? 'font-headline text-white' : 'text-white font-display'}`}>{student.name}</h3>
+                <p className={`text-xs mt-1 ${isVarsity ? 'font-body-serif text-[#ffd9de]' : 'text-teal-100/90'}`}>
                   Representing <strong className="text-white font-bold">{team?.name || 'Independent'}</strong>
                   {team?.institution ? ` • ${team.institution}` : ''}
                 </p>
               </div>
 
               {/* Statistics Strip */}
-              <div className="p-5 border-b border-[#e2e8f0] bg-[#faf8ff] grid grid-cols-2 gap-3 text-center">
-                <div className="p-3 bg-white rounded-2xl border border-[#e2e8f0] shadow-xs">
-                  <span className="text-[10px] text-[#64748b] font-bold uppercase tracking-wider block">
+              <div className={`p-5 border-b grid grid-cols-2 gap-3 text-center ${
+                isVarsity ? 'bg-[#f7f3ed] border-[#1c1c18]/20' : 'border-[#e2e8f0] bg-[#faf8ff]'
+              }`}>
+                <div className={isVarsity ? 'p-3 bg-[#fdf9f3] border border-[#1c1c18] rounded-none' : 'p-3 bg-white rounded-2xl border border-[#e2e8f0] shadow-xs'}>
+                  <span className={`text-[10px] uppercase tracking-wider block ${isVarsity ? 'font-anton text-[#534345]' : 'text-[#64748b] font-bold'}`}>
                     Total Individual Points
                   </span>
-                  <span className="font-mono font-black text-2xl text-[#0f172a] mt-0.5 block">
+                  <span className={`mt-0.5 block ${isVarsity ? 'font-anton text-2xl text-[#5b192a]' : 'font-mono font-black text-2xl text-[#0f172a]'}`}>
                     {stats.totalPoints} pts
                   </span>
                 </div>
-                <div className="p-3 bg-white rounded-2xl border border-[#e2e8f0] shadow-xs">
-                  <span className="text-[10px] text-[#64748b] font-bold uppercase tracking-wider block">
+                <div className={isVarsity ? 'p-3 bg-[#fdf9f3] border border-[#1c1c18] rounded-none' : 'p-3 bg-white rounded-2xl border border-[#e2e8f0] shadow-xs'}>
+                  <span className={`text-[10px] uppercase tracking-wider block ${isVarsity ? 'font-anton text-[#534345]' : 'text-[#64748b] font-bold'}`}>
                     Medals Won
                   </span>
-                  <span className="text-sm font-black text-[#0f172a] mt-1.5 block">
+                  <span className={`mt-1.5 block ${isVarsity ? 'font-anton text-base text-[#1c1c18]' : 'text-sm font-black text-[#0f172a]'}`}>
                     🥇 {stats.goldCount} · 🥈 {stats.silverCount} · 🥉 {stats.bronzeCount}
                   </span>
                 </div>
@@ -3249,41 +4033,41 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
               {/* Registered Programmes Detail */}
               <div className="p-6 space-y-3 max-h-72 overflow-y-auto">
-                <h4 className="text-xs font-bold text-[#64748b] uppercase tracking-wider">
+                <h4 className={`text-xs uppercase tracking-wider ${isVarsity ? 'font-anton text-[#534345]' : 'font-bold text-[#64748b]'}`}>
                   Registered Programmes ({studentProgs.length})
                 </h4>
 
                 {studentProgs.length === 0 ? (
-                  <p className="text-xs text-[#64748b] italic">No programmes registered yet.</p>
+                  <p className={`text-xs italic ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>No programmes registered yet.</p>
                 ) : (
                   studentProgs.map((prg) => {
                     const res = stats.studentResults.find((r) => r.programmeId === prg.id);
                     return (
                       <div
                         key={prg.id}
-                        className="p-3 rounded-2xl border border-[#e2e8f0] bg-white shadow-2xs space-y-1.5"
+                        className={isVarsity ? 'p-3 border border-[#1c1c18]/20 bg-[#fdf9f3] rounded-none space-y-1.5' : 'p-3 rounded-2xl border border-[#e2e8f0] bg-white shadow-2xs space-y-1.5'}
                       >
                         <div className="flex items-center justify-between gap-2">
-                          <h5 className="font-bold text-sm text-[#0f172a]">{prg.name}</h5>
+                          <h5 className={`font-bold text-sm ${isVarsity ? 'font-headline text-[#1c1c18]' : 'text-[#0f172a]'}`}>{prg.name}</h5>
                           {res ? (
-                            <span className="font-mono font-black text-xs text-[#0f766e] bg-[#ccfbf1] px-2.5 py-0.5 rounded-full border border-[#99f6e4]">
+                            <span className={isVarsity ? 'font-anton text-xs text-[#5b192a] bg-[#ffd9de] px-2.5 py-0.5 border border-[#782f40] rounded-none uppercase' : 'font-mono font-black text-xs text-[#0f766e] bg-[#ccfbf1] px-2.5 py-0.5 rounded-full border border-[#99f6e4]'}>
                               Rank #{res.rank} (+{res.pointsAwarded} pts)
                             </span>
                           ) : (
-                            <span className="text-[11px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                            <span className={isVarsity ? 'font-anton text-[11px] text-[#432d00] bg-[#ffdeab] px-2 py-0.5 border border-[#a47e3b] rounded-none uppercase' : 'text-[11px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200'}>
                               Scheduled
                             </span>
                           )}
                         </div>
 
-                        <div className="flex items-center gap-3 text-xs text-[#64748b]">
+                        <div className={`flex items-center gap-3 text-xs ${isVarsity ? 'font-body-serif text-[#534345]' : 'text-[#64748b]'}`}>
                           <span className="flex items-center gap-1">
-                            <Clock className="w-3.5 h-3.5 text-[#0d9488]" />
+                            <Clock className={`w-3.5 h-3.5 ${isVarsity ? 'text-[#782f40]' : 'text-[#0d9488]'}`} />
                             {prg.startTime} - {prg.endTime}
                           </span>
                           <span>•</span>
                           <span className="flex items-center gap-1">
-                            <MapPin className="w-3.5 h-3.5 text-[#0d9488]" />
+                            <MapPin className={`w-3.5 h-3.5 ${isVarsity ? 'text-[#782f40]' : 'text-[#0d9488]'}`} />
                             {prg.venue} ({prg.stage})
                           </span>
                         </div>
@@ -3294,11 +4078,13 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               </div>
 
               {/* Footer Modal Action */}
-              <div className="p-4 bg-[#faf8ff] border-t border-[#e2e8f0] flex justify-end">
+              <div className={`p-4 border-t flex justify-end ${isVarsity ? 'bg-[#f7f3ed] border-[#1c1c18]/20' : 'bg-[#faf8ff] border-[#e2e8f0]'}`}>
                 <button
                   type="button"
                   onClick={() => setSelectedStudentForModal(null)}
-                  className="px-6 py-2.5 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-full text-xs font-bold transition-colors shadow-xs cursor-pointer"
+                  className={`px-6 py-2.5 text-xs font-bold transition-colors cursor-pointer ${
+                    isVarsity ? 'vh-btn-primary rounded-none uppercase' : 'bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-full shadow-xs'
+                  }`}
                 >
                   Close
                 </button>
@@ -3320,10 +4106,14 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
           />
 
           <div className="fixed inset-y-0 right-0 max-w-full flex pl-4 sm:pl-10 z-50">
-            <div className="w-full max-w-sm sm:max-w-md bg-white shadow-2xl flex flex-col justify-between border-l border-[#e2e8f0] animate-in slide-in-from-right duration-300">
+            <div className={`w-full max-w-sm sm:max-w-md shadow-2xl flex flex-col justify-between border-l duration-300 ${
+              isVarsity ? 'bg-[#fdf9f3] border-[#1c1c18] text-[#1c1c18]' : 'bg-white border-[#e2e8f0] animate-in slide-in-from-right'
+            }`}>
               
               {/* Drawer Header */}
-              <div className="p-4 sm:p-5 border-b border-[#e2e8f0] flex items-center justify-between bg-[#faf8ff]">
+              <div className={`p-4 sm:p-5 border-b flex items-center justify-between ${
+                isVarsity ? 'bg-[#e6e2dc] border-[#1c1c18]' : 'bg-[#faf8ff] border-[#e2e8f0]'
+              }`}>
                 <div className="flex items-center gap-3 min-w-0">
                   {pageData.logo.logoUrl ? (
                     <img
@@ -3337,12 +4127,14 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                       src={FESTORIA_LOGO}
                       alt={festName}
                       onError={handleLogoError}
-                      className="w-8 h-8 rounded-xl object-contain border border-[#e2e8f0] bg-white p-0.5"
+                      className={`w-8 h-8 object-contain p-0.5 ${
+                        isVarsity ? 'rounded-none border-2 border-[#1c1c18] bg-[#fdf9f3]' : 'rounded-xl border border-[#e2e8f0] bg-white'
+                      }`}
                     />
                   )}
                   <div className="min-w-0">
-                    <h3 className="font-extrabold text-sm text-[#0f172a] truncate font-display">{festName}</h3>
-                    <p className="text-[10px] text-[#64748b] font-semibold uppercase tracking-wider truncate">
+                    <h3 className={`font-extrabold text-sm truncate ${isVarsity ? 'font-headline text-[#1c1c18]' : 'text-[#0f172a] font-display'}`}>{festName}</h3>
+                    <p className={`text-[10px] font-semibold uppercase tracking-wider truncate ${isVarsity ? 'font-anton text-[#534345]' : 'text-[#64748b]'}`}>
                       {fest?.institution ? `${fest.institution} · ` : ''}{fest?.edition || settings.festEdition || 'Official Festival Portal'}
                     </p>
                   </div>
@@ -3351,7 +4143,9 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                 <button
                   type="button"
                   onClick={() => setMenuDrawerOpen(false)}
-                  className="p-2 rounded-full text-slate-400 hover:text-slate-700 hover:bg-[#f0fdfa] transition-colors cursor-pointer"
+                  className={`p-2 rounded-full transition-colors cursor-pointer ${
+                    isVarsity ? 'text-[#1c1c18] hover:bg-[#ffd9de]/40' : 'text-slate-400 hover:text-slate-700 hover:bg-[#f0fdfa]'
+                  }`}
                   aria-label="Close navigation menu"
                 >
                   <X className="w-5 h-5" />
@@ -3360,19 +4154,58 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
               {/* Drawer Content */}
               <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-6">
+                {/* Theme Switcher in Mobile Drawer */}
+                <div className={`p-2.5 border flex items-center justify-between ${
+                  isVarsity ? 'bg-[#f7f3ed] border-[#1c1c18] rounded-none' : 'bg-slate-50 border-slate-200 rounded-2xl'
+                }`}>
+                  <span className={`text-xs font-bold ${isVarsity ? 'font-anton uppercase tracking-wider text-[#1c1c18]' : 'text-slate-700'}`}>
+                    Theme
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setPublicTheme('varsity_heritage')}
+                      className={`px-3 py-1 text-xs font-bold transition-all cursor-pointer ${
+                        publicTheme === 'varsity_heritage'
+                          ? 'bg-[#5b192a] text-white font-anton uppercase tracking-wider shadow-xs'
+                          : 'text-[#5b192a] hover:bg-[#ffd9de]/40 font-anton uppercase tracking-wider'
+                      } ${isVarsity ? 'rounded-none' : 'rounded-full'}`}
+                    >
+                      🏛️ Varsity
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPublicTheme('modern')}
+                      className={`px-3 py-1 text-xs font-bold transition-all cursor-pointer ${
+                        publicTheme === 'modern'
+                          ? 'bg-[#0d9488] text-white shadow-xs'
+                          : 'text-slate-600 hover:bg-slate-200'
+                      } ${isVarsity ? 'rounded-none font-anton uppercase tracking-wider' : 'rounded-full'}`}
+                    >
+                      ✨ Modern
+                    </button>
+                  </div>
+                </div>
+
                 {/* Fast Action Card (Register & Sign In) */}
-                <div className="bg-gradient-to-br from-[#06332e] via-[#00685f] to-[#044c69] rounded-2xl p-4 text-white shadow-lg space-y-3">
+                <div className={`p-4 space-y-3 ${
+                  isVarsity
+                    ? 'bg-[#1b365d] text-[#fdf9f3] border-2 border-[#1c1c18] rounded-none shadow-[4px_4px_0px_#a47e3b]'
+                    : 'bg-gradient-to-br from-[#06332e] via-[#00685f] to-[#044c69] rounded-2xl text-white shadow-lg'
+                }`}>
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#89f5e7]">
+                    <span className={`text-[10px] font-bold uppercase tracking-wider ${isVarsity ? 'font-anton text-[#ffdeab]' : 'text-[#89f5e7]'}`}>
                       Contestant Access
                     </span>
-                    <span className="text-[10px] bg-white/15 text-[#89f5e7] border border-white/20 px-2.5 py-0.5 rounded-full font-semibold">
+                    <span className={`text-[10px] px-2.5 py-0.5 font-semibold ${
+                      isVarsity ? 'bg-[#5b192a] text-white border border-[#a47e3b] font-anton uppercase rounded-none' : 'bg-white/15 text-[#89f5e7] border border-white/20 rounded-full'
+                    }`}>
                       Live
                     </span>
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-white font-display">Join as a Participant</h4>
-                    <p className="text-[11px] text-teal-100/80 mt-0.5">
+                    <h4 className={`text-sm font-bold ${isVarsity ? 'font-headline text-[#fdf9f3]' : 'text-white font-display'}`}>Join as a Participant</h4>
+                    <p className={`text-[11px] mt-0.5 ${isVarsity ? 'font-body-serif text-[#fdf9f3]/80' : 'text-teal-100/80'}`}>
                       Register your entries, verify your chest number, and track live scores.
                     </p>
                   </div>
@@ -3383,7 +4216,11 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                         setMenuDrawerOpen(false);
                         openAuth('participant', 'register');
                       }}
-                      className="w-full py-2 px-3 rounded-full bg-[#89f5e7] hover:bg-[#6bd8cb] text-[#00201d] text-xs font-bold transition-colors text-center shadow-md cursor-pointer"
+                      className={`w-full py-2 px-3 text-xs font-bold transition-colors text-center shadow-md cursor-pointer ${
+                        isVarsity
+                          ? 'bg-[#a47e3b] hover:bg-[#8d692f] text-white font-anton uppercase rounded-none'
+                          : 'rounded-full bg-[#89f5e7] hover:bg-[#6bd8cb] text-[#00201d]'
+                      }`}
                     >
                       Register Now
                     </button>
@@ -3393,7 +4230,11 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                         setMenuDrawerOpen(false);
                         openAuth('participant', 'signin');
                       }}
-                      className="w-full py-2 px-3 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-semibold transition-colors text-center cursor-pointer"
+                      className={`w-full py-2 px-3 text-xs font-semibold transition-colors text-center cursor-pointer ${
+                        isVarsity
+                          ? 'bg-[#142948] hover:bg-[#1a345c] border border-[#a47e3b] text-white font-anton uppercase rounded-none'
+                          : 'rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white'
+                      }`}
                     >
                       Sign In
                     </button>
@@ -3402,7 +4243,9 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
                 {/* Festival Navigation Sections */}
                 <div>
-                  <h4 className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider mb-2 px-2">
+                  <h4 className={`text-[11px] uppercase tracking-wider mb-2 px-2 ${
+                    isVarsity ? 'font-anton text-[#534345]' : 'font-bold text-[#64748b]'
+                  }`}>
                     Festival Navigation
                   </h4>
                   <nav className="space-y-1">
@@ -3426,19 +4269,29 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                             setActiveTabSection(item.id as any);
                             setMenuDrawerOpen(false);
                           }}
-                          className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
-                            isActive
-                              ? 'bg-[#f0fdfa] text-[#0d9488] font-bold border border-[#ccfbf1] shadow-2xs'
-                              : 'text-[#334155] hover:bg-[#faf8ff] hover:text-[#0d9488]'
+                          className={`w-full flex items-center justify-between px-3.5 py-2.5 text-xs transition-all cursor-pointer ${
+                            isVarsity
+                              ? isActive
+                                ? 'bg-[#ffd9de] text-[#5b192a] font-anton uppercase tracking-wider rounded-none border border-[#782f40]'
+                                : 'text-[#1c1c18] hover:bg-[#f7f3ed] font-anton uppercase tracking-wider rounded-none'
+                              : isActive
+                              ? 'bg-[#f0fdfa] text-[#0d9488] font-bold border border-[#ccfbf1] shadow-2xs rounded-full'
+                              : 'text-[#334155] hover:bg-[#faf8ff] hover:text-[#0d9488] rounded-full'
                           }`}
                         >
                           <div className="flex items-center gap-3">
-                            <IconComp className={`w-4 h-4 ${isActive ? 'text-[#0d9488]' : 'text-[#64748b]'}`} />
+                            <IconComp className={`w-4 h-4 ${
+                              isVarsity
+                                ? isActive ? 'text-[#782f40]' : 'text-[#534345]'
+                                : isActive ? 'text-[#0d9488]' : 'text-[#64748b]'
+                            }`} />
                             <span>{item.label}</span>
                           </div>
                           {item.badge && (
-                            <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
-                              isActive ? 'bg-[#0d9488] text-white' : 'bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1]'
+                            <span className={`text-[10px] font-bold px-2.5 py-0.5 ${
+                              isVarsity
+                                ? isActive ? 'bg-[#5b192a] text-white rounded-none font-anton' : 'bg-[#e6e2dc] text-[#1c1c18] rounded-none font-anton border border-[#1c1c18]'
+                                : isActive ? 'bg-[#0d9488] text-white rounded-full' : 'bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1] rounded-full'
                             }`}>
                               {item.badge}
                             </span>
@@ -3451,7 +4304,9 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
                 {/* Portals & Management Access */}
                 <div>
-                  <h4 className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider mb-2 px-2">
+                  <h4 className={`text-[11px] uppercase tracking-wider mb-2 px-2 ${
+                    isVarsity ? 'font-anton text-[#534345]' : 'font-bold text-[#64748b]'
+                  }`}>
                     Portals & Management
                   </h4>
                   <div className="space-y-1">
@@ -3461,10 +4316,14 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                         setMenuDrawerOpen(false);
                         openAuth('team_leader', 'signin');
                       }}
-                      className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-full text-xs font-semibold text-[#334155] hover:bg-[#f0fdfa] hover:text-[#0d9488] transition-colors cursor-pointer"
+                      className={`w-full flex items-center justify-between px-3.5 py-2.5 text-xs transition-colors cursor-pointer ${
+                        isVarsity
+                          ? 'text-[#1c1c18] hover:bg-[#f7f3ed] font-anton uppercase tracking-wider rounded-none'
+                          : 'text-[#334155] hover:bg-[#f0fdfa] hover:text-[#0d9488] rounded-full font-semibold'
+                      }`}
                     >
                       <div className="flex items-center gap-3">
-                        <Shield className="w-4 h-4 text-[#0284c7]" />
+                        <Shield className={`w-4 h-4 ${isVarsity ? 'text-[#782f40]' : 'text-[#0284c7]'}`} />
                         <span>Team Leader Portal</span>
                       </div>
                       <ChevronRight className="w-4 h-4 text-slate-400" />
@@ -3472,10 +4331,14 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
 
                     <a
                       href={getAppUrl()}
-                      className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-full text-xs font-semibold text-[#334155] hover:bg-[#f0fdfa] hover:text-[#0d9488] transition-colors"
+                      className={`w-full flex items-center justify-between px-3.5 py-2.5 text-xs transition-colors ${
+                        isVarsity
+                          ? 'text-[#1c1c18] hover:bg-[#f7f3ed] font-anton uppercase tracking-wider rounded-none'
+                          : 'text-[#334155] hover:bg-[#f0fdfa] hover:text-[#0d9488] rounded-full font-semibold'
+                      }`}
                     >
                       <div className="flex items-center gap-3">
-                        <Sparkles className="w-4 h-4 text-[#0d9488]" />
+                        <Sparkles className={`w-4 h-4 ${isVarsity ? 'text-[#782f40]' : 'text-[#0d9488]'}`} />
                         <span>Festoria Platform Home</span>
                       </div>
                       <ChevronRight className="w-4 h-4 text-slate-400" />
@@ -3484,28 +4347,34 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                 </div>
 
                 {/* Festival Grounds & Edition Info */}
-                <div className="p-4 bg-[#faf8ff] rounded-2xl border border-[#e2e8f0] space-y-2 text-xs">
+                <div className={`p-4 space-y-2 text-xs ${
+                  isVarsity
+                    ? 'bg-[#f7f3ed] border border-[#1c1c18] rounded-none font-body-serif'
+                    : 'bg-[#faf8ff] rounded-2xl border border-[#e2e8f0]'
+                }`}>
                   <div className="flex items-center justify-between">
-                    <h5 className="font-bold text-[#0f172a]">Festival Info</h5>
-                    <span className="text-[10px] bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1] font-semibold px-2.5 py-0.5 rounded-full">
+                    <h5 className={`font-bold ${isVarsity ? 'font-headline text-[#1c1c18]' : 'text-[#0f172a]'}`}>Festival Info</h5>
+                    <span className={isVarsity ? 'text-[10px] bg-[#ffd9de] text-[#5b192a] border border-[#782f40] px-2.5 py-0.5 rounded-none font-anton uppercase' : 'text-[10px] bg-[#f0fdfa] text-[#0f766e] border border-[#ccfbf1] font-semibold px-2.5 py-0.5 rounded-full'}>
                       {fest?.edition || 'Official Edition'}
                     </span>
                   </div>
-                  <div className="text-[#334155] space-y-1.5 text-[11px] pt-1">
+                  <div className={`space-y-1.5 text-[11px] pt-1 ${isVarsity ? 'text-[#534345]' : 'text-[#334155]'}`}>
                     <div className="flex items-start gap-1.5">
-                      <MapPin className="w-3.5 h-3.5 text-[#0d9488] shrink-0 mt-0.5" />
-                      <span>Venue: <strong className="text-[#0f172a]">{fest?.venue || settings.venue || 'Campus Convention Grounds'}</strong></span>
+                      <MapPin className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${isVarsity ? 'text-[#782f40]' : 'text-[#0d9488]'}`} />
+                      <span>Venue: <strong className={isVarsity ? 'text-[#1c1c18]' : 'text-[#0f172a]'}>{fest?.venue || settings.venue || 'Campus Convention Grounds'}</strong></span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5 text-[#0d9488] shrink-0" />
-                      <span>Dates: <strong className="text-[#0f172a]">{fest?.startDate || settings.startDate} to {fest?.endDate || settings.endDate}</strong></span>
+                      <Calendar className={`w-3.5 h-3.5 shrink-0 ${isVarsity ? 'text-[#782f40]' : 'text-[#0d9488]'}`} />
+                      <span>Dates: <strong className={isVarsity ? 'text-[#1c1c18]' : 'text-[#0f172a]'}>{fest?.startDate || settings.startDate} to {fest?.endDate || settings.endDate}</strong></span>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Drawer Footer */}
-              <div className="p-4 border-t border-[#e2e8f0] bg-[#faf8ff] text-center text-[11px] text-[#64748b]">
+              <div className={`p-4 border-t text-center text-[11px] ${
+                isVarsity ? 'border-[#1c1c18] bg-[#e6e2dc] font-body-serif text-[#534345]' : 'border-[#e2e8f0] bg-[#faf8ff] text-[#64748b]'
+              }`}>
                 <span>© 2026 {festName} · Powered by Festoria</span>
               </div>
             </div>
