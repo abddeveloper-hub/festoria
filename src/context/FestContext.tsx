@@ -1065,9 +1065,29 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
         fetchTeamProgrammeEntries(),
         fetchJudges()
       ]);
-      setFests(fsFests);
-      setTeams(fsTeams);
-      setParticipants(fsParticipants);
+      if (fsFests && fsFests.length > 0) {
+        setFests(fsFests);
+        if (!fsFests.some((f) => f.id === activeFestId)) {
+          const defaultFest = fsFests.find((f) => f.id === 'FEST-04') || fsFests[fsFests.length - 1];
+          if (defaultFest) {
+            setActiveFestId(defaultFest.id);
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('festflow_active_fest_id', defaultFest.id);
+            }
+          }
+        }
+      }
+      if (fsTeams && fsTeams.length > 0) setTeams(fsTeams);
+      if (fsParticipants && fsParticipants.length > 0) {
+        setParticipants((prev) => {
+          const remoteMap = new Map((fsParticipants || []).map((p) => [p.id, p]));
+          const unsynced = prev.filter((p) => !remoteMap.has(p.id));
+          unsynced.forEach((p) => {
+            saveParticipantToFirestore(p).catch(() => {});
+          });
+          return [...(fsParticipants || []), ...unsynced];
+        });
+      }
 
       // Auto-harmonize programme categories with canonical fest categories
       const activeCats = fsCategories && fsCategories.length > 0 ? fsCategories : DEFAULT_FEST_CATEGORIES;
@@ -1525,7 +1545,20 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       }
     }
 
-    const newId = `PT-${(participants.length + 101).toString()}`;
+    // Ensure globally unique, non-colliding ID based on max existing numeric suffix
+    let maxNum = 100;
+    participants.forEach((p) => {
+      const match = p.id.match(/^PT-(\d+)$/i);
+      if (match) {
+        const n = parseInt(match[1], 10);
+        if (n > maxNum) maxNum = n;
+      }
+    });
+    let candidateNum = maxNum + 1;
+    while (participants.some((p) => p.id === `PT-${candidateNum}`)) {
+      candidateNum++;
+    }
+    const newId = `PT-${candidateNum}`;
     const newParticipant: Participant = {
       ...data,
       festId: data.festId || activeFestId,
@@ -1751,13 +1784,29 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     );
     const toAdd: Participant[] = [];
 
-    newItems.forEach((item, index) => {
+    let maxNum = 100;
+    participants.forEach((p) => {
+      const match = p.id.match(/^PT-(\d+)$/i);
+      if (match) {
+        const n = parseInt(match[1], 10);
+        if (n > maxNum) maxNum = n;
+      }
+    });
+    let nextNum = maxNum + 1;
+
+    newItems.forEach((item) => {
       const emailLower = (item.email || '').toLowerCase().trim();
       if (emailLower && existingEmails.has(emailLower)) {
         duplicateCount++;
       } else {
         if (emailLower) existingEmails.add(emailLower);
-        const newId = `PT-${(participants.length + addedCount + 101).toString()}`;
+        while (
+          participants.some((p) => p.id === `PT-${nextNum}`) ||
+          toAdd.some((p) => p.id === `PT-${nextNum}`)
+        ) {
+          nextNum++;
+        }
+        const newId = `PT-${nextNum++}`;
         const pObj: Participant = {
           ...item,
           festId: item.festId || activeFestId,

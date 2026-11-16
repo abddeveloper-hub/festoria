@@ -42,7 +42,7 @@ export const ParticipantsPage: React.FC = () => {
 
   // Pagination state
   const [page, setPage] = useState(1);
-  const pageSize = 8;
+  const [pageSize, setPageSize] = useState(25);
 
   // Modals state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -326,9 +326,14 @@ export const ParticipantsPage: React.FC = () => {
       {/* Action Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
         <div>
-          <h2 className="text-base font-bold text-slate-900">
-            Participant Directory
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-bold text-slate-900">
+              Participant Directory
+            </h2>
+            <span className="px-2 py-0.5 text-xs font-bold bg-purple-100 text-purple-700 rounded-full border border-purple-200">
+              {filteredData.length} Total
+            </span>
+          </div>
           <p className="text-xs text-slate-500 mt-0.5">
             Manage registrations, verify badges, assign events, and handle team rosters.
           </p>
@@ -588,20 +593,40 @@ export const ParticipantsPage: React.FC = () => {
 
         {/* Pagination controls */}
         <div className="p-3 border-t border-slate-200 bg-white flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-          <div>
-            Showing{' '}
-            <span className="font-semibold text-slate-700">
-              {filteredData.length === 0 ? 0 : (page - 1) * pageSize + 1}
-            </span>{' '}
-            to{' '}
-            <span className="font-semibold text-slate-700">
-              {Math.min(page * pageSize, filteredData.length)}
-            </span>{' '}
-            of{' '}
-            <span className="font-semibold text-slate-700">
-              {filteredData.length}
-            </span>{' '}
-            participants
+          <div className="flex items-center gap-3">
+            <div>
+              Showing{' '}
+              <span className="font-semibold text-slate-700">
+                {filteredData.length === 0 ? 0 : (page - 1) * pageSize + 1}
+              </span>{' '}
+              to{' '}
+              <span className="font-semibold text-slate-700">
+                {Math.min(page * pageSize, filteredData.length)}
+              </span>{' '}
+              of{' '}
+              <span className="font-semibold text-slate-700">
+                {filteredData.length}
+              </span>{' '}
+              participants
+            </div>
+
+            <div className="flex items-center gap-1.5 pl-3 border-l border-slate-200">
+              <span className="text-slate-400">Rows:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="text-xs bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-slate-700 font-medium focus:outline-none"
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+                <option value={500}>All</option>
+              </select>
+            </div>
           </div>
 
           <div className="flex items-center gap-1">
