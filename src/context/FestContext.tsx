@@ -285,7 +285,7 @@ interface FestContextType {
 
   // Mutators - Fest Admin
   addParticipant: (participant: Omit<Participant, 'id' | 'createdAt'>) => boolean;
-  updateParticipant: (id: string, updates: Partial<Participant>) => void;
+  updateParticipant: (id: string, updates: Partial<Participant>) => boolean;
   deleteParticipant: (id: string) => void;
   bulkImportParticipants: (newParticipants: Omit<Participant, 'id' | 'createdAt'>[]) => { added: number; duplicates: number };
 
@@ -1048,10 +1048,24 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       const harmonizedProgrammes = (fsProgrammes || []).map((p) => {
         const norm = (p.category || '').trim().toLowerCase();
         const canonical = catLookup.get(norm);
-        if (canonical && p.category !== canonical) {
-          const updated = { ...p, category: canonical };
+        const pids = new Set(p.registeredParticipantIds || []);
+        (fsParticipants || []).forEach((pt) => {
+          if (pt.registeredProgrammes?.includes(p.id) && pt.status !== 'inactive') {
+            pids.add(pt.id);
+          }
+        });
+        const alignedPids = Array.from(pids);
+        const pidsChanged = alignedPids.length !== (p.registeredParticipantIds || []).length;
+        const categoryChanged = !!(canonical && p.category !== canonical);
+
+        if (categoryChanged || pidsChanged) {
+          const updated = {
+            ...p,
+            category: categoryChanged && canonical ? canonical : p.category,
+            registeredParticipantIds: alignedPids,
+          };
           if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'fest_admin' || currentUser.role === 'super_admin')) {
-            saveProgrammeToFirestore(updated);
+            saveProgrammeToFirestore(updated).catch(() => {});
           }
           return updated;
         }
@@ -1405,6 +1419,75 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       }
     }
 
+    // Validate restrictions on all requested programmes
+    const targetTeamId = data.teamId;
+    const targetCategory = (data.category || '').toLowerCase().trim();
+
+    for (const progId of (data.registeredProgrammes || [])) {
+      const prog = programmes.find((pr) => pr.id === progId);
+      if (!prog) continue;
+
+      // 1. Team event restriction (must register via team squad entries)
+      const isTeam = prog.type === 'team' || prog.type === 'group' || prog.programmeType === 'team';
+      if (isTeam) {
+        addToast(
+          'error',
+          'Team Event Restriction',
+          `"${prog.name}" is a team event. Registrations must be made through team squad entries via the Teams page.`
+        );
+        return false;
+      }
+
+      // 2. Category eligibility
+      const allowedCats = (prog.eligibleCategories || []).map((c) => c.toLowerCase().trim());
+      const allowsGeneral = allowedCats.includes('general') || (prog.category || '').toLowerCase() === 'general';
+      const isEligible =
+        !targetCategory ||
+        allowedCats.length === 0 ||
+        allowedCats.includes(targetCategory) ||
+        (allowsGeneral && targetCategory === 'general') ||
+        (prog.category || '').toLowerCase() === targetCategory;
+      if (!isEligible) {
+        addToast(
+          'error',
+          'Category Ineligible',
+          `Participant category "${data.category}" is not eligible for "${prog.name}". Eligible: [${prog.eligibleCategories.join(', ')}].`
+        );
+        return false;
+      }
+
+      // 3. Team Quota (maxParticipantsPerTeam)
+      const maxAllowed = prog.maxParticipantsPerTeam || 1;
+      const teamRegistrations = participants.filter(
+        (p) => p.teamId === targetTeamId && p.status !== 'inactive' && p.registeredProgrammes?.includes(prog.id)
+      );
+      if (teamRegistrations.length >= maxAllowed) {
+        const teamObj = teams.find((t) => t.id === targetTeamId);
+        const teamName = teamObj ? `${teamObj.name} (${teamObj.code})` : targetTeamId;
+        addToast(
+          'error',
+          'Team Quota Exceeded',
+          `Team "${teamName}" already has ${teamRegistrations.length} of ${maxAllowed} allowed participant(s) registered in "${prog.name}" (${teamRegistrations.map((p) => p.name).join(', ')}). Registration blocked.`
+        );
+        return false;
+      }
+
+      // 4. Programme Capacity
+      if (prog.maxCapacity && prog.maxCapacity > 0) {
+        const totalRegistrations = participants.filter(
+          (p) => p.status !== 'inactive' && p.registeredProgrammes?.includes(prog.id)
+        ).length;
+        if (totalRegistrations >= prog.maxCapacity) {
+          addToast(
+            'error',
+            'Capacity Exceeded',
+            `Programme "${prog.name}" has reached maximum capacity of ${prog.maxCapacity} participants.`
+          );
+          return false;
+        }
+      }
+    }
+
     const newId = `PT-${(participants.length + 101).toString()}`;
     const newParticipant: Participant = {
       ...data,
@@ -1415,15 +1498,21 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     setParticipants((prev) => [newParticipant, ...prev]);
     saveParticipantToFirestore(newParticipant);
 
-    // Also update registeredProgrammes on programmes
+    // Also update registeredProgrammes on programmes and persist
     if (data.registeredProgrammes.length > 0) {
       setProgrammes((prev) =>
         prev.map((prog) => {
-          if (data.registeredProgrammes.includes(prog.id) && !prog.registeredParticipantIds.includes(newId)) {
-            return {
-              ...prog,
-              registeredParticipantIds: [...prog.registeredParticipantIds, newId],
-            };
+          if (data.registeredProgrammes.includes(prog.id)) {
+            const currentIds = new Set(prog.registeredParticipantIds || []);
+            if (!currentIds.has(newId)) {
+              currentIds.add(newId);
+              const updatedProg = {
+                ...prog,
+                registeredParticipantIds: Array.from(currentIds),
+              };
+              saveProgrammeToFirestore(updatedProg).catch(() => {});
+              return updatedProg;
+            }
           }
           return prog;
         })
@@ -1435,11 +1524,13 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     return true;
   };
 
-  const updateParticipant = (id: string, updates: Partial<Participant>) => {
+  const updateParticipant = (id: string, updates: Partial<Participant>): boolean => {
+    const current = participants.find((p) => p.id === id);
+    if (!current) return false;
+
     if (updates.chestNumber && updates.chestNumber.trim()) {
       const chestTrimmed = updates.chestNumber.trim().toLowerCase();
-      const current = participants.find((p) => p.id === id);
-      const festTarget = updates.festId || current?.festId || activeFestId;
+      const festTarget = updates.festId || current.festId || activeFestId;
       const chestExists = participants.some(
         (p) => p.id !== id &&
                (p.festId === festTarget || !p.festId) &&
@@ -1448,9 +1539,82 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       );
       if (chestExists) {
         addToast('error', 'Duplicate Chest Number', `Chest number "${updates.chestNumber}" is already assigned in this festival.`);
-        return;
+        return false;
       }
     }
+
+    const targetTeamId = updates.teamId || current.teamId;
+    const targetCategory = ((updates.category !== undefined ? updates.category : current.category) || '').toLowerCase().trim();
+    const targetProgrammes = updates.registeredProgrammes !== undefined ? updates.registeredProgrammes : current.registeredProgrammes;
+
+    // If programmes, team, or category changed, re-validate restrictions
+    if (updates.registeredProgrammes !== undefined || updates.teamId !== undefined || updates.category !== undefined) {
+      for (const progId of targetProgrammes) {
+        const prog = programmes.find((pr) => pr.id === progId);
+        if (!prog) continue;
+
+        // 1. Team event restriction
+        const isTeam = prog.type === 'team' || prog.type === 'group' || prog.programmeType === 'team';
+        if (isTeam) {
+          addToast(
+            'error',
+            'Team Event Restriction',
+            `"${prog.name}" is a team event. Registrations must be made through team squad entries via the Teams page.`
+          );
+          return false;
+        }
+
+        // 2. Category eligibility
+        const allowedCats = (prog.eligibleCategories || []).map((c) => c.toLowerCase().trim());
+        const allowsGeneral = allowedCats.includes('general') || (prog.category || '').toLowerCase() === 'general';
+        const isEligible =
+          !targetCategory ||
+          allowedCats.length === 0 ||
+          allowedCats.includes(targetCategory) ||
+          (allowsGeneral && targetCategory === 'general') ||
+          (prog.category || '').toLowerCase() === targetCategory;
+        if (!isEligible) {
+          addToast(
+            'error',
+            'Category Ineligible',
+            `Participant category "${updates.category || current.category}" is not eligible for "${prog.name}". Eligible: [${prog.eligibleCategories.join(', ')}].`
+          );
+          return false;
+        }
+
+        // 3. Team Quota (maxParticipantsPerTeam)
+        const maxAllowed = prog.maxParticipantsPerTeam || 1;
+        const otherTeamRegistrations = participants.filter(
+          (p) => p.id !== id && p.teamId === targetTeamId && p.status !== 'inactive' && p.registeredProgrammes?.includes(prog.id)
+        );
+        if (otherTeamRegistrations.length >= maxAllowed) {
+          const teamObj = teams.find((t) => t.id === targetTeamId);
+          const teamName = teamObj ? `${teamObj.name} (${teamObj.code})` : targetTeamId;
+          addToast(
+            'error',
+            'Team Quota Exceeded',
+            `Team "${teamName}" already has ${otherTeamRegistrations.length} of ${maxAllowed} allowed participant(s) registered in "${prog.name}" (${otherTeamRegistrations.map((p) => p.name).join(', ')}). Registration blocked.`
+          );
+          return false;
+        }
+
+        // 4. Capacity
+        if (prog.maxCapacity && prog.maxCapacity > 0) {
+          const totalInProg = participants.filter(
+            (p) => p.id !== id && p.status !== 'inactive' && p.registeredProgrammes?.includes(prog.id)
+          ).length;
+          if (totalInProg >= prog.maxCapacity) {
+            addToast(
+              'error',
+              'Capacity Exceeded',
+              `Programme "${prog.name}" has reached maximum capacity of ${prog.maxCapacity} participants.`
+            );
+            return false;
+          }
+        }
+      }
+    }
+
     let updatedRecord: Participant | undefined;
     setParticipants((prev) =>
       prev.map((p) => {
@@ -1465,14 +1629,56 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     if (updatedRecord) {
       saveParticipantToFirestore(updatedRecord);
     }
+
+    // Synchronize programmes registeredParticipantIds
+    if (updates.registeredProgrammes !== undefined) {
+      const oldProgIds = new Set(current.registeredProgrammes || []);
+      const newProgIds = new Set(updates.registeredProgrammes);
+      setProgrammes((prev) =>
+        prev.map((prog) => {
+          let currentIds = prog.registeredParticipantIds ? [...prog.registeredParticipantIds] : [];
+          let changed = false;
+          if (newProgIds.has(prog.id) && !currentIds.includes(id)) {
+            currentIds.push(id);
+            changed = true;
+          } else if (!newProgIds.has(prog.id) && currentIds.includes(id)) {
+            currentIds = currentIds.filter((pId) => pId !== id);
+            changed = true;
+          }
+          if (changed) {
+            const updatedProg = { ...prog, registeredParticipantIds: currentIds };
+            saveProgrammeToFirestore(updatedProg).catch(() => {});
+            return updatedProg;
+          }
+          return prog;
+        })
+      );
+    }
+
     logActivity('UPDATE_PARTICIPANT', 'participant', id, `Updated details for participant ID ${id}.`);
     addToast('success', 'Updated', 'Participant record has been updated.');
+    return true;
   };
 
   const deleteParticipant = (id: string) => {
     const target = participants.find((p) => p.id === id);
     setParticipants((prev) => prev.filter((p) => p.id !== id));
     deleteParticipantFromFirestore(id).catch((err) => console.warn('[Firestore] deleteParticipant error:', err));
+
+    // Cascade: remove participant from programmes registeredParticipantIds
+    setProgrammes((prev) =>
+      prev.map((prog) => {
+        if (prog.registeredParticipantIds?.includes(id)) {
+          const updated = {
+            ...prog,
+            registeredParticipantIds: prog.registeredParticipantIds.filter((pId) => pId !== id),
+          };
+          saveProgrammeToFirestore(updated).catch(() => {});
+          return updated;
+        }
+        return prog;
+      })
+    );
 
     // Cascade: remove participant from assignments and team entries
     setAssignments((prev: ProgrammeAssignment[]) =>

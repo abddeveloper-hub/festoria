@@ -43,6 +43,7 @@ export const ProgrammesPage: React.FC = () => {
     judges,
     teams,
     participants,
+    assignments,
     categories,
     addCategory,
     updateCategory,
@@ -649,8 +650,24 @@ export const ProgrammesPage: React.FC = () => {
           const assignedJudges = judges.filter((j) => prog.assignedJudgeIds.includes(j.id));
           const totalMarks = prog.criteria.reduce((s, c) => s + c.maxMarks, 0);
           const isTeam = prog.type === 'group' || prog.type === 'team' || prog.programmeType === 'team';
-          const teamEntriesCount = teamProgrammeEntries.filter((e) => e.programmeId === prog.id).length;
+          const teamEntries = teamProgrammeEntries.filter((e) => e.programmeId === prog.id && e.status !== 'withdrawn');
+          const teamEntriesCount = teamEntries.length;
           const isOffStage = prog.stageType === 'off_stage';
+
+          // Dynamically compute real registered participants across all sources:
+          const registeredParticipantIdsSet = new Set<string>();
+          participants.forEach((p) => {
+            if (p.registeredProgrammes?.includes(prog.id) && p.status !== 'inactive') {
+              registeredParticipantIdsSet.add(p.id);
+            }
+          });
+          (prog.registeredParticipantIds || []).forEach((id) => registeredParticipantIdsSet.add(id));
+          (assignments || []).forEach((asg) => {
+            if (asg.programmeId === prog.id) {
+              (asg.participantIds || []).forEach((pid) => registeredParticipantIdsSet.add(pid));
+            }
+          });
+          const registeredCount = registeredParticipantIdsSet.size;
 
           return (
             <div
@@ -722,7 +739,7 @@ export const ProgrammesPage: React.FC = () => {
                     <span>
                       {isTeam
                         ? `${teamEntriesCount} team entries (Max ${prog.maxEntriesPerTeam || 1}/team, ${prog.minTeamMembers || 2}-${prog.maxTeamMembers || 10} members)`
-                        : `${prog.registeredParticipantIds?.length || 0} participants (Max ${prog.maxParticipantsPerTeam || 1}/team)`}
+                        : `${registeredCount} participant${registeredCount === 1 ? '' : 's'} registered (Max ${prog.maxParticipantsPerTeam || 1}/team${prog.maxCapacity ? `, Cap: ${prog.maxCapacity}` : ''})`}
                     </span>
                   </div>
                 </div>
@@ -1934,6 +1951,129 @@ export const ProgrammesPage: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            {/* Registered Participants & Contingent Entries Roster */}
+            {(() => {
+              const isViewingTeam = viewingProgramme.type === 'group' || viewingProgramme.type === 'team' || viewingProgramme.programmeType === 'team';
+              const viewingPids = new Set<string>();
+              participants.forEach((p) => {
+                if (p.registeredProgrammes?.includes(viewingProgramme.id) && p.status !== 'inactive') {
+                  viewingPids.add(p.id);
+                }
+              });
+              (viewingProgramme.registeredParticipantIds || []).forEach((id) => viewingPids.add(id));
+              (assignments || []).forEach((asg) => {
+                if (asg.programmeId === viewingProgramme.id) {
+                  (asg.participantIds || []).forEach((pid) => viewingPids.add(pid));
+                }
+              });
+
+              const viewingParticipants = participants
+                .filter((p) => viewingPids.has(p.id))
+                .sort((a, b) => {
+                  if (a.chestNumber && b.chestNumber) {
+                    return a.chestNumber.localeCompare(b.chestNumber, undefined, { numeric: true, sensitivity: 'base' });
+                  }
+                  if (a.chestNumber) return -1;
+                  if (b.chestNumber) return 1;
+                  return (a.name || '').localeCompare(b.name || '');
+                });
+
+              const viewingTeamEntries = teamProgrammeEntries.filter(
+                (e) => e.programmeId === viewingProgramme.id && e.status !== 'withdrawn'
+              );
+
+              return (
+                <div className="p-3 bg-slate-50 rounded border border-slate-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5 text-slate-600" />
+                      {isViewingTeam
+                        ? `Registered Team Entries (${viewingTeamEntries.length})`
+                        : `Registered Participants (${viewingParticipants.length}${viewingProgramme.maxCapacity ? ` / ${viewingProgramme.maxCapacity}` : ''})`}
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-mono">
+                      {isViewingTeam
+                        ? `Max ${viewingProgramme.maxEntriesPerTeam || 1}/team • ${viewingProgramme.minTeamMembers || 2}-${viewingProgramme.maxTeamMembers || 10} members`
+                        : `Team Quota: Max ${viewingProgramme.maxParticipantsPerTeam || 1}/team`}
+                    </span>
+                  </div>
+
+                  {isViewingTeam ? (
+                    viewingTeamEntries.length === 0 ? (
+                      <p className="text-slate-400 italic text-[11px] py-1.5 text-center">
+                        No team entries registered yet for this event.
+                      </p>
+                    ) : (
+                      <div className="space-y-2 max-h-48 overflow-y-auto mt-2">
+                        {viewingTeamEntries.map((entry) => {
+                          const tm = teams.find((t) => t.id === entry.teamId);
+                          return (
+                            <div key={entry.id} className="p-2 bg-white rounded border border-slate-200 flex items-center justify-between">
+                              <div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-semibold text-slate-900">{entry.entryName || entry.teamName}</span>
+                                  <span className="text-[10px] font-mono bg-slate-100 text-slate-700 px-1 rounded font-bold">
+                                    {tm?.code || entry.teamId}
+                                  </span>
+                                </div>
+                                <div className="text-[10px] text-slate-500 mt-0.5">
+                                  {entry.memberParticipantIds?.length || 0} squad members
+                                  {entry.memberNames && entry.memberNames.length > 0 ? `: ${entry.memberNames.join(', ')}` : ''}
+                                </div>
+                              </div>
+                              <Badge variant={entry.status === 'verified' ? 'active' : 'pending'} size="sm">
+                                {entry.status}
+                              </Badge>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )
+                  ) : (
+                    viewingParticipants.length === 0 ? (
+                      <p className="text-slate-400 italic text-[11px] py-1.5 text-center">
+                        No participants registered yet for this event.
+                      </p>
+                    ) : (
+                      <div className="max-h-48 overflow-y-auto space-y-1 mt-2">
+                        {viewingParticipants.map((pt) => {
+                          const tm = teams.find((t) => t.id === pt.teamId);
+                          return (
+                            <div
+                              key={pt.id}
+                              className="p-1.5 bg-white rounded border border-slate-200 flex items-center justify-between text-[11px]"
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                {pt.chestNumber ? (
+                                  <span className="font-mono font-bold text-[10px] bg-purple-50 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded flex-shrink-0">
+                                    #{pt.chestNumber}
+                                  </span>
+                                ) : (
+                                  <span className="font-mono text-[10px] text-slate-400 bg-slate-50 px-1 rounded flex-shrink-0">
+                                    #{pt.id}
+                                  </span>
+                                )}
+                                <span className="font-medium text-slate-900 truncate">{pt.name}</span>
+                                <span className="text-[10px] text-slate-500 bg-slate-100 px-1 rounded flex-shrink-0">
+                                  {tm?.name || pt.teamId}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <span className="text-[10px] text-slate-400 font-mono">{pt.category}</span>
+                                <Badge variant={pt.status === 'verified' ? 'active' : 'pending'} size="sm">
+                                  {pt.status}
+                                </Badge>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )
+                  )}
+                </div>
+              );
+            })()}
 
             <div className="pt-3 border-t border-slate-200 flex justify-between items-center">
               <div className="flex items-center gap-2">

@@ -153,6 +153,104 @@ export const ParticipantsPage: React.FC = () => {
       return;
     }
 
+    // Check duplicate chest number if entered
+    if (formData.chestNumber.trim()) {
+      const chestTrimmed = formData.chestNumber.trim().toLowerCase();
+      const duplicateChest = participants.some(
+        (p) => p.id !== editingParticipant?.id && p.chestNumber && p.chestNumber.trim().toLowerCase() === chestTrimmed
+      );
+      if (duplicateChest) {
+        addToast('error', 'Duplicate Chest Number', `Chest number "${formData.chestNumber}" is already assigned to another participant.`);
+        return;
+      }
+    }
+
+    // Check duplicate email if entered
+    if (formData.email.trim()) {
+      const emailTrimmed = formData.email.trim().toLowerCase();
+      const duplicateEmail = participants.some(
+        (p) => p.id !== editingParticipant?.id && p.email && p.email.trim().toLowerCase() === emailTrimmed
+      );
+      if (duplicateEmail) {
+        addToast('error', 'Duplicate Email', `Participant with email "${formData.email}" already exists.`);
+        return;
+      }
+    }
+
+    // Validate restrictions on all selected programmes
+    for (const progId of formData.registeredProgrammes) {
+      const prog = programmes.find((pr) => pr.id === progId);
+      if (!prog) continue;
+
+      // 1. Team event restriction
+      if (prog.type === 'team' || prog.type === 'group' || prog.programmeType === 'team') {
+        addToast(
+          'error',
+          'Team Event Restriction',
+          `"${prog.name}" is a team event. Please register team entries through the Teams page with complete squad rosters.`
+        );
+        return;
+      }
+
+      // 2. Category eligibility
+      const fCat = (formData.category || '').toLowerCase().trim();
+      const pCat = (prog.category || '').toLowerCase().trim();
+      const eligibleCats = (prog.eligibleCategories || []).map((c) => c.toLowerCase().trim());
+      const isEligible =
+        !fCat ||
+        eligibleCats.length === 0 ||
+        eligibleCats.includes(fCat) ||
+        eligibleCats.includes('general') ||
+        pCat === fCat ||
+        pCat === 'general';
+      if (!isEligible) {
+        addToast(
+          'error',
+          'Category Ineligible',
+          `Participant category "${formData.category}" is not eligible for "${prog.name}". Eligible categories: [${prog.eligibleCategories.join(', ')}].`
+        );
+        return;
+      }
+
+      // 3. Team Quota (maxParticipantsPerTeam)
+      const maxAllowed = prog.maxParticipantsPerTeam || 1;
+      const otherTeamMembers = participants.filter(
+        (p) =>
+          p.teamId === formData.teamId &&
+          p.id !== editingParticipant?.id &&
+          p.status !== 'inactive' &&
+          p.registeredProgrammes?.includes(prog.id)
+      );
+      if (otherTeamMembers.length >= maxAllowed) {
+        const teamObj = teams.find((t) => t.id === formData.teamId);
+        const teamName = teamObj ? `${teamObj.name} (${teamObj.code})` : formData.teamId;
+        addToast(
+          'error',
+          'Team Limit Exceeded',
+          `Team "${teamName}" already has ${otherTeamMembers.length} of ${maxAllowed} allowed participant(s) registered in "${prog.name}" (${otherTeamMembers.map((p) => p.name).join(', ')}). Registration blocked.`
+        );
+        return;
+      }
+
+      // 4. Programme Capacity
+      if (prog.maxCapacity && prog.maxCapacity > 0) {
+        const totalInProg = participants.filter(
+          (p) =>
+            p.id !== editingParticipant?.id &&
+            p.status !== 'inactive' &&
+            p.registeredProgrammes?.includes(prog.id)
+        ).length;
+        if (totalInProg >= prog.maxCapacity) {
+          addToast(
+            'error',
+            'Capacity Exceeded',
+            `"${prog.name}" has reached maximum capacity of ${prog.maxCapacity} participants.`
+          );
+          return;
+        }
+      }
+    }
+
     const payload = {
       name: formData.name.trim(),
       chestNumber: formData.chestNumber.trim() || undefined,
@@ -165,8 +263,10 @@ export const ParticipantsPage: React.FC = () => {
     };
 
     if (editingParticipant) {
-      updateParticipant(editingParticipant.id, payload);
-      setIsAddModalOpen(false);
+      const success = updateParticipant(editingParticipant.id, payload);
+      if (success) {
+        setIsAddModalOpen(false);
+      }
     } else {
       const success = addParticipant(payload);
       if (success) {
@@ -655,26 +755,37 @@ export const ParticipantsPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Registered Programmes multi-select checkboxes */}
+          {/* Registered Programmes multi-select checkboxes with Real-Time Quota & Eligibility */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="block text-xs font-medium text-slate-700">
                 Assigned Programmes ({formData.registeredProgrammes.length} selected)
               </label>
-              {formData.category && (
-                <span className="text-[10px] text-slate-500 font-normal">
-                  Showing programmes for: <strong className="text-slate-800">{formData.category}</strong>
-                </span>
-              )}
+              <div className="flex items-center gap-2 text-[10px] text-slate-500 font-normal">
+                {formData.teamId && (
+                  <span>
+                    Team: <strong className="text-slate-800">{teams.find((t) => t.id === formData.teamId)?.name || formData.teamId}</strong>
+                  </span>
+                )}
+                {formData.category && (
+                  <span>
+                    • Category: <strong className="text-slate-800">{formData.category}</strong>
+                  </span>
+                )}
+              </div>
             </div>
-            <div className="max-h-48 overflow-y-auto border border-slate-200 rounded p-2.5 space-y-1 bg-slate-50/50">
+            <div className="max-h-56 overflow-y-auto border border-slate-200 rounded p-2 space-y-1.5 bg-slate-50/50">
               {(() => {
+                const fCat = (formData.category || '').toLowerCase().trim();
                 const availableProgrammes = programmes.filter((prog) => {
-                  if (!formData.category) return true;
+                  if (!fCat) return true;
                   const pCat = (prog.category || '').toLowerCase().trim();
-                  const fCat = (formData.category || '').toLowerCase().trim();
-                  // Show only programmes allotted to this category, general events, or already checked
+                  const eligibleCats = (prog.eligibleCategories || []).map((c) => c.toLowerCase().trim());
+                  // Show programmes allotted to this category, general events, or already checked
                   return (
+                    eligibleCats.length === 0 ||
+                    eligibleCats.includes(fCat) ||
+                    eligibleCats.includes('general') ||
                     pCat === fCat ||
                     pCat === 'general' ||
                     pCat.startsWith('general') ||
@@ -690,28 +801,170 @@ export const ParticipantsPage: React.FC = () => {
                   );
                 }
 
-                return availableProgrammes.map((prog) => {
+                // Natural sort by programme code
+                const sortedProgrammes = [...availableProgrammes].sort((a, b) =>
+                  (a.code || '').localeCompare(b.code || '', undefined, { numeric: true, sensitivity: 'base' }) ||
+                  (a.name || '').localeCompare(b.name || '')
+                );
+
+                return sortedProgrammes.map((prog) => {
                   const checked = formData.registeredProgrammes.includes(prog.id);
+                  const isTeamEvent = prog.type === 'team' || prog.type === 'group' || prog.programmeType === 'team';
+
+                  // Category check
+                  const pCat = (prog.category || '').toLowerCase().trim();
+                  const eligibleCats = (prog.eligibleCategories || []).map((c) => c.toLowerCase().trim());
+                  const isCategoryEligible =
+                    !fCat ||
+                    eligibleCats.length === 0 ||
+                    eligibleCats.includes(fCat) ||
+                    eligibleCats.includes('general') ||
+                    pCat === fCat ||
+                    pCat === 'general';
+
+                  // Team quota check
+                  const maxAllowedPerTeam = prog.maxParticipantsPerTeam || 1;
+                  const otherTeamMembers = participants.filter(
+                    (p) =>
+                      p.teamId === formData.teamId &&
+                      p.id !== editingParticipant?.id &&
+                      p.status !== 'inactive' &&
+                      p.registeredProgrammes?.includes(prog.id)
+                  );
+                  const currentTeamCount = otherTeamMembers.length;
+                  const isTeamQuotaFull = currentTeamCount >= maxAllowedPerTeam;
+
+                  // Overall capacity check
+                  const maxCap = prog.maxCapacity || 0;
+                  const totalInProg = participants.filter(
+                    (p) =>
+                      p.id !== editingParticipant?.id &&
+                      p.status !== 'inactive' &&
+                      p.registeredProgrammes?.includes(prog.id)
+                  ).length;
+                  const isCapFull = maxCap > 0 && totalInProg >= maxCap;
+
+                  // Can the checkbox be toggled on?
+                  const canSelect = !isTeamEvent && isCategoryEligible && !isTeamQuotaFull && !isCapFull;
+                  const isBlocked = !checked && !canSelect;
+
+                  const handleToggle = () => {
+                    if (checked) {
+                      setFormData({
+                        ...formData,
+                        registeredProgrammes: formData.registeredProgrammes.filter((id) => id !== prog.id),
+                      });
+                    } else {
+                      if (isTeamEvent) {
+                        addToast(
+                          'error',
+                          'Team Programme Restriction',
+                          `"${prog.name}" is a team event. Register team entries with full squad rosters in Teams page or Team Leader portal.`
+                        );
+                        return;
+                      }
+                      if (!isCategoryEligible) {
+                        addToast(
+                          'error',
+                          'Category Ineligible',
+                          `Participant in "${formData.category}" is not eligible for "${prog.name}". Eligible: [${prog.eligibleCategories.join(', ')}].`
+                        );
+                        return;
+                      }
+                      if (isTeamQuotaFull) {
+                        const teamObj = teams.find((t) => t.id === formData.teamId);
+                        const teamName = teamObj ? `${teamObj.name} (${teamObj.code})` : formData.teamId;
+                        addToast(
+                          'error',
+                          'Team Quota Full',
+                          `Team "${teamName}" already has ${currentTeamCount} of ${maxAllowedPerTeam} allowed participant(s) registered in "${prog.name}": ${otherTeamMembers.map((p) => p.name).join(', ')}.`
+                        );
+                        return;
+                      }
+                      if (isCapFull) {
+                        addToast(
+                          'error',
+                          'Capacity Full',
+                          `Programme "${prog.name}" has reached its maximum capacity of ${maxCap} participants.`
+                        );
+                        return;
+                      }
+                      setFormData({
+                        ...formData,
+                        registeredProgrammes: [...formData.registeredProgrammes, prog.id],
+                      });
+                    }
+                  };
+
                   return (
-                    <label
+                    <div
                       key={prog.id}
-                      className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer hover:text-slate-900 hover:bg-slate-100/60 p-1 rounded transition-colors"
+                      onClick={(e) => {
+                        if ((e.target as HTMLElement).tagName !== 'INPUT') {
+                          handleToggle();
+                        }
+                      }}
+                      className={`flex items-center justify-between gap-2 p-2 rounded border transition-colors ${
+                        checked
+                          ? 'bg-purple-50/70 border-purple-200 text-slate-900'
+                          : isBlocked
+                          ? 'bg-slate-100/70 border-slate-200 text-slate-400 opacity-80 cursor-not-allowed'
+                          : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 cursor-pointer'
+                      }`}
                     >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => {
-                          const newProgList = checked
-                            ? formData.registeredProgrammes.filter((id) => id !== prog.id)
-                            : [...formData.registeredProgrammes, prog.id];
-                          setFormData({ ...formData, registeredProgrammes: newProgList });
-                        }}
-                        className="rounded border-slate-300 text-slate-900 focus:ring-0"
-                      />
-                      <span className="font-mono text-[11px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">{prog.code}</span>
-                      <span className="font-medium text-slate-800">{prog.name}</span>
-                      <span className="text-[10px] text-slate-400 font-mono ml-auto">({prog.category})</span>
-                    </label>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={isBlocked}
+                          onChange={handleToggle}
+                          className={`rounded border-slate-300 text-purple-600 focus:ring-0 ${
+                            isBlocked ? 'cursor-not-allowed' : 'cursor-pointer'
+                          }`}
+                        />
+                        <span className="font-mono text-[10px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded flex-shrink-0">
+                          {prog.code}
+                        </span>
+                        <span className={`text-xs font-medium truncate ${checked ? 'font-semibold text-purple-900' : ''}`}>
+                          {prog.name}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-mono flex-shrink-0">
+                          ({prog.category})
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {isTeamEvent ? (
+                          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 border border-purple-200">
+                            Team Squad Only
+                          </span>
+                        ) : !isCategoryEligible ? (
+                          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">
+                            Ineligible
+                          </span>
+                        ) : isTeamQuotaFull && !checked ? (
+                          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-200">
+                            Team Full ({currentTeamCount}/${maxAllowedPerTeam})
+                          </span>
+                        ) : isCapFull && !checked ? (
+                          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-200">
+                            Cap Full ({totalInProg}/${maxCap})
+                          </span>
+                        ) : checked && currentTeamCount >= maxAllowedPerTeam ? (
+                          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-200">
+                            Team Over Limit ({currentTeamCount + 1}/${maxAllowedPerTeam})
+                          </span>
+                        ) : checked ? (
+                          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 border border-emerald-200">
+                            Selected ({currentTeamCount + 1}/${maxAllowedPerTeam})
+                          </span>
+                        ) : (
+                          <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                            {currentTeamCount}/{maxAllowedPerTeam} team slots
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   );
                 });
               })()}
