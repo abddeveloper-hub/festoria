@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useFest } from '../context/FestContext';
 import {
   Programme,
@@ -50,9 +50,12 @@ export const ProgrammesPage: React.FC = () => {
     deleteCategory,
     toggleGeneralCategory,
     teamProgrammeEntries,
+    createTeamProgrammeEntry,
+    deleteTeamProgrammeEntry,
     addProgramme,
     updateProgramme,
     deleteProgramme,
+    updateParticipant,
     publishProgrammeResults,
     deleteProgrammeResults,
     hasPermission,
@@ -76,6 +79,46 @@ export const ProgrammesPage: React.FC = () => {
   const [viewingProgramme, setViewingProgramme] = useState<Programme | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteResultsId, setConfirmDeleteResultsId] = useState<string | null>(null);
+
+  // Dedicated Roster & Assignments Modal state
+  const [managingRosterProg, setManagingRosterProg] = useState<Programme | null>(null);
+  const [rosterTeamFilter, setRosterTeamFilter] = useState<string>('');
+  const [rosterSearch, setRosterSearch] = useState<string>('');
+  const [teamEntrySquadName, setTeamEntrySquadName] = useState<string>('');
+  const [selectedSquadMemberIds, setSelectedSquadMemberIds] = useState<string[]>([]);
+
+  const liveManagingRosterProg = useMemo(() => {
+    if (!managingRosterProg) return null;
+    return programmes.find((p) => p.id === managingRosterProg.id) || managingRosterProg;
+  }, [managingRosterProg, programmes]);
+
+  useEffect(() => {
+    if (!rosterTeamFilter && teams.length > 0) {
+      setRosterTeamFilter(teams[0].id);
+    }
+  }, [teams, rosterTeamFilter]);
+
+  const handleRemoveParticipantFromProg = (participantId: string, progId: string) => {
+    const p = participants.find((item) => item.id === participantId);
+    if (!p) return;
+    const nextProgs = (p.registeredProgrammes || []).filter((id) => id !== progId);
+    const success = updateParticipant(p.id, { registeredProgrammes: nextProgs });
+    if (success) {
+      addToast('success', 'Participant Removed', `Removed ${p.name} from event.`);
+    }
+  };
+
+  const handleAddParticipantToProg = (participantId: string, progId: string) => {
+    const p = participants.find((item) => item.id === participantId);
+    if (!p) return;
+    const currentProgs = p.registeredProgrammes || [];
+    if (currentProgs.includes(progId)) return;
+    const nextProgs = [...currentProgs, progId];
+    const success = updateParticipant(p.id, { registeredProgrammes: nextProgs });
+    if (success) {
+      addToast('success', 'Participant Assigned', `Assigned ${p.name} to event.`);
+    }
+  };
 
   // Form Step: 1 to 6
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -734,14 +777,21 @@ export const ProgrammesPage: React.FC = () => {
                         : 'No judges assigned'}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <Users className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setManagingRosterProg(prog);
+                      setRosterTeamFilter(teams[0]?.id || '');
+                    }}
+                    className="flex items-center gap-1.5 text-xs text-purple-700 hover:text-purple-900 font-semibold hover:underline text-left cursor-pointer"
+                  >
+                    <Users className="w-3.5 h-3.5 text-purple-600 flex-shrink-0" />
                     <span>
                       {isTeam
-                        ? `${teamEntriesCount} team entries (Max ${prog.maxEntriesPerTeam || 1}/team, ${prog.minTeamMembers || 2}-${prog.maxTeamMembers || 10} members)`
-                        : `${registeredCount} participant${registeredCount === 1 ? '' : 's'} registered (Max ${prog.maxParticipantsPerTeam || 1}/team${prog.maxCapacity ? `, Cap: ${prog.maxCapacity}` : ''})`}
+                        ? `${teamEntriesCount} team entries (Max ${prog.maxEntriesPerTeam || 1}/team) • Roster &rarr;`
+                        : `${registeredCount} participant${registeredCount === 1 ? '' : 's'} registered • Assign &rarr;`}
                     </span>
-                  </div>
+                  </button>
                 </div>
 
                 {/* Categories badges */}
@@ -792,12 +842,29 @@ export const ProgrammesPage: React.FC = () => {
 
               {/* Action Buttons */}
               <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-                <button
-                  onClick={() => setViewingProgramme(prog)}
-                  className="text-xs font-semibold text-slate-800 hover:underline flex items-center gap-1"
-                >
-                  <Eye className="w-3.5 h-3.5" /> View
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setViewingProgramme(prog)}
+                    className="text-xs font-semibold text-slate-800 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <Eye className="w-3.5 h-3.5" /> View
+                  </button>
+
+                  {canManage && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setManagingRosterProg(prog);
+                        setRosterTeamFilter(teams[0]?.id || '');
+                      }}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition-colors cursor-pointer shadow-2xs"
+                      title="Manage participants assigned to this event"
+                    >
+                      <Users className="w-3.5 h-3.5" />
+                      <span>Roster ({isTeam ? teamEntriesCount : registeredCount})</span>
+                    </button>
+                  )}
+                </div>
 
                 {canManage && (
                   <div className="flex items-center gap-1">
@@ -2117,6 +2184,285 @@ export const ProgrammesPage: React.FC = () => {
                 className="px-3 py-1.5 text-xs text-slate-700 bg-white border border-slate-300 rounded hover:bg-slate-50"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Dedicated Roster & Assignments Modal */}
+      {liveManagingRosterProg && (
+        <Modal
+          isOpen={!!liveManagingRosterProg}
+          onClose={() => setManagingRosterProg(null)}
+          title={`Event Roster & Participants: ${liveManagingRosterProg.code} - ${liveManagingRosterProg.name}`}
+          description={`Category: ${liveManagingRosterProg.category} • Stage: ${liveManagingRosterProg.stage || 'Main'} • Type: ${liveManagingRosterProg.type === 'team' || liveManagingRosterProg.type === 'group' || liveManagingRosterProg.programmeType === 'team' ? 'Team Event' : 'Individual Competition'}`}
+          maxWidth="2xl"
+        >
+          <div className="space-y-4 text-xs">
+            {/* Event Summary Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-purple-700 text-white shadow-2xs">
+                  {liveManagingRosterProg.code}
+                </span>
+                <div>
+                  <h4 className="font-bold text-slate-900 text-sm">{liveManagingRosterProg.name}</h4>
+                  <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
+                    <span>
+                      Rules:{' '}
+                      <strong className="text-slate-800">
+                        {liveManagingRosterProg.type === 'team' || liveManagingRosterProg.type === 'group' || liveManagingRosterProg.programmeType === 'team'
+                          ? `Max ${liveManagingRosterProg.maxEntriesPerTeam || 1} team entry/squad (${liveManagingRosterProg.minTeamMembers || 2}-${liveManagingRosterProg.maxTeamMembers || 10} members)`
+                          : `Max ${liveManagingRosterProg.maxParticipantsPerTeam || 1} participant(s) per team`}
+                      </strong>
+                    </span>
+                    {liveManagingRosterProg.maxCapacity ? (
+                      <span>• Fest Capacity: <strong>{liveManagingRosterProg.maxCapacity}</strong></span>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <span className="px-2.5 py-1 text-xs font-bold rounded-lg bg-white border border-slate-200 text-purple-900 shadow-2xs">
+                  {participants.filter((p) => p.status !== 'inactive' && p.registeredProgrammes?.includes(liveManagingRosterProg.id)).length} Registered
+                </span>
+              </div>
+            </div>
+
+            {/* SECTION 1: CURRENTLY REGISTERED PARTICIPANTS */}
+            <div className="border border-slate-200 rounded-xl p-3 bg-white">
+              <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-100">
+                <h5 className="font-bold text-slate-900 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>Currently Registered Participants</span>
+                  <span className="text-[11px] font-semibold text-slate-500">
+                    ({participants.filter((p) => p.status !== 'inactive' && p.registeredProgrammes?.includes(liveManagingRosterProg.id)).length})
+                  </span>
+                </h5>
+              </div>
+
+              {(() => {
+                const registeredParticipants = participants.filter(
+                  (p) => p.status !== 'inactive' && p.registeredProgrammes?.includes(liveManagingRosterProg.id)
+                );
+
+                if (registeredParticipants.length === 0) {
+                  return (
+                    <div className="py-6 text-center text-slate-400 italic bg-slate-50/70 rounded-lg border border-dashed border-slate-200">
+                      No participants registered in this event yet. Select a team below to assign members.
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="max-h-52 overflow-y-auto space-y-1.5 pr-1 divide-y divide-slate-100">
+                    {registeredParticipants.map((p) => {
+                      const team = teams.find((t) => t.id === p.teamId);
+                      return (
+                        <div key={p.id} className="pt-1.5 first:pt-0 flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
+                              {p.chestNumber ? `#${p.chestNumber}` : p.id}
+                            </span>
+                            <span className="font-bold text-slate-900 truncate">{p.name}</span>
+                            <div className="flex items-center gap-1 text-[11px] text-slate-500">
+                              <span
+                                className="w-2 h-2 rounded-full"
+                                style={{ backgroundColor: team?.colorHex || '#94a3b8' }}
+                              />
+                              <span>{team?.name || p.teamId}</span>
+                              <span className="text-[10px] font-medium bg-slate-100 px-1 rounded text-slate-600">
+                                {p.category}
+                              </span>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveParticipantFromProg(p.id, liveManagingRosterProg.id)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors cursor-pointer"
+                            title="Remove participant from this event"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Remove</span>
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* SECTION 2: ADD PARTICIPANTS FROM TEAM */}
+            <div className="border border-purple-200/80 rounded-xl p-3 bg-purple-50/30">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-3">
+                <h5 className="font-bold text-slate-900 flex items-center gap-1.5">
+                  <Plus className="w-4 h-4 text-purple-600" />
+                  <span>Assign Team Members to this Event</span>
+                </h5>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <label className="text-[11px] font-semibold text-slate-600">Select Team:</label>
+                  <select
+                    value={rosterTeamFilter}
+                    onChange={(e) => setRosterTeamFilter(e.target.value)}
+                    className="text-xs font-semibold bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-600"
+                  >
+                    {teams.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} ({t.code})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Team Quota Progress Bar for Selected Team */}
+              {(() => {
+                const selectedTeam = teams.find((t) => t.id === rosterTeamFilter);
+                const isTeamEvent =
+                  liveManagingRosterProg.type === 'team' ||
+                  liveManagingRosterProg.type === 'group' ||
+                  liveManagingRosterProg.programmeType === 'team';
+                const maxPerTeam = isTeamEvent
+                  ? liveManagingRosterProg.maxTeamMembers || 25
+                  : liveManagingRosterProg.maxParticipantsPerTeam || 1;
+
+                const teamMembersInProg = participants.filter(
+                  (p) =>
+                    p.teamId === rosterTeamFilter &&
+                    p.status !== 'inactive' &&
+                    p.registeredProgrammes?.includes(liveManagingRosterProg.id)
+                );
+                const currentCount = teamMembersInProg.length;
+                const isTeamFull = currentCount >= maxPerTeam;
+
+                return (
+                  <div>
+                    <div className="flex items-center justify-between text-[11px] font-medium text-slate-600 mb-1.5">
+                      <span>
+                        Quota for <strong>{selectedTeam?.name || rosterTeamFilter}</strong>:
+                      </span>
+                      <span className={isTeamFull ? 'font-bold text-rose-700' : 'font-bold text-purple-700'}>
+                        {currentCount} of {maxPerTeam} slots used {isTeamFull ? '(Quota Reached)' : `(${maxPerTeam - currentCount} available)`}
+                      </span>
+                    </div>
+
+                    {/* Search members input */}
+                    <div className="relative mb-2">
+                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        placeholder="Search team members by name or chest #..."
+                        value={rosterSearch}
+                        onChange={(e) => setRosterSearch(e.target.value)}
+                        className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-600 text-slate-800"
+                      />
+                    </div>
+
+                    {/* Team Members List */}
+                    <div className="max-h-60 overflow-y-auto space-y-1.5 bg-white border border-slate-200 rounded-lg p-2">
+                      {(() => {
+                        const s = rosterSearch.toLowerCase().trim();
+                        const fCat = (liveManagingRosterProg.category || '').toLowerCase().trim();
+                        const eligibleCats = (liveManagingRosterProg.eligibleCategories || []).map((c) =>
+                          c.toLowerCase().trim()
+                        );
+
+                        const teamMembers = participants.filter((p) => {
+                          if (p.teamId !== rosterTeamFilter || p.status === 'inactive') return false;
+                          if (s) {
+                            const match =
+                              (p.name || '').toLowerCase().includes(s) ||
+                              (p.chestNumber ? p.chestNumber.toLowerCase().includes(s) : false);
+                            if (!match) return false;
+                          }
+                          return true;
+                        });
+
+                        if (teamMembers.length === 0) {
+                          return (
+                            <div className="py-6 text-center text-slate-400 italic">
+                              No participants found in team {selectedTeam?.name || rosterTeamFilter}.
+                            </div>
+                          );
+                        }
+
+                        return teamMembers.map((member) => {
+                          const isAlreadyIn = (member.registeredProgrammes || []).includes(liveManagingRosterProg.id);
+
+                          const mCat = (member.category || '').toLowerCase().trim();
+                          const isCategoryEligible =
+                            eligibleCats.length === 0 ||
+                            eligibleCats.includes(mCat) ||
+                            eligibleCats.includes('general') ||
+                            fCat === mCat ||
+                            fCat === 'general';
+
+                          return (
+                            <div
+                              key={member.id}
+                              className={`p-2 rounded-lg border flex items-center justify-between gap-2 ${
+                                isAlreadyIn
+                                  ? 'bg-purple-50/70 border-purple-200 text-purple-950 font-semibold'
+                                  : 'bg-white border-slate-200 hover:bg-slate-50'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                                  {member.chestNumber ? `#${member.chestNumber}` : member.id}
+                                </span>
+                                <span className="font-medium text-xs text-slate-900 truncate">{member.name}</span>
+                                <span className="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded font-mono">
+                                  {member.category}
+                                </span>
+                              </div>
+
+                              <div>
+                                {isAlreadyIn ? (
+                                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded border border-purple-200">
+                                    <Check className="w-3 h-3" /> Registered
+                                  </span>
+                                ) : !isCategoryEligible ? (
+                                  <span className="text-[10px] font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                                    Ineligible Category
+                                  </span>
+                                ) : isTeamFull ? (
+                                  <span className="text-[10px] font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                                    Team Quota Full
+                                  </span>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleAddParticipantToProg(member.id, liveManagingRosterProg.id)}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-2xs transition-colors cursor-pointer"
+                                  >
+                                    <Plus className="w-3.5 h-3.5" />
+                                    <span>Add to Event</span>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="pt-3 border-t border-slate-200 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setManagingRosterProg(null)}
+                className="px-4 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+              >
+                Done
               </button>
             </div>
           </div>

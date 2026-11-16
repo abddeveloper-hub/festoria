@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useFest } from '../context/FestContext';
 import { Participant, ParticipantCategory, RegistrationStatus } from '../types';
 import { Badge } from '../components/common/Badge';
@@ -16,7 +16,19 @@ import {
   Users,
   ChevronLeft,
   ChevronRight,
-  Filter
+  Filter,
+  Zap,
+  CalendarCheck,
+  Check,
+  X,
+  Layers,
+  Shield,
+  Sparkles,
+  RefreshCw,
+  ArrowRight,
+  CheckCircle2,
+  AlertCircle,
+  CheckSquare
 } from 'lucide-react';
 
 export const ParticipantsPage: React.FC = () => {
@@ -51,6 +63,62 @@ export const ParticipantsPage: React.FC = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importCsvText, setImportCsvText] = useState('');
+
+  // Suggested next numeric chest number
+  const suggestedNextChest = useMemo(() => {
+    let max = 100;
+    participants.forEach((p) => {
+      if (p.chestNumber) {
+        const match = p.chestNumber.match(/\d+/g);
+        if (match) {
+          const num = parseInt(match[match.length - 1], 10);
+          if (!isNaN(num) && num > max) max = num;
+        }
+      }
+    });
+    return String(max + 1);
+  }, [participants]);
+
+  // Quick Add Bar state
+  const [quickName, setQuickName] = useState('');
+  const [quickChest, setQuickChest] = useState('');
+  const [quickTeamId, setQuickTeamId] = useState(teams[0]?.id || '');
+  const [quickCategory, setQuickCategory] = useState(categories.filter((c) => c.enabled)[0]?.name || 'Senior');
+  const quickNameInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!quickTeamId && teams.length > 0) {
+      setQuickTeamId(teams[0].id);
+    }
+  }, [teams, quickTeamId]);
+
+  useEffect(() => {
+    if (!quickCategory && categories.length > 0) {
+      const defaultCat = categories.filter((c) => c.enabled)[0]?.name || 'Senior';
+      setQuickCategory(defaultCat);
+    }
+  }, [categories, quickCategory]);
+
+  useEffect(() => {
+    if (!quickChest) {
+      setQuickChest(suggestedNextChest);
+    }
+  }, [suggestedNextChest]);
+
+  // Dedicated Quick Assign Modal state
+  const [assigningParticipant, setAssigningParticipant] = useState<Participant | null>(null);
+  const [assignSearch, setAssignSearch] = useState('');
+  const [assignTab, setAssignTab] = useState<'all' | 'eligible' | 'assigned'>('eligible');
+
+  const liveAssigningParticipant = useMemo(() => {
+    if (!assigningParticipant) return null;
+    return participants.find((p) => p.id === assigningParticipant.id) || assigningParticipant;
+  }, [assigningParticipant, participants]);
+
+  // Search & filter state inside the Add/Edit Modal
+  const [modalProgSearch, setModalProgSearch] = useState('');
+  const [modalProgTab, setModalProgTab] = useState<'all' | 'eligible' | 'selected'>('all');
+  const [showOptionalFields, setShowOptionalFields] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -112,20 +180,93 @@ export const ParticipantsPage: React.FC = () => {
     return filteredData.slice(start, start + pageSize);
   }, [filteredData, page, pageSize]);
 
+  // Quick Add handler (inline top bar)
+  const handleQuickAdd = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const trimmedName = quickName.trim();
+    if (!trimmedName) {
+      addToast('error', 'Missing Name', 'Please enter a participant name.');
+      quickNameInputRef.current?.focus();
+      return;
+    }
+    const effectiveTeamId = quickTeamId || teams[0]?.id;
+    if (!effectiveTeamId) {
+      addToast('error', 'Missing Team', 'Please select a team.');
+      return;
+    }
+    const effectiveCategory = (quickCategory || categories.filter((c) => c.enabled)[0]?.name || 'Senior') as ParticipantCategory;
+    const effectiveChest = quickChest.trim();
+
+    if (effectiveChest) {
+      const chestTrimmed = effectiveChest.toLowerCase();
+      const duplicateChest = participants.some(
+        (p) => p.chestNumber && p.chestNumber.trim().toLowerCase() === chestTrimmed
+      );
+      if (duplicateChest) {
+        addToast('error', 'Duplicate Chest Number', `Chest #${effectiveChest} is already assigned.`);
+        return;
+      }
+    }
+
+    const success = addParticipant({
+      name: trimmedName,
+      chestNumber: effectiveChest || undefined,
+      email: '',
+      phone: '',
+      teamId: effectiveTeamId,
+      category: effectiveCategory,
+      status: 'verified',
+      registeredProgrammes: [],
+    });
+
+    if (success) {
+      setQuickName('');
+      const currentNum = parseInt(effectiveChest, 10);
+      if (!isNaN(currentNum)) {
+        setQuickChest(String(currentNum + 1));
+      } else {
+        setQuickChest(suggestedNextChest);
+      }
+      setTimeout(() => {
+        quickNameInputRef.current?.focus();
+      }, 50);
+    }
+  };
+
+  // Quick toggle programme from dedicated modal
+  const handleToggleAssignProg = (progId: string) => {
+    if (!liveAssigningParticipant) return;
+    const currentProgs = liveAssigningParticipant.registeredProgrammes || [];
+    const isAssigned = currentProgs.includes(progId);
+    const nextProgs = isAssigned
+      ? currentProgs.filter((id) => id !== progId)
+      : [...currentProgs, progId];
+
+    const success = updateParticipant(liveAssigningParticipant.id, {
+      registeredProgrammes: nextProgs,
+    });
+    if (success) {
+      setAssigningParticipant((prev) => (prev ? { ...prev, registeredProgrammes: nextProgs } : null));
+    }
+  };
+
   // Handle open add modal
   const handleOpenAdd = () => {
     setEditingParticipant(null);
     const defaultCat = categories.filter((c) => c.enabled)[0]?.name || 'Senior';
     setFormData({
       name: '',
-      chestNumber: '',
+      chestNumber: quickChest || suggestedNextChest,
       email: '',
       phone: '',
-      teamId: teams[0]?.id || '',
-      category: defaultCat,
+      teamId: quickTeamId || teams[0]?.id || '',
+      category: (quickCategory || defaultCat) as ParticipantCategory,
       status: 'verified',
       registeredProgrammes: [],
     });
+    setModalProgSearch('');
+    setModalProgTab('all');
+    setShowOptionalFields(false);
     setIsAddModalOpen(true);
   };
 
@@ -142,11 +283,14 @@ export const ParticipantsPage: React.FC = () => {
       status: p.status,
       registeredProgrammes: p.registeredProgrammes ? [...p.registeredProgrammes] : [],
     });
+    setModalProgSearch('');
+    setModalProgTab('all');
+    setShowOptionalFields(Boolean(p.email || p.phone || p.status !== 'verified'));
     setIsAddModalOpen(true);
   };
 
   // Submit add or edit
-  const handleSubmitForm = (e: React.FormEvent) => {
+  const handleSubmitForm = (e: React.FormEvent, andAddAnother = false) => {
     e.preventDefault();
     if (!formData.name.trim() || !formData.teamId) {
       addToast('error', 'Incomplete Form', 'Please enter a participant name and assign a team.');
@@ -263,7 +407,21 @@ export const ParticipantsPage: React.FC = () => {
     } else {
       const success = addParticipant(payload);
       if (success) {
-        setIsAddModalOpen(false);
+        if (andAddAnother) {
+          const currentNum = parseInt(formData.chestNumber.trim(), 10);
+          const nextChest = !isNaN(currentNum) ? String(currentNum + 1) : suggestedNextChest;
+          setFormData((prev) => ({
+            ...prev,
+            name: '',
+            chestNumber: nextChest,
+            email: '',
+            phone: '',
+            registeredProgrammes: [],
+          }));
+          addToast('success', 'Participant Registered', `${payload.name} added! Ready for next participant.`);
+        } else {
+          setIsAddModalOpen(false);
+        }
       }
     }
   };
@@ -364,6 +522,112 @@ export const ParticipantsPage: React.FC = () => {
             <span>Add Participant</span>
           </button>
         </div>
+      </div>
+
+      {/* Fast Participant Entry Bar */}
+      <div className="bg-gradient-to-r from-purple-50 via-indigo-50/40 to-white border border-purple-200/90 rounded-xl p-3 shadow-xs">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5 mb-2.5">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-purple-600 text-white flex items-center justify-center shadow-xs">
+              <Zap className="w-3.5 h-3.5 fill-current" />
+            </div>
+            <div>
+              <h3 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                <span>Fast Participant Entry</span>
+                <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-purple-100 text-purple-700">
+                  Rapid Mode
+                </span>
+              </h3>
+              <p className="text-[11px] text-slate-500">
+                Type name, verify chest number & team, then press <kbd className="px-1 py-0.5 text-[10px] font-mono bg-white border border-slate-300 rounded shadow-2xs font-semibold">Enter</kbd> to add instantly.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-slate-500 font-medium">
+              Next Chest:
+            </span>
+            <span className="font-mono text-xs font-bold text-purple-700 bg-purple-100/80 px-2 py-0.5 rounded border border-purple-200">
+              #{suggestedNextChest}
+            </span>
+          </div>
+        </div>
+
+        <form onSubmit={handleQuickAdd} className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
+          {/* Full Name */}
+          <div className="sm:col-span-4">
+            <input
+              ref={quickNameInputRef}
+              type="text"
+              placeholder="Participant Full Name (required) *"
+              value={quickName}
+              onChange={(e) => setQuickName(e.target.value)}
+              className="w-full text-xs font-medium border border-slate-300 bg-white rounded-lg px-3 py-2 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent"
+              required
+            />
+          </div>
+
+          {/* Chest Number */}
+          <div className="sm:col-span-2 relative">
+            <input
+              type="text"
+              placeholder={`Chest #${suggestedNextChest}`}
+              value={quickChest}
+              onChange={(e) => setQuickChest(e.target.value)}
+              className="w-full text-xs font-mono font-bold border border-slate-300 bg-white rounded-lg pl-3 pr-7 py-2 text-purple-950 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent"
+            />
+            <button
+              type="button"
+              onClick={() => setQuickChest(suggestedNextChest)}
+              title="Reset to next suggested chest number"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-purple-600 p-1"
+            >
+              <RefreshCw className="w-3 h-3" />
+            </button>
+          </div>
+
+          {/* Team */}
+          <div className="sm:col-span-3">
+            <select
+              value={quickTeamId}
+              onChange={(e) => setQuickTeamId(e.target.value)}
+              className="w-full text-xs font-medium border border-slate-300 bg-white rounded-lg px-2.5 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent"
+            >
+              {teams.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name} ({t.code})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Category */}
+          <div className="sm:col-span-2">
+            <select
+              value={quickCategory}
+              onChange={(e) => setQuickCategory(e.target.value)}
+              className="w-full text-xs font-medium border border-slate-300 bg-white rounded-lg px-2.5 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent"
+            >
+              {categories.filter((c) => c.enabled).map((c) => (
+                <option key={c.id} value={c.name}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Quick Add Button */}
+          <div className="sm:col-span-1">
+            <button
+              type="submit"
+              className="w-full inline-flex items-center justify-center gap-1 py-2 px-3 text-xs font-bold text-white bg-purple-700 hover:bg-purple-800 rounded-lg shadow-xs transition-colors cursor-pointer"
+              title="Add participant (or press Enter)"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="sm:hidden">Add</span>
+            </button>
+          </div>
+        </form>
       </div>
 
       {/* Filter and Search Bar */}
@@ -547,10 +811,13 @@ export const ParticipantsPage: React.FC = () => {
                       </td>
                       <td className="py-3 px-2 text-center font-mono">
                         <button
-                          onClick={() => setViewingParticipant(participant)}
-                          className="px-2 py-0.5 rounded text-[11px] bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-semibold"
+                          type="button"
+                          onClick={() => setAssigningParticipant(participant)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-800 font-bold shadow-2xs transition-colors cursor-pointer"
+                          title="Click to assign or manage programmes"
                         >
-                          {(participant.registeredProgrammes || []).length} assigned
+                          <CalendarCheck className="w-3.5 h-3.5 text-purple-600" />
+                          <span>{(participant.registeredProgrammes || []).length} assigned</span>
                         </button>
                       </td>
                       <td className="py-3 px-2 text-center">
@@ -561,6 +828,15 @@ export const ParticipantsPage: React.FC = () => {
                       <td className="py-3 px-3 text-right">
                         <div className="inline-flex items-center gap-1">
                           <button
+                            type="button"
+                            onClick={() => setAssigningParticipant(participant)}
+                            className="p-1 rounded text-purple-600 hover:text-purple-800 hover:bg-purple-50"
+                            title="Assign Programmes"
+                          >
+                            <CalendarCheck className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => setViewingParticipant(participant)}
                             className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100"
                             title="View Details"
@@ -568,6 +844,7 @@ export const ParticipantsPage: React.FC = () => {
                             <Eye className="w-3.5 h-3.5" />
                           </button>
                           <button
+                            type="button"
                             onClick={() => handleOpenEdit(participant)}
                             className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100"
                             title="Edit"
@@ -575,6 +852,7 @@ export const ParticipantsPage: React.FC = () => {
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
                           <button
+                            type="button"
                             onClick={() => setDeletingId(participant.id)}
                             className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50"
                             title="Delete"
@@ -659,7 +937,7 @@ export const ParticipantsPage: React.FC = () => {
         description="Fill out participant identity, contact details, assigned team, and competitions."
         maxWidth="lg"
       >
-        <form onSubmit={handleSubmitForm} className="space-y-4">
+        <form onSubmit={(e) => handleSubmitForm(e, false)} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">
@@ -670,47 +948,32 @@ export const ParticipantsPage: React.FC = () => {
                 required
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full text-xs border border-slate-300 rounded px-3 py-1.5 focus:outline-none focus:border-slate-500"
+                className="w-full text-xs font-semibold border border-slate-300 rounded px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent text-slate-900"
                 placeholder="e.g. Aditi Sharma"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
-                Chest Number (Bib / Code)
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-medium text-slate-700">
+                  Chest Number (Bib / Code)
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, chestNumber: suggestedNextChest })}
+                  className="text-[10px] text-purple-700 hover:text-purple-900 font-bold inline-flex items-center gap-1 cursor-pointer"
+                  title="Auto-fill next sequential chest number"
+                >
+                  <Zap className="w-2.5 h-2.5 fill-current" />
+                  <span>Auto: #{suggestedNextChest}</span>
+                </button>
+              </div>
               <input
                 type="text"
                 value={formData.chestNumber}
                 onChange={(e) => setFormData({ ...formData, chestNumber: e.target.value })}
-                className="w-full text-xs font-mono font-semibold border border-slate-300 rounded px-3 py-1.5 focus:outline-none focus:border-purple-600"
-                placeholder="e.g. 101, CH-12 (optional)"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
-                Email Address <span className="text-slate-400 font-normal">(Optional)</span>
-              </label>
-              <input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full text-xs border border-slate-300 rounded px-3 py-1.5 focus:outline-none focus:border-slate-500"
-                placeholder="aditi@example.com (optional)"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
-                Phone Number <span className="text-slate-400 font-normal">(Optional)</span>
-              </label>
-              <input
-                type="text"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                className="w-full text-xs border border-slate-300 rounded px-3 py-1.5 focus:outline-none focus:border-slate-500"
-                placeholder="+91 98401 23456 (optional)"
+                className="w-full text-xs font-mono font-bold border border-slate-300 rounded px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent text-purple-950 bg-white"
+                placeholder={`e.g. ${suggestedNextChest} (optional)`}
               />
             </div>
 
@@ -721,7 +984,7 @@ export const ParticipantsPage: React.FC = () => {
               <select
                 value={formData.teamId}
                 onChange={(e) => setFormData({ ...formData, teamId: e.target.value })}
-                className="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:outline-none focus:border-slate-500 bg-white"
+                className="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent bg-white text-slate-900 font-medium"
               >
                 {teams.map((t) => (
                   <option key={t.id} value={t.id}>
@@ -740,7 +1003,7 @@ export const ParticipantsPage: React.FC = () => {
                 onChange={(e) =>
                   setFormData({ ...formData, category: e.target.value as ParticipantCategory })
                 }
-                className="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:outline-none focus:border-slate-500 bg-white"
+                className="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent bg-white text-slate-900 font-medium"
               >
                 {categories.filter((c) => c.enabled).map((c) => (
                   <option key={c.id} value={c.name}>
@@ -749,30 +1012,72 @@ export const ParticipantsPage: React.FC = () => {
                 ))}
               </select>
             </div>
-
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
-                Registration Status
-              </label>
-              <select
-                value={formData.status}
-                onChange={(e) =>
-                  setFormData({ ...formData, status: e.target.value as RegistrationStatus })
-                }
-                className="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:outline-none focus:border-slate-500 bg-white"
-              >
-                <option value="verified">Verified</option>
-                <option value="registered">Registered</option>
-                <option value="disqualified">Disqualified</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
           </div>
 
-          {/* Registered Programmes multi-select checkboxes with Real-Time Quota & Eligibility */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-medium text-slate-700">
+          {/* Collapsible Optional Contact Details */}
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={() => setShowOptionalFields(!showOptionalFields)}
+              className="text-xs text-purple-700 hover:text-purple-900 font-semibold inline-flex items-center gap-1 cursor-pointer"
+            >
+              <span>{showOptionalFields ? '− Hide' : '+ Show'} Optional Contact Details & Status</span>
+              <span className="text-[10px] text-slate-400 font-normal">(Email, Phone, Status)</span>
+            </button>
+
+            {showOptionalFields && (
+              <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-slate-50 border border-slate-200 rounded-lg animate-in fade-in duration-150">
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-700 mb-1">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:outline-none focus:border-slate-500 bg-white"
+                    placeholder="aditi@example.com (optional)"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-700 mb-1">
+                    Phone Number
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:outline-none focus:border-slate-500 bg-white"
+                    placeholder="+91 98401 23456 (optional)"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-700 mb-1">
+                    Registration Status
+                  </label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) =>
+                      setFormData({ ...formData, status: e.target.value as RegistrationStatus })
+                    }
+                    className="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:outline-none focus:border-slate-500 bg-white"
+                  >
+                    <option value="verified">Verified</option>
+                    <option value="registered">Registered</option>
+                    <option value="disqualified">Disqualified</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Registered Programmes multi-select with search and filters */}
+          <div className="pt-2 border-t border-slate-100">
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-xs font-bold text-slate-800">
                 Assigned Programmes ({formData.registeredProgrammes.length} selected)
               </label>
               <div className="flex items-center gap-2 text-[10px] text-slate-500 font-normal">
@@ -788,29 +1093,104 @@ export const ParticipantsPage: React.FC = () => {
                 )}
               </div>
             </div>
-            <div className="max-h-56 overflow-y-auto border border-slate-200 rounded p-2 space-y-1.5 bg-slate-50/50">
+
+            {/* In-Modal Search and Tab Filter */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 mb-2">
+              <div className="relative flex-1">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Filter programmes by name or code..."
+                  value={modalProgSearch}
+                  onChange={(e) => setModalProgSearch(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-600 text-slate-800"
+                />
+                {modalProgSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setModalProgSearch('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg text-[11px] font-semibold self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setModalProgTab('all')}
+                  className={`px-2 py-0.5 rounded transition-colors ${
+                    modalProgTab === 'all'
+                      ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  All ({programmes.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModalProgTab('eligible')}
+                  className={`px-2 py-0.5 rounded transition-colors ${
+                    modalProgTab === 'eligible'
+                      ? 'bg-white text-purple-700 shadow-2xs font-bold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Eligible
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModalProgTab('selected')}
+                  className={`px-2 py-0.5 rounded transition-colors ${
+                    modalProgTab === 'selected'
+                      ? 'bg-white text-purple-700 shadow-2xs font-bold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Selected ({formData.registeredProgrammes.length})
+                </button>
+              </div>
+            </div>
+
+            <div className="max-h-56 overflow-y-auto border border-slate-200 rounded-lg p-2 space-y-1.5 bg-slate-50/50">
               {(() => {
+                const s = modalProgSearch.toLowerCase().trim();
                 const fCat = (formData.category || '').toLowerCase().trim();
+
                 const availableProgrammes = programmes.filter((prog) => {
-                  if (!fCat) return true;
+                  if (s) {
+                    const matchSearch =
+                      (prog.code || '').toLowerCase().includes(s) ||
+                      (prog.name || '').toLowerCase().includes(s) ||
+                      (prog.category || '').toLowerCase().includes(s);
+                    if (!matchSearch) return false;
+                  }
+
+                  const isChecked = formData.registeredProgrammes.includes(prog.id);
+                  if (modalProgTab === 'selected') return isChecked;
+
                   const pCat = (prog.category || '').toLowerCase().trim();
                   const eligibleCats = (prog.eligibleCategories || []).map((c) => c.toLowerCase().trim());
-                  // Show programmes allotted to this category, general events, or already checked
-                  return (
+                  const isEligible =
                     eligibleCats.length === 0 ||
                     eligibleCats.includes(fCat) ||
                     eligibleCats.includes('general') ||
                     pCat === fCat ||
                     pCat === 'general' ||
-                    pCat.startsWith('general') ||
-                    formData.registeredProgrammes.includes(prog.id)
-                  );
+                    pCat.startsWith('general');
+
+                  if (modalProgTab === 'eligible') {
+                    return isEligible || isChecked;
+                  }
+
+                  return true;
                 });
 
                 if (availableProgrammes.length === 0) {
                   return (
-                    <div className="py-4 text-center text-xs text-slate-400 italic">
-                      No competition programmes allotted to category "{formData.category}".
+                    <div className="py-6 text-center text-xs text-slate-400 italic">
+                      No matching programmes found for category "{formData.category}".
                     </div>
                   );
                 }
@@ -912,9 +1292,9 @@ export const ParticipantsPage: React.FC = () => {
                           handleToggle();
                         }
                       }}
-                      className={`flex items-center justify-between gap-2 p-2 rounded border transition-colors ${
+                      className={`flex items-center justify-between gap-2 p-2 rounded-lg border transition-colors ${
                         checked
-                          ? 'bg-purple-50/70 border-purple-200 text-slate-900'
+                          ? 'bg-purple-50/70 border-purple-200 text-slate-900 shadow-2xs'
                           : isBlocked
                           ? 'bg-slate-100/70 border-slate-200 text-slate-400 opacity-80 cursor-not-allowed'
                           : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 cursor-pointer'
@@ -980,20 +1360,31 @@ export const ParticipantsPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="pt-3 border-t border-slate-200 flex justify-end gap-2">
+          <div className="pt-3 border-t border-slate-200 flex items-center justify-between gap-2">
             <button
               type="button"
               onClick={() => setIsAddModalOpen(false)}
-              className="px-3 py-1.5 text-xs text-slate-700 bg-white border border-slate-300 rounded hover:bg-slate-50"
+              className="px-3 py-1.5 text-xs text-slate-700 bg-white border border-slate-300 rounded hover:bg-slate-50 cursor-pointer"
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              className="px-4 py-1.5 text-xs text-white bg-slate-900 rounded hover:bg-slate-800 font-medium"
-            >
-              {editingParticipant ? 'Save Changes' : 'Register Participant'}
-            </button>
+            <div className="flex items-center gap-2">
+              {!editingParticipant && (
+                <button
+                  type="button"
+                  onClick={(e) => handleSubmitForm(e, true)}
+                  className="px-3.5 py-1.5 text-xs text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded font-semibold transition-colors cursor-pointer"
+                >
+                  Save & Add Another
+                </button>
+              )}
+              <button
+                type="submit"
+                className="px-4 py-1.5 text-xs text-white bg-slate-900 rounded hover:bg-slate-800 font-semibold cursor-pointer shadow-xs"
+              >
+                {editingParticipant ? 'Save Changes' : 'Register & Close'}
+              </button>
+            </div>
           </div>
         </form>
       </Modal>
@@ -1139,6 +1530,299 @@ export const ParticipantsPage: React.FC = () => {
           </div>
         </div>
       </Modal>
+
+      {/* Dedicated Quick Assign Programmes Modal */}
+      {liveAssigningParticipant && (
+        <Modal
+          isOpen={!!liveAssigningParticipant}
+          onClose={() => setAssigningParticipant(null)}
+          title={`Assign Programmes: ${liveAssigningParticipant.name}`}
+          description="Instantly toggle events for this participant. Quota limits and category rules are enforced in real time."
+          maxWidth="2xl"
+        >
+          <div className="space-y-3.5 text-xs">
+            {/* Participant Identity Summary Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-purple-50/70 border border-purple-200/80 rounded-xl">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-purple-700 text-white shadow-2xs">
+                  {liveAssigningParticipant.chestNumber ? `#${liveAssigningParticipant.chestNumber}` : 'No Chest #'}
+                </span>
+                <div>
+                  <h4 className="font-bold text-slate-900 text-sm">{liveAssigningParticipant.name}</h4>
+                  <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
+                    <span>
+                      Team: <strong className="text-slate-800">{teams.find((t) => t.id === liveAssigningParticipant.teamId)?.name || liveAssigningParticipant.teamId}</strong>
+                    </span>
+                    <span>•</span>
+                    <span>
+                      Category: <strong className="text-slate-800">{liveAssigningParticipant.category}</strong>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <span className="px-2.5 py-1 text-xs font-bold rounded-lg bg-white border border-purple-200 text-purple-900 shadow-2xs">
+                  {(liveAssigningParticipant.registeredProgrammes || []).length} Events Assigned
+                </span>
+              </div>
+            </div>
+
+            {/* Search and Category Filter Tabs */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+              <div className="relative flex-1">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search programmes by name or code..."
+                  value={assignSearch}
+                  onChange={(e) => setAssignSearch(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600 text-slate-900 placeholder:text-slate-400"
+                />
+                {assignSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setAssignSearch('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg text-[11px] font-semibold self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setAssignTab('eligible')}
+                  className={`px-2.5 py-1 rounded transition-colors ${
+                    assignTab === 'eligible'
+                      ? 'bg-white text-purple-700 shadow-2xs font-bold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Eligible ({
+                    programmes.filter((prog) => {
+                      const fCat = (liveAssigningParticipant.category || '').toLowerCase().trim();
+                      const pCat = (prog.category || '').toLowerCase().trim();
+                      const eligibleCats = (prog.eligibleCategories || []).map((c) => c.toLowerCase().trim());
+                      return (
+                        eligibleCats.length === 0 ||
+                        eligibleCats.includes(fCat) ||
+                        eligibleCats.includes('general') ||
+                        pCat === fCat ||
+                        pCat === 'general'
+                      );
+                    }).length
+                  })
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAssignTab('assigned')}
+                  className={`px-2.5 py-1 rounded transition-colors ${
+                    assignTab === 'assigned'
+                      ? 'bg-white text-purple-700 shadow-2xs font-bold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Assigned ({(liveAssigningParticipant.registeredProgrammes || []).length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAssignTab('all')}
+                  className={`px-2.5 py-1 rounded transition-colors ${
+                    assignTab === 'all'
+                      ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  All ({programmes.length})
+                </button>
+              </div>
+            </div>
+
+            {/* List of Programme Cards */}
+            <div className="max-h-96 overflow-y-auto space-y-2 pr-1">
+              {(() => {
+                const s = assignSearch.toLowerCase().trim();
+                const fCat = (liveAssigningParticipant.category || '').toLowerCase().trim();
+
+                const filtered = programmes.filter((prog) => {
+                  const matchesSearch =
+                    !s ||
+                    (prog.code || '').toLowerCase().includes(s) ||
+                    (prog.name || '').toLowerCase().includes(s) ||
+                    (prog.category || '').toLowerCase().includes(s);
+                  if (!matchesSearch) return false;
+
+                  const isAssigned = (liveAssigningParticipant.registeredProgrammes || []).includes(prog.id);
+                  if (assignTab === 'assigned') return isAssigned;
+
+                  if (assignTab === 'eligible') {
+                    const pCat = (prog.category || '').toLowerCase().trim();
+                    const eligibleCats = (prog.eligibleCategories || []).map((c) => c.toLowerCase().trim());
+                    const isEligible =
+                      eligibleCats.length === 0 ||
+                      eligibleCats.includes(fCat) ||
+                      eligibleCats.includes('general') ||
+                      pCat === fCat ||
+                      pCat === 'general';
+                    return isEligible || isAssigned;
+                  }
+
+                  return true;
+                });
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="py-8 text-center text-slate-400 italic bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                      No matching programmes found for this filter.
+                    </div>
+                  );
+                }
+
+                return filtered.map((prog) => {
+                  const isAssigned = (liveAssigningParticipant.registeredProgrammes || []).includes(prog.id);
+                  const isTeamEvent = prog.type === 'team' || prog.type === 'group' || prog.programmeType === 'team';
+
+                  // Category check
+                  const pCat = (prog.category || '').toLowerCase().trim();
+                  const eligibleCats = (prog.eligibleCategories || []).map((c) => c.toLowerCase().trim());
+                  const isCategoryEligible =
+                    eligibleCats.length === 0 ||
+                    eligibleCats.includes(fCat) ||
+                    eligibleCats.includes('general') ||
+                    pCat === fCat ||
+                    pCat === 'general';
+
+                  // Team quota check
+                  const maxAllowedPerTeam = isTeamEvent ? (prog.maxTeamMembers || 25) : (prog.maxParticipantsPerTeam || 1);
+                  const otherTeamMembers = participants.filter(
+                    (p) =>
+                      p.teamId === liveAssigningParticipant.teamId &&
+                      p.id !== liveAssigningParticipant.id &&
+                      p.status !== 'inactive' &&
+                      p.registeredProgrammes?.includes(prog.id)
+                  );
+                  const currentTeamCount = otherTeamMembers.length;
+                  const isTeamQuotaFull = currentTeamCount >= maxAllowedPerTeam;
+
+                  // Overall capacity check
+                  const maxCap = prog.maxCapacity || 0;
+                  const totalInProg = participants.filter(
+                    (p) =>
+                      p.id !== liveAssigningParticipant.id &&
+                      p.status !== 'inactive' &&
+                      p.registeredProgrammes?.includes(prog.id)
+                  ).length;
+                  const isCapFull = maxCap > 0 && totalInProg >= maxCap;
+
+                  return (
+                    <div
+                      key={prog.id}
+                      className={`p-3 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                        isAssigned
+                          ? 'bg-purple-50/80 border-purple-300 shadow-2xs'
+                          : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-2xs'
+                      }`}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                            {prog.code}
+                          </span>
+                          <span className="font-bold text-slate-900 text-xs">
+                            {prog.name}
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-medium bg-slate-100 px-1.5 py-0.5 rounded">
+                            {prog.category}
+                          </span>
+                          {isTeamEvent && (
+                            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700">
+                              Team Event
+                            </span>
+                          )}
+                          {prog.stageType && (
+                            <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
+                              {prog.stageType === 'stage' ? 'Stage' : 'Off-Stage'}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="mt-1 flex items-center gap-3 text-[11px] text-slate-500">
+                          <span>
+                            Team Slots:{' '}
+                            <strong className={currentTeamCount >= maxAllowedPerTeam ? 'text-rose-600' : 'text-slate-700'}>
+                              {currentTeamCount + (isAssigned ? 1 : 0)} / {maxAllowedPerTeam}
+                            </strong>
+                          </span>
+                          {maxCap > 0 && (
+                            <span>
+                              Total Cap: {totalInProg + (isAssigned ? 1 : 0)} / {maxCap}
+                            </span>
+                          )}
+                          {!isCategoryEligible && (
+                            <span className="text-amber-700 font-semibold text-[10px] bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                              Ineligible Category
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex-shrink-0">
+                        {isAssigned ? (
+                          <button
+                            type="button"
+                            onClick={() => handleToggleAssignProg(prog.id)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-white bg-purple-700 hover:bg-rose-700 rounded-lg shadow-2xs transition-colors cursor-pointer group"
+                            title="Click to remove from this event"
+                          >
+                            <Check className="w-3.5 h-3.5 group-hover:hidden" />
+                            <X className="w-3.5 h-3.5 hidden group-hover:inline" />
+                            <span className="group-hover:hidden">Assigned</span>
+                            <span className="hidden group-hover:inline">Remove</span>
+                          </button>
+                        ) : isCategoryEligible && !isTeamQuotaFull && !isCapFull ? (
+                          <button
+                            type="button"
+                            onClick={() => handleToggleAssignProg(prog.id)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-slate-900 bg-white hover:bg-purple-50 border border-slate-300 hover:border-purple-300 rounded-lg shadow-2xs transition-colors cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5 text-purple-600" />
+                            <span>Assign</span>
+                          </button>
+                        ) : isTeamQuotaFull ? (
+                          <span className="px-2.5 py-1 text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 rounded-lg">
+                            Team Full
+                          </span>
+                        ) : isCapFull ? (
+                          <span className="px-2.5 py-1 text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 rounded-lg">
+                            Capacity Full
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-1 text-[11px] font-semibold bg-slate-100 text-slate-500 rounded-lg">
+                            Ineligible
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="pt-3 border-t border-slate-200 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setAssigningParticipant(null)}
+                className="px-4 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {/* Delete Confirmation */}
       <ConfirmDialog
