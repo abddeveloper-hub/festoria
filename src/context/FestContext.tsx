@@ -1018,10 +1018,11 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     status: isFirebaseConfigured ? 'loading' : 'demo_mode'
   });
 
-  const PUBLIC_CACHE_TTL_MS = 3 * 60 * 1000; // 3-minute freshness TTL for student / public viewers
+  const PUBLIC_CACHE_TTL_MS = 5 * 60 * 1000; // 5-minute freshness TTL for student / public viewers
 
   const invalidateClientCache = () => {
     if (typeof window !== 'undefined') {
+      localStorage.removeItem('festoria_last_fs_sync');
       sessionStorage.removeItem('festoria_last_fs_sync');
     }
   };
@@ -1037,11 +1038,11 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
 
       // For public viewers (students), check if recent data is already cached in memory / storage
       if (!force && !isStaffOrAdmin && typeof window !== 'undefined') {
-        const lastSync = Number(sessionStorage.getItem('festoria_last_fs_sync') || 0);
+        const lastSync = Number(localStorage.getItem('festoria_last_fs_sync') || sessionStorage.getItem('festoria_last_fs_sync') || 0);
         const timeSinceSync = Date.now() - lastSync;
         const hasExistingData = programmes.length > 0 && (results.length > 0 || teams.length > 0);
         if (lastSync > 0 && timeSinceSync < PUBLIC_CACHE_TTL_MS && hasExistingData) {
-          // Serve from local memory / IndexedDB cache — 0 Firestore reads!
+          // Serve from local memory / localStorage / IndexedDB cache — 0 Firestore reads!
           setFirebaseStatus({
             isConfigured: true,
             projectId: 'festoria-cd375',
@@ -1128,8 +1129,9 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       if (fsTeamEntries && fsTeamEntries.length > 0) setTeamProgrammeEntries(fsTeamEntries);
       if (fsJudges && fsJudges.length > 0) setJudges(fsJudges);
 
-      // Record successful sync timestamp
+      // Record successful sync timestamp in both localStorage and sessionStorage
       if (typeof window !== 'undefined') {
+        localStorage.setItem('festoria_last_fs_sync', Date.now().toString());
         sessionStorage.setItem('festoria_last_fs_sync', Date.now().toString());
       }
 
