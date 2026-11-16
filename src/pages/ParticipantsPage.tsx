@@ -70,11 +70,11 @@ export const ParticipantsPage: React.FC = () => {
       // Search
       const s = search.toLowerCase();
       const matchesSearch =
-        p.name.toLowerCase().includes(s) ||
-        p.id.toLowerCase().includes(s) ||
-        (p.chestNumber && p.chestNumber.toLowerCase().includes(s)) ||
-        (p.email && p.email.toLowerCase().includes(s)) ||
-        (p.phone && p.phone.includes(s));
+        (p.name || '').toLowerCase().includes(s) ||
+        (p.id || '').toLowerCase().includes(s) ||
+        (p.chestNumber ? p.chestNumber.toLowerCase().includes(s) : false) ||
+        (p.email ? p.email.toLowerCase().includes(s) : false) ||
+        (p.phone ? p.phone.includes(s) : false);
       if (!matchesSearch) return false;
 
       // Team
@@ -87,7 +87,7 @@ export const ParticipantsPage: React.FC = () => {
       if (filterStatus !== 'all' && p.status !== filterStatus) return false;
 
       // Programme
-      if (filterProgramme !== 'all' && !p.registeredProgrammes.includes(filterProgramme)) {
+      if (filterProgramme !== 'all' && !(p.registeredProgrammes || []).includes(filterProgramme)) {
         return false;
       }
 
@@ -140,7 +140,7 @@ export const ParticipantsPage: React.FC = () => {
       teamId: p.teamId,
       category: p.category,
       status: p.status,
-      registeredProgrammes: [...p.registeredProgrammes],
+      registeredProgrammes: p.registeredProgrammes ? [...p.registeredProgrammes] : [],
     });
     setIsAddModalOpen(true);
   };
@@ -197,7 +197,7 @@ export const ParticipantsPage: React.FC = () => {
         addToast(
           'error',
           'Category Ineligible',
-          `Participant category "${formData.category}" is not eligible for "${prog.name}". Eligible categories: [${prog.eligibleCategories.join(', ')}].`
+          `Participant category "${formData.category}" is not eligible for "${prog.name}". Eligible categories: [${(prog.eligibleCategories || []).join(', ')}].`
         );
         return;
       }
@@ -280,7 +280,7 @@ export const ParticipantsPage: React.FC = () => {
         Team: team?.name || p.teamId,
         Category: p.category,
         Status: p.status,
-        RegisteredProgrammesCount: p.registeredProgrammes.length,
+        RegisteredProgrammesCount: (p.registeredProgrammes || []).length,
         RegistrationDate: p.createdAt,
       };
     });
@@ -550,7 +550,7 @@ export const ParticipantsPage: React.FC = () => {
                           onClick={() => setViewingParticipant(participant)}
                           className="px-2 py-0.5 rounded text-[11px] bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-semibold"
                         >
-                          {participant.registeredProgrammes.length} assigned
+                          {(participant.registeredProgrammes || []).length} assigned
                         </button>
                       </td>
                       <td className="py-3 px-2 text-center">
@@ -873,7 +873,7 @@ export const ParticipantsPage: React.FC = () => {
                         addToast(
                           'error',
                           'Category Ineligible',
-                          `Participant in "${formData.category}" is not eligible for "${prog.name}". Eligible: [${prog.eligibleCategories.join(', ')}].`
+                          `Participant in "${formData.category}" is not eligible for "${prog.name}". Eligible: [${(prog.eligibleCategories || []).join(', ')}].`
                         );
                         return;
                       }
@@ -1046,11 +1046,11 @@ export const ParticipantsPage: React.FC = () => {
             {/* Registered Events and Achieved Results */}
             <div>
               <h4 className="font-semibold text-slate-900 mb-2">Registered Programmes & Results</h4>
-              {viewingParticipant.registeredProgrammes.length === 0 ? (
+              {(viewingParticipant.registeredProgrammes || []).length === 0 ? (
                 <p className="text-slate-400 italic">No programmes currently assigned.</p>
               ) : (
                 <div className="space-y-2">
-                  {viewingParticipant.registeredProgrammes.map((progId) => {
+                  {(viewingParticipant.registeredProgrammes || []).map((progId) => {
                     const prog = programmes.find((p) => p.id === progId);
                     const result = results.find(
                       (r) => r.programmeId === progId && r.participantId === viewingParticipant.id

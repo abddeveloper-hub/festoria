@@ -90,10 +90,10 @@ export const TeamLeadersPage: React.FC = () => {
   const filteredLeaders = useMemo(() => {
     return teamLeaders.filter((leader) => {
       const matchesSearch =
-        leader.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (leader.phone && leader.phone.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (leader.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (leader.phone ? leader.phone.toLowerCase().includes(searchQuery.toLowerCase()) : false) ||
         (leader.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (leader.institution && leader.institution.toLowerCase().includes(searchQuery.toLowerCase()));
+        (leader.institution ? leader.institution.toLowerCase().includes(searchQuery.toLowerCase()) : false);
 
       const matchesStatus =
         statusFilter === 'all' ||

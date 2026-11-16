@@ -44,7 +44,7 @@ export const DashboardPage: React.FC = () => {
       if (dashboardFilters.date !== 'all' && p.date !== dashboardFilters.date) {
         return false;
       }
-      if (dashboardFilters.teamId !== 'all' && !p.registeredTeamIds.includes(dashboardFilters.teamId)) {
+      if (dashboardFilters.teamId !== 'all' && !(p.registeredTeamIds || []).includes(dashboardFilters.teamId)) {
         return false;
       }
       if (dashboardFilters.programmeId !== 'all' && p.id !== dashboardFilters.programmeId) {
@@ -62,7 +62,7 @@ export const DashboardPage: React.FC = () => {
       }
       if (dashboardFilters.category !== 'all') {
         // Match participant's registered programmes category
-        const registeredProgs = programmes.filter((pr) => p.registeredProgrammes.includes(pr.id));
+        const registeredProgs = programmes.filter((pr) => (p.registeredProgrammes || []).includes(pr.id));
         if (!registeredProgs.some((pr) => (pr.category || '').trim().toLowerCase() === dashboardFilters.category.trim().toLowerCase())) {
           return false;
         }
@@ -73,7 +73,7 @@ export const DashboardPage: React.FC = () => {
 
   // Distinct dates for the filter
   const distinctDates = useMemo(() => {
-    const dates = Array.from(new Set(programmes.map((p) => p.date))).sort();
+    const dates = Array.from(new Set(programmes.map((p) => p.date).filter(Boolean))).sort();
     return dates;
   }, [programmes]);
 

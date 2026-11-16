@@ -108,11 +108,11 @@ export const ScoresPage: React.FC = () => {
 
       const sText = search.toLowerCase();
       const matchesSearch =
-        (prog?.name.toLowerCase().includes(sText) ?? false) ||
-        (prog?.code.toLowerCase().includes(sText) ?? false) ||
-        s.judgeName.toLowerCase().includes(sText) ||
-        (team?.name.toLowerCase().includes(sText) ?? false) ||
-        (participant?.name.toLowerCase().includes(sText) ?? false);
+        (prog?.name ? prog.name.toLowerCase().includes(sText) : false) ||
+        (prog?.code ? prog.code.toLowerCase().includes(sText) : false) ||
+        (s.judgeName ? s.judgeName.toLowerCase().includes(sText) : false) ||
+        (team?.name ? team.name.toLowerCase().includes(sText) : false) ||
+        (participant?.name ? participant.name.toLowerCase().includes(sText) : false);
       if (!matchesSearch) return false;
 
       if (filterProgramme !== 'all' && s.programmeId !== filterProgramme) return false;

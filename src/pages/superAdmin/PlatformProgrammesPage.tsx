@@ -30,9 +30,9 @@ export const PlatformProgrammesPage: React.FC = () => {
   const filteredProgrammes = useMemo(() => {
     return programmes.filter((p) => {
       const matchSearch =
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.venue.toLowerCase().includes(searchQuery.toLowerCase());
+        (p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (p.code || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (p.venue || '').toLowerCase().includes(searchQuery.toLowerCase());
       const matchCategory = categoryFilter === 'all' || p.category === categoryFilter;
       const matchType = typeFilter === 'all' || p.type === typeFilter;
       const matchStatus = statusFilter === 'all' || p.status === statusFilter;

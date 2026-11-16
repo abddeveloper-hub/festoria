@@ -226,7 +226,7 @@ export const ReportsPage: React.FC = () => {
             Team: team?.name || p.teamId,
             Category: p.category,
             Status: p.status,
-            AssignedProgrammes: p.registeredProgrammes.length,
+            AssignedProgrammes: (p.registeredProgrammes || []).length,
           };
         });
         const suffix = participantCategoryFilter === 'all' ? 'all' : participantCategoryFilter.toLowerCase().replace(/\s+/g, '_');
@@ -280,7 +280,7 @@ export const ReportsPage: React.FC = () => {
             Designation: j.designation,
             Institution: j.institution || '',
             Status: j.status,
-            AssignedEventsCount: j.assignedProgrammes.length,
+            AssignedEventsCount: (j.assignedProgrammes || []).length,
           }));
         exportToCSV(`festflow_judges_${nowStr}`, rows);
         break;
@@ -553,7 +553,7 @@ export const ReportsPage: React.FC = () => {
                       <th className="py-2.5 px-3">Programme</th>
                       <th className="py-2.5 px-3">Team</th>
                       <th className="py-2.5 px-2 text-center">Category</th>
-                      <th className="py-2.5 px-3">Members ({teamProgrammeEntries.reduce((s, e) => s + e.memberParticipantIds.length, 0)} total)</th>
+                      <th className="py-2.5 px-3">Members ({teamProgrammeEntries.reduce((s, e) => s + (e.memberParticipantIds || []).length, 0)} total)</th>
                       <th className="py-2.5 px-2 text-center">Status</th>
                     </tr>
                   </thead>
@@ -575,8 +575,8 @@ export const ReportsPage: React.FC = () => {
                             </span>
                           </td>
                           <td className="py-2.5 px-3 text-slate-700">
-                            <div className="font-semibold text-[11px]">{e.memberParticipantIds.length} members:</div>
-                            <div className="text-[10px] text-slate-500">{e.memberNames?.join(', ') || e.memberParticipantIds.join(', ')}</div>
+                            <div className="font-semibold text-[11px]">{(e.memberParticipantIds || []).length} members:</div>
+                            <div className="text-[10px] text-slate-500">{e.memberNames?.join(', ') || (e.memberParticipantIds || []).join(', ')}</div>
                           </td>
                           <td className="py-2.5 px-2 text-center">
                             <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px] uppercase">
@@ -862,7 +862,7 @@ export const ReportsPage: React.FC = () => {
                     <td className="py-2 px-3 font-semibold text-slate-900">{j.name}</td>
                     <td className="py-2 px-3 text-slate-600">{j.designation}</td>
                     <td className="py-2 px-3 font-mono text-slate-500">{j.phone}</td>
-                    <td className="py-2 px-2 text-center font-mono">{j.assignedProgrammes.length}</td>
+                    <td className="py-2 px-2 text-center font-mono">{(j.assignedProgrammes || []).length}</td>
                     <td className="py-2 px-2 text-center">
                       <Badge variant={j.status} size="sm">{j.status}</Badge>
                     </td>

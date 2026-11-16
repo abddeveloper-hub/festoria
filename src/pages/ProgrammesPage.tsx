@@ -136,7 +136,7 @@ export const ProgrammesPage: React.FC = () => {
   const [editCatMaxAge, setEditCatMaxAge] = useState<string>('');
 
   const distinctDates = useMemo(() => {
-    return Array.from(new Set(programmes.map((p) => p.date))).sort();
+    return Array.from(new Set(programmes.map((p) => p.date).filter(Boolean))).sort();
   }, [programmes]);
 
   const distinctCategories = useMemo(() => {
@@ -168,9 +168,9 @@ export const ProgrammesPage: React.FC = () => {
     const list = programmes.filter((p) => {
       const s = search.toLowerCase();
       const matchesSearch =
-        p.name.toLowerCase().includes(s) ||
-        p.code.toLowerCase().includes(s) ||
-        p.venue.toLowerCase().includes(s);
+        (p.name || '').toLowerCase().includes(s) ||
+        (p.code || '').toLowerCase().includes(s) ||
+        (p.venue || '').toLowerCase().includes(s);
       if (!matchesSearch) return false;
 
       if (filterCategory !== 'all' && (p.category || '').trim().toLowerCase() !== filterCategory.trim().toLowerCase()) return false;
@@ -252,8 +252,8 @@ export const ProgrammesPage: React.FC = () => {
       category: p.category,
       type: isTeam ? 'team' : 'individual',
       stageType: p.stageType || 'stage',
-      eligibleCategories: p.eligibleCategories?.length ? [...p.eligibleCategories] : [p.category],
-      assignedJudgeIds: [...p.assignedJudgeIds],
+      eligibleCategories: p.eligibleCategories?.length ? [...p.eligibleCategories] : (p.category ? [p.category] : ['General']),
+      assignedJudgeIds: p.assignedJudgeIds ? [...p.assignedJudgeIds] : (p.judgeIds ? [...p.judgeIds] : []),
       maxParticipantsPerTeam: p.maxParticipantsPerTeam || 2,
       minTeamMembers: p.minTeamMembers || 3,
       maxTeamMembers: p.maxTeamMembers || 8,
@@ -267,9 +267,9 @@ export const ProgrammesPage: React.FC = () => {
       endTime: p.endTime,
       maxCapacity: p.maxCapacity || 15,
       status: p.status,
-      criteria: p.criteria.map((c) => ({ ...c })),
-      registeredParticipantIds: [...p.registeredParticipantIds],
-      registeredTeamIds: [...p.registeredTeamIds],
+      criteria: (p.criteria || []).map((c) => ({ ...c })),
+      registeredParticipantIds: p.registeredParticipantIds ? [...p.registeredParticipantIds] : [],
+      registeredTeamIds: p.registeredTeamIds ? [...p.registeredTeamIds] : [],
     });
     setIsAddModalOpen(true);
   };
@@ -313,8 +313,8 @@ export const ProgrammesPage: React.FC = () => {
       category: p.category,
       type: isTeam ? 'team' : 'individual',
       stageType: p.stageType || 'stage',
-      eligibleCategories: p.eligibleCategories?.length ? [...p.eligibleCategories] : [p.category],
-      assignedJudgeIds: [...p.assignedJudgeIds],
+      eligibleCategories: p.eligibleCategories?.length ? [...p.eligibleCategories] : (p.category ? [p.category] : ['General']),
+      assignedJudgeIds: p.assignedJudgeIds ? [...p.assignedJudgeIds] : (p.judgeIds ? [...p.judgeIds] : []),
       maxParticipantsPerTeam: p.maxParticipantsPerTeam || 2,
       minTeamMembers: p.minTeamMembers || 3,
       maxTeamMembers: p.maxTeamMembers || 8,
@@ -647,8 +647,8 @@ export const ProgrammesPage: React.FC = () => {
       {/* Programme Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredProgrammes.map((prog) => {
-          const assignedJudges = judges.filter((j) => prog.assignedJudgeIds.includes(j.id));
-          const totalMarks = prog.criteria.reduce((s, c) => s + c.maxMarks, 0);
+          const assignedJudges = judges.filter((j) => (prog.assignedJudgeIds || prog.judgeIds || []).includes(j.id));
+          const totalMarks = (prog.criteria || []).reduce((s, c) => s + c.maxMarks, 0);
           const isTeam = prog.type === 'group' || prog.type === 'team' || prog.programmeType === 'team';
           const teamEntries = teamProgrammeEntries.filter((e) => e.programmeId === prog.id && e.status !== 'withdrawn');
           const teamEntriesCount = teamEntries.length;
@@ -746,7 +746,7 @@ export const ProgrammesPage: React.FC = () => {
 
                 {/* Categories badges */}
                 <div className="mt-2.5 flex flex-wrap gap-1">
-                  {prog.eligibleCategories.map((cat) => (
+                  {(prog.eligibleCategories || (prog.category ? [prog.category] : ['General'])).map((cat) => (
                     <span
                       key={cat}
                       className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${
@@ -763,7 +763,7 @@ export const ProgrammesPage: React.FC = () => {
                 {/* Criteria Pill & Publication Status */}
                 <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
                   <span className="text-slate-500 font-mono">
-                    {prog.criteria.length} criteria ({totalMarks} pts)
+                    {(prog.criteria || []).length} criteria ({totalMarks} pts)
                   </span>
                   {prog.resultPublished ? (
                     <div className="flex items-center gap-1.5">
@@ -1913,7 +1913,7 @@ export const ProgrammesPage: React.FC = () => {
             <div className="p-3 bg-slate-50 rounded border border-slate-200">
               <span className="text-[10px] text-slate-400 uppercase font-semibold">Eligible Categories</span>
               <div className="mt-1 flex flex-wrap gap-1">
-                {viewingProgramme.eligibleCategories.map((c) => (
+                {(viewingProgramme.eligibleCategories || (viewingProgramme.category ? [viewingProgramme.category] : ['General'])).map((c) => (
                   <span key={c} className="px-2 py-0.5 rounded bg-white border border-slate-300 font-semibold text-slate-800 text-[10px]">
                     {c}
                   </span>
@@ -1942,7 +1942,7 @@ export const ProgrammesPage: React.FC = () => {
               <div>
                 <h4 className="font-semibold text-slate-900 mb-1.5">Scoring Rubric</h4>
                 <div className="border border-slate-200 rounded p-2.5 bg-slate-50 space-y-1">
-                  {viewingProgramme.criteria.map((c) => (
+                  {(viewingProgramme.criteria || []).map((c) => (
                     <div key={c.id} className="flex justify-between">
                       <span className="text-slate-800">{c.name}</span>
                       <span className="font-mono font-bold text-slate-700">{c.maxMarks} marks</span>

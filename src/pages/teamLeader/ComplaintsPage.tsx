@@ -60,7 +60,7 @@ export const ComplaintsPage: React.FC = () => {
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
         return (
-          c.id.toLowerCase().includes(q) ||
+          (c.id || '').toLowerCase().includes(q) ||
           (c.programmeName || '').toLowerCase().includes(q) ||
           (c.description || '').toLowerCase().includes(q) ||
           (c.category || '').toLowerCase().includes(q)

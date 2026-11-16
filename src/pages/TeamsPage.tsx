@@ -54,10 +54,10 @@ export const TeamsPage: React.FC = () => {
     const list = teams.filter((t) => {
       const s = search.toLowerCase();
       return (
-        t.name.toLowerCase().includes(s) ||
-        t.code.toLowerCase().includes(s) ||
-        t.institution.toLowerCase().includes(s) ||
-        t.teamLeaderName.toLowerCase().includes(s)
+        (t.name || '').toLowerCase().includes(s) ||
+        (t.code || '').toLowerCase().includes(s) ||
+        (t.institution || '').toLowerCase().includes(s) ||
+        (t.teamLeaderName || '').toLowerCase().includes(s)
       );
     });
     return list.sort((a, b) => (a.code || a.id).localeCompare(b.code || b.id, undefined, { numeric: true, sensitivity: 'base' }));
@@ -225,8 +225,8 @@ export const TeamsPage: React.FC = () => {
           const leaderEntry = leaderboard.find((l) => l.team.id === team.id);
           const teamParticipants = participants.filter((p) => p.teamId === team.id);
           const teamProgrammes = programmes.filter((p) =>
-            p.registeredTeamIds.includes(team.id) ||
-            teamParticipants.some((pt) => pt.registeredProgrammes.includes(p.id))
+            (p.registeredTeamIds || []).includes(team.id) ||
+            teamParticipants.some((pt) => (pt.registeredProgrammes || []).includes(p.id))
           );
 
           return (

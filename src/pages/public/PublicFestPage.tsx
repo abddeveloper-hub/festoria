@@ -376,13 +376,13 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
         const query = publicResultsSearch.toLowerCase().trim();
         const matchesSearch =
           !query ||
-          g.programmeName.toLowerCase().includes(query) ||
-          (g.programme?.code && g.programme.code.toLowerCase().includes(query)) ||
-          g.results.some(
+          (g.programmeName || '').toLowerCase().includes(query) ||
+          (g.programme?.code ? g.programme.code.toLowerCase().includes(query) : false) ||
+          (g.results || []).some(
             (r) =>
-              (r.participantName && r.participantName.toLowerCase().includes(query)) ||
-              (r.entryName && r.entryName.toLowerCase().includes(query)) ||
-              (r.teamName && r.teamName.toLowerCase().includes(query))
+              (r.participantName ? r.participantName.toLowerCase().includes(query) : false) ||
+              (r.entryName ? r.entryName.toLowerCase().includes(query) : false) ||
+              (r.teamName ? r.teamName.toLowerCase().includes(query) : false)
           );
         return matchesCat && matchesSearch;
       })

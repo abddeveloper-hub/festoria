@@ -106,7 +106,7 @@ export const ProgrammeAssignmentsPage: React.FC = () => {
     return list.filter((prg) => {
       if (categoryFilter !== 'all') {
         const matchesCategory =
-          prg.eligibleCategories.includes(categoryFilter) ||
+          (prg.eligibleCategories || []).includes(categoryFilter) ||
           prg.category === categoryFilter;
         if (!matchesCategory) return false;
       }
@@ -176,7 +176,7 @@ export const ProgrammeAssignmentsPage: React.FC = () => {
 
     // Check duplicate
     const alreadyAssigned = myTeamAssignments.some(
-      (a) => a.programmeId === assigningIndividualProg.id && a.participantIds.includes(participant.id)
+      (a) => a.programmeId === assigningIndividualProg.id && (a.participantIds || []).includes(participant.id)
     );
     if (alreadyAssigned) {
       setIndividualModalError(`${participant.name} is already registered for this event.`);
@@ -186,7 +186,7 @@ export const ProgrammeAssignmentsPage: React.FC = () => {
     // Check remaining slots
     const maxAllowed = assigningIndividualProg.maxParticipantsPerTeam || 1;
     const currentAssignments = myTeamAssignments.filter((a) => a.programmeId === assigningIndividualProg.id);
-    const registeredCount = new Set(currentAssignments.flatMap((a) => a.participantIds)).size;
+    const registeredCount = new Set(currentAssignments.flatMap((a) => a.participantIds || [])).size;
     if (registeredCount >= maxAllowed) {
       setIndividualModalError(
         `All ${maxAllowed} participant slot(s) for your team in "${assigningIndividualProg.name}" are already filled.`
@@ -209,7 +209,7 @@ export const ProgrammeAssignmentsPage: React.FC = () => {
 
     // Schedule conflict detection and time-overlap warnings
     const otherAssignments = myTeamAssignments.filter(
-      (a) => a.participantIds.includes(participant.id) && a.programmeId !== assigningIndividualProg.id
+      (a) => (a.participantIds || []).includes(participant.id) && a.programmeId !== assigningIndividualProg.id
     );
     for (const otherAsg of otherAssignments) {
       const otherPrg = programmes.find((p) => p.id === otherAsg.programmeId);
@@ -250,14 +250,14 @@ export const ProgrammeAssignmentsPage: React.FC = () => {
     if (existingEntry) {
       setEditingEntry(existingEntry);
       setEntryName(existingEntry.entryName);
-      setEntryCategory(existingEntry.categoryId || prg.eligibleCategories[0] || 'General');
-      setSelectedTeamMemberIds([...existingEntry.memberParticipantIds]);
+      setEntryCategory(existingEntry.categoryId || prg.eligibleCategories?.[0] || prg.category || 'General');
+      setSelectedTeamMemberIds([...(existingEntry.memberParticipantIds || [])]);
     } else {
       setEditingEntry(null);
       const teamExistingEntries = myTeamProgrammeEntries.filter((e) => e.programmeId === prg.id);
       const nextLetter = String.fromCharCode(65 + teamExistingEntries.length); // 'A', 'B', etc.
       setEntryName(`${activeTeam?.name || 'Team'} Entry ${nextLetter}`);
-      setEntryCategory(prg.eligibleCategories[0] || 'General');
+      setEntryCategory(prg.eligibleCategories?.[0] || prg.category || 'General');
       setSelectedTeamMemberIds([]);
     }
 
@@ -506,7 +506,7 @@ export const ProgrammeAssignmentsPage: React.FC = () => {
                   <div className="mt-3">
                     <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Eligible Categories:</span>
                     <div className="mt-1 flex flex-wrap gap-1.5">
-                      {prg.eligibleCategories.map((c) => (
+                      {(prg.eligibleCategories || (prg.category ? [prg.category] : ['General'])).map((c) => (
                         <span
                           key={c}
                           className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
@@ -546,7 +546,7 @@ export const ProgrammeAssignmentsPage: React.FC = () => {
                           Assigned Contestants:
                         </span>
                         {registeredObjs.map((m) => {
-                          const asg = currentAssignments.find((a) => a.participantIds.includes(m.id));
+                          const asg = currentAssignments.find((a) => (a.participantIds || []).includes(m.id));
                           return (
                             <div key={m.id} className="flex items-center justify-between text-xs bg-white px-2.5 py-1.5 rounded-lg border border-slate-200">
                               <span className="font-bold text-slate-800 truncate">
@@ -653,7 +653,7 @@ export const ProgrammeAssignmentsPage: React.FC = () => {
                     <div className="mt-3">
                       <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Eligible Categories:</span>
                       <div className="mt-1 flex flex-wrap gap-1.5">
-                        {prg.eligibleCategories.map((c) => (
+                        {(prg.eligibleCategories || (prg.category ? [prg.category] : ['General'])).map((c) => (
                           <span
                             key={c}
                             className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
@@ -713,10 +713,10 @@ export const ProgrammeAssignmentsPage: React.FC = () => {
                             </div>
 
                             <div className="text-xs text-slate-600">
-                              <span className="font-bold text-slate-800">Members ({entry.memberParticipantIds.length}):</span>{' '}
+                              <span className="font-bold text-slate-800">Members ({(entry.memberParticipantIds || []).length}):</span>{' '}
                               {entry.memberNames && entry.memberNames.length > 0
                                 ? entry.memberNames.join(', ')
-                                : entry.memberParticipantIds.join(', ')}
+                                : (entry.memberParticipantIds || []).join(', ')}
                             </div>
                           </div>
                         ))
@@ -769,7 +769,7 @@ export const ProgrammeAssignmentsPage: React.FC = () => {
 
             <div className="p-3 bg-slate-50 rounded border border-slate-200 space-y-1 text-slate-700">
               <div>Event: <strong className="text-slate-900">{assigningIndividualProg.name} ({assigningIndividualProg.code})</strong></div>
-              <div>Eligible Categories: <strong className="text-slate-900">{assigningIndividualProg.eligibleCategories.join(', ')}</strong></div>
+              <div>Eligible Categories: <strong className="text-slate-900">{(assigningIndividualProg.eligibleCategories || (assigningIndividualProg.category ? [assigningIndividualProg.category] : ['General'])).join(', ')}</strong></div>
               <div>Max Allowed Per Team: <strong className="text-slate-900">{assigningIndividualProg.maxParticipantsPerTeam || 1}</strong></div>
             </div>
 
@@ -786,9 +786,9 @@ export const ProgrammeAssignmentsPage: React.FC = () => {
                 ) : (
                   myTeamMembers.map((member) => {
                     const alreadyAssigned = myTeamAssignments.some(
-                      (a) => a.programmeId === assigningIndividualProg.id && a.participantIds.includes(member.id)
+                      (a) => a.programmeId === assigningIndividualProg.id && (a.participantIds || []).includes(member.id)
                     );
-                    const allowedCats = assigningIndividualProg.eligibleCategories.map((c) => c.toLowerCase());
+                    const allowedCats = (assigningIndividualProg.eligibleCategories || (assigningIndividualProg.category ? [assigningIndividualProg.category] : ['General'])).map((c) => c.toLowerCase());
                     const allowsGeneral = allowedCats.includes('general');
                     const memCat = (member.category || '').toLowerCase();
                     const isEligibleCategory = allowedCats.includes(memCat) || (allowsGeneral && memCat === 'general');
@@ -956,7 +956,7 @@ export const ProgrammeAssignmentsPage: React.FC = () => {
                     let inAnotherEntry = false;
                     if (!targetTeamProgramme.allowMultiEntriesPerParticipant) {
                       inAnotherEntry = myTeamProgrammeEntries.some(
-                        (e) => e.programmeId === targetTeamProgramme.id && e.id !== editingEntry?.id && e.memberParticipantIds.includes(member.id)
+                        (e) => e.programmeId === targetTeamProgramme.id && e.id !== editingEntry?.id && (e.memberParticipantIds || []).includes(member.id)
                       );
                     }
 
@@ -964,12 +964,12 @@ export const ProgrammeAssignmentsPage: React.FC = () => {
                     let inOtherTeamProg = false;
                     if (targetTeamProgramme.allowMultiTeamProgrammeParticipation === false) {
                       inOtherTeamProg = teamProgrammeEntries.some(
-                        (e) => e.programmeId !== targetTeamProgramme.id && e.status !== 'withdrawn' && e.memberParticipantIds.includes(member.id)
+                        (e) => e.programmeId !== targetTeamProgramme.id && e.status !== 'withdrawn' && (e.memberParticipantIds || []).includes(member.id)
                       );
                     }
 
                     // Category eligibility check
-                    const allowed = targetTeamProgramme.eligibleCategories.map((c) => c.toLowerCase());
+                    const allowed = (targetTeamProgramme.eligibleCategories || (targetTeamProgramme.category ? [targetTeamProgramme.category] : ['General'])).map((c) => c.toLowerCase());
                     const allowsGeneral = allowed.includes('general');
                     const memCat = (member.category || '').toLowerCase();
                     const isEligibleCategory = allowed.includes(memCat) || (allowsGeneral && memCat === 'general');

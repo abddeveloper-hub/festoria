@@ -93,7 +93,7 @@ export const JudgesPage: React.FC = () => {
       institution: j.institution || '',
       status: j.status,
       notes: j.notes || '',
-      assignedProgrammes: [...j.assignedProgrammes],
+      assignedProgrammes: j.assignedProgrammes ? [...j.assignedProgrammes] : [],
     });
     setIsAddModalOpen(true);
   };
@@ -174,7 +174,7 @@ export const JudgesPage: React.FC = () => {
           // Compute pending vs completed assignments
           const judgeScores = scores.filter((s) => s.judgeId === judge.id);
           const assignedProgs = programmes.filter((p) =>
-            judge.assignedProgrammes.includes(p.id)
+            (judge.assignedProgrammes || []).includes(p.id)
           );
           const completedCount = assignedProgs.filter((p) => p.status === 'completed').length;
           const pendingCount = assignedProgs.length - completedCount;
@@ -454,7 +454,7 @@ export const JudgesPage: React.FC = () => {
             <div>
               <h4 className="font-semibold text-slate-900 mb-2">Assigned Competitions & Timetable</h4>
               <div className="space-y-2">
-                {viewingJudge.assignedProgrammes.map((pId) => {
+                {(viewingJudge.assignedProgrammes || []).map((pId) => {
                   const prog = programmes.find((p) => p.id === pId);
                   const scoreCount = scores.filter(
                     (s) => s.judgeId === viewingJudge.id && s.programmeId === pId

@@ -59,10 +59,10 @@ export const ComplaintsManagementPage: React.FC = () => {
       const q = search.toLowerCase();
       const team = teams.find((t) => t.id === c.teamId);
       const matchesSearch =
-        c.id.toLowerCase().includes(q) ||
-        c.programmeName.toLowerCase().includes(q) ||
-        (team?.name.toLowerCase().includes(q) ?? false) ||
-        c.description.toLowerCase().includes(q);
+        (c.id || '').toLowerCase().includes(q) ||
+        (c.programmeName || '').toLowerCase().includes(q) ||
+        (team?.name ? team.name.toLowerCase().includes(q) : false) ||
+        (c.description || '').toLowerCase().includes(q);
 
       if (!matchesSearch) return false;
       if (filterStatus !== 'all' && c.status !== filterStatus) return false;

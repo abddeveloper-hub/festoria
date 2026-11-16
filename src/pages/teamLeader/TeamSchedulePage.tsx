@@ -74,8 +74,8 @@ export const TeamSchedulePage: React.FC = () => {
           // Find common team participants
           const asg1 = teamAssignments.find((a) => a.programmeId === p1.id);
           const asg2 = teamAssignments.find((a) => a.programmeId === p2.id);
-          const parts1 = asg1 ? asg1.participantIds : (p1.registeredParticipantIds?.filter((id: string) => teamMemberIds.has(id)) || []);
-          const parts2 = asg2 ? asg2.participantIds : (p2.registeredParticipantIds?.filter((id: string) => teamMemberIds.has(id)) || []);
+          const parts1 = asg1 ? (asg1.participantIds || []) : (p1.registeredParticipantIds?.filter((id: string) => teamMemberIds.has(id)) || []);
+          const parts2 = asg2 ? (asg2.participantIds || []) : (p2.registeredParticipantIds?.filter((id: string) => teamMemberIds.has(id)) || []);
 
           const common = parts1.filter((id: string) => parts2.includes(id));
           if (common.length > 0) {
@@ -104,8 +104,8 @@ export const TeamSchedulePage: React.FC = () => {
         return true;
       })
       .sort((a, b) => {
-        if (a.date !== b.date) return a.date.localeCompare(b.date);
-        const tComp = a.startTime.localeCompare(b.startTime);
+        if (a.date !== b.date) return (a.date || '').localeCompare(b.date || '');
+        const tComp = (a.startTime || '').localeCompare(b.startTime || '');
         if (tComp !== 0) return tComp;
         return (a.code || '').localeCompare(b.code || '', undefined, { numeric: true, sensitivity: 'base' });
       });

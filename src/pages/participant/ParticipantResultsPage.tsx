@@ -45,9 +45,9 @@ export const ParticipantResultsPage: React.FC = () => {
     // Search query
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      const matchName = prg.name.toLowerCase().includes(q);
+      const matchName = (prg.name || '').toLowerCase().includes(q);
       const matchParticipant = (res.participantName || '').toLowerCase().includes(q);
-      const matchTeam = res.teamName.toLowerCase().includes(q);
+      const matchTeam = (res.teamName || '').toLowerCase().includes(q);
       if (!matchName && !matchParticipant && !matchTeam) return false;
     }
 

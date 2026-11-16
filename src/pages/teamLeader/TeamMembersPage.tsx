@@ -51,9 +51,9 @@ export const TeamMembersPage: React.FC = () => {
   const filteredMembers = useMemo(() => {
     const list = teamMembers.filter((m) => {
       const matchesSearch =
-        m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        m.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (m.chestNumber && m.chestNumber.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (m.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (m.id || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (m.chestNumber ? m.chestNumber.toLowerCase().includes(searchQuery.toLowerCase()) : false) ||
         (m.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (m.phone || '').includes(searchQuery);
       const matchesCat = categoryFilter === 'all' || m.category === categoryFilter;
@@ -139,7 +139,7 @@ export const TeamMembersPage: React.FC = () => {
       Phone: m.phone,
       Category: m.category,
       Status: m.status,
-      'Registered Events Count': m.registeredProgrammes.length,
+      'Registered Events Count': (m.registeredProgrammes || []).length,
       'Created Date': m.createdAt,
     }));
     exportToCSV(`${activeTeam?.name || 'Team'}_Roster`, rows);
@@ -302,7 +302,7 @@ export const TeamMembersPage: React.FC = () => {
                     </div>
                   )}
                   <span className="text-indigo-600 font-semibold ml-auto">
-                    {member.registeredProgrammes.length} events
+                    {(member.registeredProgrammes || []).length} events
                   </span>
                 </div>
               </div>
@@ -377,7 +377,7 @@ export const TeamMembersPage: React.FC = () => {
                       </td>
                       <td className="py-3.5 px-4 text-center">
                         <span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
-                          {member.registeredProgrammes.length} events
+                          {(member.registeredProgrammes || []).length} events
                         </span>
                       </td>
                       <td className="py-3.5 px-4 text-center">

@@ -31,9 +31,9 @@ export const ParticipantProgrammesPage: React.FC = () => {
   const filtered = useMemo(() => {
     return myProgrammes.filter((p) => {
       const matchesSearch =
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.venue.toLowerCase().includes(searchQuery.toLowerCase());
+        (p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (p.code || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (p.venue || '').toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesStatus = statusFilter === 'all' || p.status === statusFilter;
       return matchesSearch && matchesStatus;

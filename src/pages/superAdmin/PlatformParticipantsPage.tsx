@@ -42,10 +42,10 @@ export const PlatformParticipantsPage: React.FC = () => {
   const filteredParticipants = useMemo(() => {
     return participants.filter((p) => {
       const matchSearch =
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (p.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (p.chestNumber || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (p.id || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (p.college || '').toLowerCase().includes(searchQuery.toLowerCase());
       const matchCategory = categoryFilter === 'all' || p.category === categoryFilter;
       const matchStatus = statusFilter === 'all' || p.status === statusFilter;
@@ -67,7 +67,7 @@ export const PlatformParticipantsPage: React.FC = () => {
         College: p.college,
         Category: p.category,
         Team: teamObj?.name || p.teamId,
-        Registered_Events_Count: p.registeredProgrammes.length,
+        Registered_Events_Count: (p.registeredProgrammes || []).length,
         Status: p.status,
         Registered_Date: p.createdAt,
       };
@@ -233,7 +233,7 @@ export const PlatformParticipantsPage: React.FC = () => {
                       </td>
                       <td className="px-4 py-3 font-medium text-slate-900">{teamObj?.name || p.teamId}</td>
                       <td className="px-4 py-3">
-                        <span className="font-semibold text-slate-900">{p.registeredProgrammes.length}</span> programmes
+                        <span className="font-semibold text-slate-900">{(p.registeredProgrammes || []).length}</span> programmes
                       </td>
                       <td className="px-4 py-3">
                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded capitalize ${
@@ -302,7 +302,7 @@ export const PlatformParticipantsPage: React.FC = () => {
               <div className="border border-slate-200 rounded p-4 space-y-2">
                 <h4 className="font-semibold text-slate-900">Registered Competition Events</h4>
                 <div className="space-y-1.5">
-                  {selectedParticipant.registeredProgrammes.map((prgId) => {
+                  {(selectedParticipant.registeredProgrammes || []).map((prgId) => {
                     const prg = programmes.find((p) => p.id === prgId);
                     return (
                       <div key={prgId} className="p-2 border border-slate-100 rounded bg-slate-50 flex items-center justify-between">

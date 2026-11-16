@@ -58,11 +58,11 @@ export const SchedulePage: React.FC = () => {
   });
 
   const distinctDates = useMemo(() => {
-    return Array.from(new Set(scheduleSlots.map((s) => s.date))).sort();
+    return Array.from(new Set(scheduleSlots.map((s) => s.date).filter(Boolean))).sort();
   }, [scheduleSlots]);
 
   const distinctVenues = useMemo(() => {
-    return Array.from(new Set(scheduleSlots.map((s) => s.venue))).sort();
+    return Array.from(new Set(scheduleSlots.map((s) => s.venue).filter(Boolean))).sort();
   }, [scheduleSlots]);
 
   const filteredSlots = useMemo(() => {
@@ -291,7 +291,7 @@ export const SchedulePage: React.FC = () => {
                   filteredSlots.map((slot) => {
                     const prog = programmes.find((p) => p.id === slot.programmeId);
                     const assignedJudges = judges.filter((j) =>
-                      prog?.assignedJudgeIds.includes(j.id)
+                      (prog?.assignedJudgeIds || prog?.judgeIds || []).includes(j.id)
                     );
 
                     return (
