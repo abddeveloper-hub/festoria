@@ -24,19 +24,27 @@ export const PlatformSchedulePage: React.FC = () => {
   const dates = Array.from(new Set(scheduleSlots.map((s) => s.date)));
 
   const filteredSlots = useMemo(() => {
-    return scheduleSlots.filter((slot) => {
-      const pr = programmes.find((p) => p.id === slot.programmeId);
-      const query = searchQuery.toLowerCase();
-      const matchSearch =
-        slot.id.toLowerCase().includes(query) ||
-        slot.venue.toLowerCase().includes(query) ||
-        slot.stage.toLowerCase().includes(query) ||
-        (pr && pr.name.toLowerCase().includes(query));
+    return scheduleSlots
+      .filter((slot) => {
+        const pr = programmes.find((p) => p.id === slot.programmeId);
+        const query = searchQuery.toLowerCase();
+        const matchSearch =
+          slot.id.toLowerCase().includes(query) ||
+          slot.venue.toLowerCase().includes(query) ||
+          slot.stage.toLowerCase().includes(query) ||
+          (pr && pr.name.toLowerCase().includes(query));
 
-      const matchVenue = venueFilter === 'all' || slot.venue === venueFilter;
-      const matchDate = dateFilter === 'all' || slot.date === dateFilter;
-      return matchSearch && matchVenue && matchDate;
-    });
+        const matchVenue = venueFilter === 'all' || slot.venue === venueFilter;
+        const matchDate = dateFilter === 'all' || slot.date === dateFilter;
+        return matchSearch && matchVenue && matchDate;
+      })
+      .sort((a, b) => {
+        const timeA = `${a.date || ''} ${a.startTime || ''}`;
+        const timeB = `${b.date || ''} ${b.startTime || ''}`;
+        const timeComp = timeA.localeCompare(timeB);
+        if (timeComp !== 0) return timeComp;
+        return (a.id || '').localeCompare(b.id || '');
+      });
   }, [scheduleSlots, programmes, searchQuery, venueFilter, dateFilter]);
 
   const handleExport = () => {

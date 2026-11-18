@@ -22,6 +22,8 @@ export const TeamSchedulePage: React.FC = () => {
     activeTeamId,
     activeTeam,
     assignments,
+    scheduleSlots,
+    teamProgrammeEntries,
   } = useFest();
 
   const [selectedDate, setSelectedDate] = useState<string>('all');
@@ -45,52 +47,118 @@ export const TeamSchedulePage: React.FC = () => {
     return new Set(teamAssignments.map((a) => a.programmeId));
   }, [teamAssignments]);
 
-  // All programmes where team is assigned or has participants
-  const teamProgrammes = useMemo(() => {
-    return programmes.filter((prg) => {
-      const hasAssignment = assignedProgrammeIds.has(prg.id);
-      const hasMember = prg.registeredParticipantIds?.some((pid: string) => teamMemberIds.has(pid));
-      return hasAssignment || hasMember;
-    });
-  }, [programmes, assignedProgrammeIds, teamMemberIds]);
+  // Team programme entries (from team entries register)
+  const myTeamEntries = useMemo(() => {
+    return (teamProgrammeEntries || []).filter((e) => e.teamId === activeTeamId && e.status !== 'withdrawn');
+  }, [teamProgrammeEntries, activeTeamId]);
 
-  // Distinct dates in fest
+  const entryProgrammeIds = useMemo(() => {
+    return new Set(myTeamEntries.map((e) => e.programmeId));
+  }, [myTeamEntries]);
+
+  // All programmes where team is assigned or has participants, enriched with latest schedule slots
+  const enrichedTeamProgrammes = useMemo(() => {
+    return programmes
+      .filter((prg) => {
+        const hasAssignment = assignedProgrammeIds.has(prg.id);
+        const hasEntry = entryProgrammeIds.has(prg.id);
+        const hasMember = prg.registeredParticipantIds?.some((pid: string) => teamMemberIds.has(pid));
+        return hasAssignment || hasEntry || hasMember;
+      })
+      .map((prg) => {
+        const slot = (scheduleSlots || []).find((s) => s.programmeId === prg.id);
+        return {
+          ...prg,
+          date: slot?.date || prg.date || '',
+          startTime: slot?.startTime || prg.startTime || '',
+          endTime: slot?.endTime || prg.endTime || '',
+          venue: slot?.venue || prg.venue || 'Auditorium / Main Hall',
+          stage: slot?.stage || prg.stage || '',
+          status: slot?.status || prg.status || 'scheduled',
+        };
+      });
+  }, [programmes, assignedProgrammeIds, entryProgrammeIds, teamMemberIds, scheduleSlots]);
+
+  // Helper to get participant names for a programme
+  const getParticipantDisplay = (progId: string) => {
+    const asg = teamAssignments.find((a) => a.programmeId === progId);
+    if (asg && asg.participantNames && asg.participantNames.length > 0) {
+      return asg.participantNames.join(', ');
+    }
+    const entries = myTeamEntries.filter((e) => e.programmeId === progId);
+    if (entries.length > 0) {
+      const names = entries
+        .flatMap((e) => {
+          if (e.memberNames && e.memberNames.length > 0) return e.memberNames;
+          return (e.memberParticipantIds || []).map((id) => teamMembers.find((m) => m.id === id)?.name || id);
+        })
+        .filter(Boolean);
+      if (names.length > 0) return names.join(', ');
+    }
+    const prg = programmes.find((p) => p.id === progId);
+    const regMembers = teamMembers.filter((m) => (prg?.registeredParticipantIds || []).includes(m.id));
+    if (regMembers.length > 0) {
+      return regMembers.map((m) => m.name).join(', ');
+    }
+    return 'Team Roster';
+  };
+
+  // Distinct dates in team schedule
   const dates = useMemo(() => {
     const set = new Set<string>();
-    teamProgrammes.forEach((p) => {
+    enrichedTeamProgrammes.forEach((p) => {
       if (p.date) set.add(p.date);
     });
     return Array.from(set).sort();
-  }, [teamProgrammes]);
+  }, [enrichedTeamProgrammes]);
 
   // Detect time clashes among team programmes
   const clashes = useMemo(() => {
-    const list: { p1: typeof teamProgrammes[0]; p2: typeof teamProgrammes[0]; commonMembers: string[] }[] = [];
-    for (let i = 0; i < teamProgrammes.length; i++) {
-      for (let j = i + 1; j < teamProgrammes.length; j++) {
-        const p1 = teamProgrammes[i];
-        const p2 = teamProgrammes[j];
-        if (p1.date === p2.date && p1.startTime === p2.startTime && p1.status !== 'cancelled' && p2.status !== 'cancelled') {
-          // Find common team participants
-          const asg1 = teamAssignments.find((a) => a.programmeId === p1.id);
-          const asg2 = teamAssignments.find((a) => a.programmeId === p2.id);
-          const parts1 = asg1 ? (asg1.participantIds || []) : (p1.registeredParticipantIds?.filter((id: string) => teamMemberIds.has(id)) || []);
-          const parts2 = asg2 ? (asg2.participantIds || []) : (p2.registeredParticipantIds?.filter((id: string) => teamMemberIds.has(id)) || []);
+    const list: { p1: typeof enrichedTeamProgrammes[0]; p2: typeof enrichedTeamProgrammes[0]; commonMembers: string[] }[] = [];
+    for (let i = 0; i < enrichedTeamProgrammes.length; i++) {
+      for (let j = i + 1; j < enrichedTeamProgrammes.length; j++) {
+        const p1 = enrichedTeamProgrammes[i];
+        const p2 = enrichedTeamProgrammes[j];
+        if (
+          p1.date &&
+          p2.date &&
+          p1.date === p2.date &&
+          p1.startTime &&
+          p2.startTime &&
+          p1.startTime === p2.startTime &&
+          p1.status !== 'cancelled' &&
+          p2.status !== 'cancelled'
+        ) {
+          const getMemberIdsForProg = (pId: string) => {
+            const set = new Set<string>();
+            const asg = teamAssignments.find((a) => a.programmeId === pId);
+            (asg?.participantIds || []).forEach((id) => set.add(id));
+            const entries = myTeamEntries.filter((e) => e.programmeId === pId);
+            entries.forEach((e) => (e.memberParticipantIds || []).forEach((id) => set.add(id)));
+            const prg = programmes.find((p) => p.id === pId);
+            (prg?.registeredParticipantIds || []).filter((id) => teamMemberIds.has(id)).forEach((id) => set.add(id));
+            return set;
+          };
 
-          const common = parts1.filter((id: string) => parts2.includes(id));
+          const set1 = getMemberIdsForProg(p1.id);
+          const set2 = getMemberIdsForProg(p2.id);
+          const common = Array.from(set1).filter((id) => set2.has(id));
           if (common.length > 0) {
-            const commonNames = teamMembers.filter((m) => common.includes(m.id)).map((m) => m.name);
+            const commonNames = common.map((id) => {
+              const m = teamMembers.find((mem) => mem.id === id);
+              return m?.name || id;
+            });
             list.push({ p1, p2, commonMembers: commonNames });
           }
         }
       }
     }
     return list;
-  }, [teamProgrammes, teamAssignments, teamMemberIds, teamMembers]);
+  }, [enrichedTeamProgrammes, teamAssignments, myTeamEntries, programmes, teamMemberIds, teamMembers]);
 
-  // Filtered programmes
+  // Filtered programmes sorted chronologically
   const displayedProgrammes = useMemo(() => {
-    return teamProgrammes
+    return enrichedTeamProgrammes
       .filter((prg) => {
         if (selectedDate !== 'all' && prg.date !== selectedDate) return false;
         if (searchQuery) {
@@ -98,30 +166,39 @@ export const TeamSchedulePage: React.FC = () => {
           return (
             (prg.name || '').toLowerCase().includes(q) ||
             (prg.venue || '').toLowerCase().includes(q) ||
-            (prg.category || '').toLowerCase().includes(q)
+            (prg.stage || '').toLowerCase().includes(q) ||
+            (prg.category || '').toLowerCase().includes(q) ||
+            (prg.code || '').toLowerCase().includes(q)
           );
         }
         return true;
       })
       .sort((a, b) => {
-        if (a.date !== b.date) return (a.date || '').localeCompare(b.date || '');
-        const tComp = (a.startTime || '').localeCompare(b.startTime || '');
-        if (tComp !== 0) return tComp;
-        return (a.code || '').localeCompare(b.code || '', undefined, { numeric: true, sensitivity: 'base' });
+        if (a.date && b.date && a.date !== b.date) return a.date.localeCompare(b.date);
+        if (a.date && !b.date) return -1;
+        if (!a.date && b.date) return 1;
+
+        if (a.startTime && b.startTime && a.startTime !== b.startTime) return a.startTime.localeCompare(b.startTime);
+        if (a.startTime && !b.startTime) return -1;
+        if (!a.startTime && b.startTime) return 1;
+
+        return (a.code || '').localeCompare(b.code || '', undefined, { numeric: true, sensitivity: 'base' }) ||
+          (a.name || '').localeCompare(b.name || '');
       });
-  }, [teamProgrammes, selectedDate, searchQuery]);
+  }, [enrichedTeamProgrammes, selectedDate, searchQuery]);
 
   const handleExportCSV = () => {
     const rows = displayedProgrammes.map((p) => {
-      const asg = teamAssignments.find((a) => a.programmeId === p.id);
       return {
         Date: p.date,
         'Start Time': p.startTime,
         'End Time': p.endTime,
+        'Programme Code': p.code || '',
         'Programme Name': p.name,
         Category: p.category,
         Venue: p.venue,
-        'Assigned Participants': asg ? asg.participantNames.join(', ') : 'Team Roster',
+        Stage: p.stage || '',
+        'Assigned Participants': getParticipantDisplay(p.id),
         Status: p.status,
       };
     });
@@ -206,7 +283,7 @@ export const TeamSchedulePage: React.FC = () => {
                 : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
             }`}
           >
-            All Dates ({teamProgrammes.length})
+            All Dates ({enrichedTeamProgrammes.length})
           </button>
           {dates.map((d) => (
             <button
@@ -247,18 +324,25 @@ export const TeamSchedulePage: React.FC = () => {
               >
                 {/* Time & Venue Column */}
                 <div className="flex items-start gap-4">
-                  <div className="w-24 shrink-0 text-center p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+                  <div className="w-28 shrink-0 text-center p-2.5 rounded-lg bg-slate-50 border border-slate-200">
                     <span className="text-xs font-bold text-slate-900 block">
-                      {prg.startTime}
+                      {prg.startTime ? prg.startTime : 'Time TBA'}
                     </span>
-                    <span className="text-[10px] text-slate-500 block">to {prg.endTime}</span>
-                    <span className="text-[10px] font-mono text-slate-400 mt-1 block">
-                      {prg.date}
+                    <span className="text-[10px] text-slate-500 block">
+                      {prg.endTime ? `to ${prg.endTime}` : ''}
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-500 mt-1 block">
+                      {prg.date || 'Date TBA'}
                     </span>
                   </div>
 
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      {prg.code && (
+                        <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-slate-900 text-white">
+                          {prg.code}
+                        </span>
+                      )}
                       <span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
                         {prg.category}
                       </span>
@@ -281,11 +365,14 @@ export const TeamSchedulePage: React.FC = () => {
                       <span className="flex items-center gap-1 font-medium text-slate-700">
                         <MapPin size={13} className="text-slate-400" />
                         {prg.venue}
+                        {prg.stage ? ` (${prg.stage})` : ''}
                       </span>
-                      <span className="flex items-center gap-1">
-                        <Clock size={13} className="text-slate-400" />
-                        Stage Slot: {prg.startTime}
-                      </span>
+                      {prg.startTime && (
+                        <span className="flex items-center gap-1">
+                          <Clock size={13} className="text-slate-400" />
+                          Stage Slot: {prg.startTime} {prg.endTime ? `- ${prg.endTime}` : ''}
+                        </span>
+                      )}
                     </div>
 
                     {/* Assigned Participants */}
@@ -293,7 +380,7 @@ export const TeamSchedulePage: React.FC = () => {
                       <Users size={13} className="text-slate-400 shrink-0" />
                       <span className="font-semibold">Team Contender:</span>
                       <span className="text-slate-600 truncate">
-                        {asg ? asg.participantNames.join(', ') : 'Roster Registered'}
+                        {getParticipantDisplay(prg.id)}
                       </span>
                     </div>
                   </div>

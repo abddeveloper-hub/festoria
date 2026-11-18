@@ -671,22 +671,17 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     const mergedSlots: ScheduleSlot[] = [];
     festProgs.forEach((prog) => {
       const explicit = slotsByProgId.get(prog.id);
-      if (explicit) {
-        mergedSlots.push(explicit);
-      } else {
-        // Automatically derive schedule slot from the programme's scheduled venue, stage, date, time
-        mergedSlots.push({
-          id: `SCH-${prog.id}`,
-          festId: prog.festId || activeFestId,
-          programmeId: prog.id,
-          venue: prog.venue || 'Auditorium Hall A',
-          stage: prog.stage || (prog.stageType === 'off_stage' ? 'Off-Stage' : 'Stage 1'),
-          date: prog.date || activeFest?.startDate || '2026-11-22',
-          startTime: prog.startTime || '10:00',
-          endTime: prog.endTime || '12:00',
-          status: prog.status || 'scheduled',
-        });
-      }
+      mergedSlots.push({
+        id: explicit?.id || `SCH-${prog.id}`,
+        festId: prog.festId || explicit?.festId || activeFestId,
+        programmeId: prog.id,
+        venue: prog.venue || explicit?.venue || '',
+        stage: prog.stage || explicit?.stage || (prog.stageType === 'off_stage' ? 'Off-Stage' : 'Stage 1'),
+        date: prog.date || explicit?.date || activeFest?.startDate || '',
+        startTime: prog.startTime || explicit?.startTime || '',
+        endTime: prog.endTime || explicit?.endTime || '',
+        status: prog.status || explicit?.status || 'scheduled',
+      });
     });
 
     // Also include any slots not tied to programmes (e.g. general session or ceremony slots)
@@ -696,10 +691,26 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       }
     });
 
-    return mergedSlots.sort((a, b) =>
-      `${a.date} ${a.startTime}`.localeCompare(`${b.date} ${b.startTime}`) ||
-      (a.venue || '').localeCompare(b.venue || '')
-    );
+    return mergedSlots.sort((a, b) => {
+      const dateA = a.date || '';
+      const dateB = b.date || '';
+      if (dateA && dateB && dateA !== dateB) return dateA.localeCompare(dateB);
+      if (dateA && !dateB) return -1;
+      if (!dateA && dateB) return 1;
+
+      const timeA = a.startTime || '';
+      const timeB = b.startTime || '';
+      if (timeA && timeB && timeA !== timeB) return timeA.localeCompare(timeB);
+      if (timeA && !timeB) return -1;
+      if (!timeA && timeB) return 1;
+
+      const progA = festProgs.find((p) => p.id === a.programmeId);
+      const progB = festProgs.find((p) => p.id === b.programmeId);
+      const codeA = progA?.code || a.programmeId || '';
+      const codeB = progB?.code || b.programmeId || '';
+      return codeA.localeCompare(codeB, undefined, { numeric: true, sensitivity: 'base' }) ||
+        (progA?.name || '').localeCompare(progB?.name || '', undefined, { sensitivity: 'base' });
+    });
   }, [scheduleSlots, programmes, activeFestId, activeFest, currentPortal]);
 
   const festUsers = useMemo(() => {
@@ -1189,6 +1200,37 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       if (fsCategories && fsCategories.length > 0) setCategories(fsCategories);
       if (fsTeamEntries && fsTeamEntries.length > 0) setTeamProgrammeEntries(fsTeamEntries);
       if (fsJudges && fsJudges.length > 0) setJudges(fsJudges);
+
+      // Synchronize schedule slots with remote Firestore programmes
+      setScheduleSlots((prevSlots) => {
+        const slotMap = new Map<string, ScheduleSlot>();
+        (prevSlots || []).forEach((s) => {
+          if (s.programmeId) slotMap.set(s.programmeId, s);
+        });
+
+        const syncedSlots = (harmonizedProgrammes || []).map((p) => {
+          const existing = slotMap.get(p.id);
+          return {
+            id: existing?.id || `SCH-${p.id}`,
+            festId: p.festId || existing?.festId || activeFestId,
+            programmeId: p.id,
+            venue: p.venue || existing?.venue || '',
+            stage: p.stage || existing?.stage || (p.stageType === 'off_stage' ? 'Off-Stage' : 'Stage 1'),
+            date: p.date || existing?.date || '',
+            startTime: p.startTime || existing?.startTime || '',
+            endTime: p.endTime || existing?.endTime || '',
+            status: p.status || existing?.status || 'scheduled',
+          };
+        });
+
+        // Also keep non-programme slots (e.g. ceremonies/breaks)
+        const nonProgSlots = (prevSlots || []).filter(
+          (s) => !s.programmeId || !(harmonizedProgrammes || []).some((p) => p.id === s.programmeId)
+        );
+        const allSynced = [...syncedSlots, ...nonProgSlots];
+        StorageService.saveScheduleSlots(allSynced);
+        return allSynced;
+      });
 
       // Record successful sync timestamp in both localStorage and sessionStorage
       if (typeof window !== 'undefined') {
@@ -2020,22 +2062,40 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       return next;
     });
     // Also sync schedule slot if time/venue changes
-    setScheduleSlots((prev) =>
-      prev.map((s) => {
-        if (s.programmeId === id) {
-          return {
-            ...s,
-            venue: updates.venue || s.venue,
-            stage: updates.stage || s.stage,
-            date: updates.date || s.date,
-            startTime: updates.startTime || s.startTime,
-            endTime: updates.endTime || s.endTime,
-            status: updates.status || s.status,
-          };
-        }
-        return s;
-      })
-    );
+    setScheduleSlots((prev) => {
+      const exists = prev.some((s) => s.programmeId === id);
+      if (exists) {
+        return prev.map((s) => {
+          if (s.programmeId === id) {
+            return {
+              ...s,
+              venue: updates.venue !== undefined ? updates.venue : s.venue,
+              stage: updates.stage !== undefined ? updates.stage : s.stage,
+              date: updates.date !== undefined ? updates.date : s.date,
+              startTime: updates.startTime !== undefined ? updates.startTime : s.startTime,
+              endTime: updates.endTime !== undefined ? updates.endTime : s.endTime,
+              status: updates.status !== undefined ? updates.status : s.status,
+            };
+          }
+          return s;
+        });
+      }
+      const p = programmes.find((pr) => pr.id === id);
+      return [
+        ...prev,
+        {
+          id: `SCH-${(prev.length + 1).toString().padStart(2, '0')}`,
+          festId: p?.festId || activeFestId,
+          programmeId: id,
+          venue: updates.venue !== undefined ? updates.venue : p?.venue || 'Auditorium Hall A',
+          stage: updates.stage !== undefined ? updates.stage : p?.stage || 'Stage 1',
+          date: updates.date !== undefined ? updates.date : p?.date || activeFest?.startDate || new Date().toISOString().split('T')[0],
+          startTime: updates.startTime !== undefined ? updates.startTime : p?.startTime || '10:00',
+          endTime: updates.endTime !== undefined ? updates.endTime : p?.endTime || '12:00',
+          status: updates.status !== undefined ? updates.status : p?.status || 'scheduled',
+        },
+      ];
+    });
     logActivity('UPDATE_PROGRAMME', 'programme', id, `Updated programme ${id}.`);
     addToast('success', 'Programme Updated', 'Programme settings and schedule updated.');
   };
@@ -2466,12 +2526,12 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
           if (p.id === progId) {
             const updatedP: Programme = {
               ...p,
-              date: updates.date || p.date,
-              venue: updates.venue || p.venue,
-              stage: updates.stage || p.stage,
-              startTime: updates.startTime || p.startTime,
-              endTime: updates.endTime || p.endTime,
-              status: updates.status || p.status,
+              date: updates.date !== undefined ? updates.date : p.date,
+              venue: updates.venue !== undefined ? updates.venue : p.venue,
+              stage: updates.stage !== undefined ? updates.stage : p.stage,
+              startTime: updates.startTime !== undefined ? updates.startTime : p.startTime,
+              endTime: updates.endTime !== undefined ? updates.endTime : p.endTime,
+              status: updates.status !== undefined ? updates.status : p.status,
             };
             saveProgrammeToFirestore(updatedP);
             return updatedP;
@@ -2489,7 +2549,14 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     setScheduleSlots((prev) => prev.filter((s) => s.id !== id));
     if (progId) {
       setProgrammes((prev) =>
-        prev.map((p) => (p.id === progId ? { ...p, status: 'draft' } : p))
+        prev.map((p) => {
+          if (p.id === progId) {
+            const updatedP: Programme = { ...p, status: 'draft' };
+            saveProgrammeToFirestore(updatedP);
+            return updatedP;
+          }
+          return p;
+        })
       );
     }
     logActivity('DELETE_SCHEDULE_SLOT', 'schedule', id, `Deleted schedule slot ${id}.`);

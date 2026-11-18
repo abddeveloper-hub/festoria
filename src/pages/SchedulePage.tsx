@@ -87,14 +87,15 @@ export const SchedulePage: React.FC = () => {
   }, [scheduleSlots, selectedDate, filterVenue, filterStatus, programmes]);
 
   const handleOpenAdd = () => {
+    const defaultProg = programmes[0];
     setEditingSlot(null);
     setFormData({
-      programmeId: programmes[0]?.id || '',
-      venue: 'Auditorium Hall A',
-      stage: 'Stage 1',
-      date: distinctDates[0] || activeFest?.startDate || '2026-11-22',
-      startTime: '10:00',
-      endTime: '12:00',
+      programmeId: defaultProg?.id || '',
+      venue: defaultProg?.venue || 'Auditorium Hall A',
+      stage: defaultProg?.stage || 'Stage 1',
+      date: defaultProg?.date || distinctDates[0] || activeFest?.startDate || new Date().toISOString().split('T')[0],
+      startTime: defaultProg?.startTime || '10:00',
+      endTime: defaultProg?.endTime || '12:00',
       status: 'scheduled',
     });
     setIsSlotModalOpen(true);
@@ -432,7 +433,19 @@ export const SchedulePage: React.FC = () => {
             </label>
             <select
               value={formData.programmeId}
-              onChange={(e) => setFormData({ ...formData, programmeId: e.target.value })}
+              onChange={(e) => {
+                const progId = e.target.value;
+                const prog = programmes.find((p) => p.id === progId);
+                setFormData((prev) => ({
+                  ...prev,
+                  programmeId: progId,
+                  ...(prog?.venue ? { venue: prog.venue } : {}),
+                  ...(prog?.stage ? { stage: prog.stage } : {}),
+                  ...(prog?.date ? { date: prog.date } : {}),
+                  ...(prog?.startTime ? { startTime: prog.startTime } : {}),
+                  ...(prog?.endTime ? { endTime: prog.endTime } : {}),
+                }));
+              }}
               className="w-full border border-slate-300 rounded px-2.5 py-1.5 bg-white"
             >
               {programmes.map((p) => (

@@ -317,11 +317,25 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
       return true;
     });
 
-    return list.sort((a, b) =>
-      (a.code || '').localeCompare(b.code || '', undefined, { numeric: true, sensitivity: 'base' }) ||
-      `${a.date} ${a.startTime}`.localeCompare(`${b.date} ${b.startTime}`)
-    );
-  }, [publishedProgrammes, scheduleCategoryFilter, scheduleStageFilter, scheduleSearchQuery]);
+    return list.sort((a, b) => {
+      const slotA = festScheduleSlots.find((s) => s.programmeId === a.id);
+      const slotB = festScheduleSlots.find((s) => s.programmeId === b.id);
+      const dateA = slotA?.date || a.date || '';
+      const dateB = slotB?.date || b.date || '';
+      if (dateA && dateB && dateA !== dateB) return dateA.localeCompare(dateB);
+      if (dateA && !dateB) return -1;
+      if (!dateA && dateB) return 1;
+
+      const timeA = slotA?.startTime || a.startTime || '';
+      const timeB = slotB?.startTime || b.startTime || '';
+      if (timeA && timeB && timeA !== timeB) return timeA.localeCompare(timeB);
+      if (timeA && !timeB) return -1;
+      if (!timeA && timeB) return 1;
+
+      return (a.code || '').localeCompare(b.code || '', undefined, { numeric: true, sensitivity: 'base' }) ||
+        (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' });
+    });
+  }, [publishedProgrammes, festScheduleSlots, scheduleCategoryFilter, scheduleStageFilter, scheduleSearchQuery]);
 
   // Participants scoped to this festival (Sorted by Chest Number)
   const festParticipants = React.useMemo(() => {
@@ -3564,7 +3578,10 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                     <div className={`space-y-2 pt-1 border-t ${isVarsity ? 'border-[#1c1c18]/15' : 'border-[#f1f5f9]'}`}>
                       <div className={`flex items-center gap-2 text-xs ${isVarsity ? 'font-body-serif text-[#1c1c18]' : 'text-[#334155]'}`}>
                         <MapPin className={`w-4 h-4 shrink-0 ${isVarsity ? 'text-[#782f40]' : 'text-[#0d9488]'}`} />
-                        <span className="font-medium truncate">{p.venue || slot?.venue || 'Auditorium / Main Hall'}</span>
+                        <span className="font-medium truncate">
+                          {slot?.venue || p.venue || 'Auditorium / Main Hall'}
+                          {(slot?.stage || p.stage) ? ` (${slot?.stage || p.stage})` : ''}
+                        </span>
                       </div>
 
                       <div className={`flex items-center gap-2 text-xs ${isVarsity ? 'font-body-serif text-[#1c1c18]' : 'text-[#334155]'}`}>
@@ -3615,9 +3632,28 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               return (
                 <div className="space-y-10">
                   {availableScheduleCategories.map((catName) => {
-                    const catProgrammes = publishedProgrammes.filter(
-                      (p) => (p.category || '').trim().toLowerCase() === catName.trim().toLowerCase()
-                    );
+                    const catProgrammes = publishedProgrammes
+                      .filter(
+                        (p) => (p.category || '').trim().toLowerCase() === catName.trim().toLowerCase()
+                      )
+                      .sort((a, b) => {
+                        const slotA = festScheduleSlots.find((s) => s.programmeId === a.id);
+                        const slotB = festScheduleSlots.find((s) => s.programmeId === b.id);
+                        const dateA = slotA?.date || a.date || '';
+                        const dateB = slotB?.date || b.date || '';
+                        if (dateA && dateB && dateA !== dateB) return dateA.localeCompare(dateB);
+                        if (dateA && !dateB) return -1;
+                        if (!dateA && dateB) return 1;
+
+                        const timeA = slotA?.startTime || a.startTime || '';
+                        const timeB = slotB?.startTime || b.startTime || '';
+                        if (timeA && timeB && timeA !== timeB) return timeA.localeCompare(timeB);
+                        if (timeA && !timeB) return -1;
+                        if (!timeA && timeB) return 1;
+
+                        return (a.code || '').localeCompare(b.code || '', undefined, { numeric: true, sensitivity: 'base' }) ||
+                          (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' });
+                      });
                     if (catProgrammes.length === 0) return null;
                     const catConfig = festCategories?.find(
                       (c) => (c.name || '').trim().toLowerCase() === catName.trim().toLowerCase()
