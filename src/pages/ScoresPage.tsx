@@ -3,7 +3,7 @@ import { useFest } from '../context/FestContext';
 import {
   ScoreSubmission,
   ScoreStatus,
-  ScoreDetail
+  ScoreDetail,
 } from '../types';
 import { Badge } from '../components/common/Badge';
 import { Modal } from '../components/common/Modal';
@@ -14,25 +14,26 @@ import {
   CheckCircle2,
   AlertCircle,
   AlertTriangle,
-  FileCheck2,
   Clock,
   Eye,
   Edit2,
-  Send,
   History,
-  Lock,
-  ArrowRight,
   Trophy,
   Filter,
   FileSpreadsheet,
   Save,
   Users,
-  User,
-  Sliders,
   Check,
-  RotateCcw,
   Trash2,
-  Award
+  Award,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  Sparkles,
+  HelpCircle,
+  X,
+  ListChecks,
+  RotateCcw,
 } from 'lucide-react';
 
 export const ScoresPage: React.FC = () => {
@@ -56,76 +57,515 @@ export const ScoresPage: React.FC = () => {
     addToast,
   } = useFest();
 
-  // Active View Tab: 'sheet' (Fast Score Sheet Matrix), 'results' (Added/Published Results), or 'all' (Historical Submissions & Audit Dossier)
-  const [activeTab, setActiveTab] = useState<'sheet' | 'results' | 'all'>('sheet');
+  // Primary Tabs:
+  // 'score' = Simple & Fast Scoring Sheet (default workhorse for clients)
+  // 'results' = Published Winners & Leaderboard Points
+  // 'audit' = Audit Dossier & Historical Submissions
+  const [activeTab, setActiveTab] = useState<'score' | 'results' | 'audit'>('score');
 
-  const [search, setSearch] = useState('');
-  const [filterProgramme, setFilterProgramme] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [filterJudge, setFilterJudge] = useState('all');
+  // Search & Filter for Audit Tab
+  const [auditSearch, setAuditSearch] = useState('');
+  const [auditFilterProgramme, setAuditFilterProgramme] = useState('all');
+  const [auditFilterStatus, setAuditFilterStatus] = useState('all');
+  const [auditFilterJudge, setAuditFilterJudge] = useState('all');
 
-  // Added Results filter & search state
+  // Search & Filter for Published Results Tab
   const [resultsSearch, setResultsSearch] = useState('');
   const [resultsFilterProgramme, setResultsFilterProgramme] = useState('all');
 
+  // Modals & Dialogs State
   const [isScoreModalOpen, setIsScoreModalOpen] = useState(false);
   const [editingScore, setEditingScore] = useState<ScoreSubmission | null>(null);
   const [viewingScore, setViewingScore] = useState<ScoreSubmission | null>(null);
-  const [selectedProgrammeId, setSelectedProgrammeId] = useState<string>(
-    programmes[0]?.id || ''
-  );
+  const [isEventPickerOpen, setIsEventPickerOpen] = useState(false);
+  const [eventPickerSearch, setEventPickerSearch] = useState('');
+  const [eventPickerFilter, setEventPickerFilter] = useState<'all' | 'pending' | 'published'>('all');
+  const [showHelpBanner, setShowHelpBanner] = useState(true);
+
+  // Confirmations
   const [confirmPublishId, setConfirmPublishId] = useState<string | null>(null);
   const [confirmDeleteResultId, setConfirmDeleteResultId] = useState<string | null>(null);
   const [confirmDeleteProgrammeResultsId, setConfirmDeleteProgrammeResultsId] = useState<string | null>(null);
   const [confirmDeleteScoreId, setConfirmDeleteScoreId] = useState<string | null>(null);
+  const [confirmResetMarks, setConfirmResetMarks] = useState(false);
 
-  // Score Entry Modal Form State (Maintained for historical / individual score editing)
-  const [formJudgeId, setFormJudgeId] = useState('');
-  const [formParticipantId, setFormParticipantId] = useState('');
-  const [formTeamEntryId, setFormTeamEntryId] = useState('');
-  const [formTeamId, setFormTeamId] = useState('');
-  const [formStatus, setFormStatus] = useState<ScoreStatus>('submitted');
-  const [formNotes, setFormNotes] = useState('');
-  const [criteriaScores, setCriteriaScores] = useState<ScoreDetail[]>([]);
-
-  // Selected programme object for single modal
-  const activeFormProgramme = programmes.find((p) => p.id === selectedProgrammeId);
-
+  // Permissions & Role
   const isJudgeOnly = currentUser.role === 'judge';
   const judgeId = currentUser.linkedJudgeId || (isJudgeOnly ? currentUser.id : undefined);
+  const canApprove = hasPermission(['super_admin', 'admin', 'score_manager', 'fest_admin']);
+  const canRecord = canApprove || isJudgeOnly;
 
-  // Filtered score submissions for the 'all' tab
-  const filteredScores = useMemo(() => {
-    return scores.filter((s) => {
-      // Judges only see their own score sheets
-      if (isJudgeOnly && judgeId && s.judgeId !== judgeId && s.judgeId !== currentUser.id) {
-        return false;
+  // Scorable Programmes
+  const scorableProgrammes = useMemo(() => {
+    let list = programmes;
+    if (isJudgeOnly && judgeId) {
+      const assigned = programmes.filter((p) => p.assignedJudgeIds?.includes(judgeId));
+      if (assigned.length > 0) {
+        return [...assigned].sort((a, b) =>
+          (a.code || '').localeCompare(b.code || '', undefined, { numeric: true, sensitivity: 'base' }) ||
+          (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' })
+        );
+      }
+    }
+    return [...programmes].sort((a, b) =>
+      (a.code || '').localeCompare(b.code || '', undefined, { numeric: true, sensitivity: 'base' }) ||
+      (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' })
+    );
+  }, [programmes, isJudgeOnly, judgeId]);
+
+  // Selected Programme for Scoring Sheet
+  const [selectedProgrammeId, setSelectedProgrammeId] = useState<string>(
+    () => scorableProgrammes[0]?.id || programmes[0]?.id || ''
+  );
+
+  // Keep selectedProgrammeId valid if programmes change
+  useEffect(() => {
+    if (scorableProgrammes.length > 0 && !scorableProgrammes.some((p) => p.id === selectedProgrammeId)) {
+      setSelectedProgrammeId(scorableProgrammes[0].id);
+    }
+  }, [scorableProgrammes, selectedProgrammeId]);
+
+  const activeProgramme = useMemo(
+    () => programmes.find((p) => p.id === selectedProgrammeId),
+    [programmes, selectedProgrammeId]
+  );
+
+  const isTeamProg = useMemo(() => {
+    if (!activeProgramme) return false;
+    return (
+      activeProgramme.type === 'team' ||
+      activeProgramme.type === 'group' ||
+      activeProgramme.programmeType === 'team'
+    );
+  }, [activeProgramme]);
+
+  // Scoring Criteria for Active Programme
+  const criteriaList = useMemo(() => {
+    if (activeProgramme?.criteria && activeProgramme.criteria.length > 0) {
+      return activeProgramme.criteria;
+    }
+    return [
+      {
+        id: 'performance',
+        name: 'General Performance',
+        maxMarks: 100,
+      },
+    ];
+  }, [activeProgramme]);
+
+  const maxTotalMarks = useMemo(() => {
+    return criteriaList.reduce((sum, c) => sum + c.maxMarks, 0);
+  }, [criteriaList]);
+
+  // Judge Selection for Active Sheet
+  const [sheetJudgeId, setSheetJudgeId] = useState<string>('');
+  const [sheetMode, setSheetMode] = useState<'simple' | 'criteria'>('simple');
+
+  // Smart Judge Resolution: If previous scores exist for this programme, auto-select that judge
+  useEffect(() => {
+    if (isJudgeOnly && judgeId) {
+      setSheetJudgeId(judgeId);
+      return;
+    }
+
+    if (!activeProgramme) return;
+
+    // Check if there are existing scores for this programme
+    const existingScores = scores.filter((s) => s.programmeId === activeProgramme.id);
+    if (existingScores.length > 0) {
+      const scoringJudgeId = existingScores[0].judgeId;
+      if (scoringJudgeId && (!sheetJudgeId || !existingScores.some((s) => s.judgeId === sheetJudgeId))) {
+        setSheetJudgeId(scoringJudgeId);
+        return;
+      }
+    }
+
+    // Fallback: assigned judges or first available judge
+    if (activeProgramme.assignedJudgeIds && activeProgramme.assignedJudgeIds.length > 0) {
+      if (!sheetJudgeId || !activeProgramme.assignedJudgeIds.includes(sheetJudgeId)) {
+        setSheetJudgeId(activeProgramme.assignedJudgeIds[0]);
+      }
+    } else if ((!sheetJudgeId || !judges.some((j) => j.id === sheetJudgeId)) && judges.length > 0) {
+      setSheetJudgeId(judges[0].id);
+    }
+  }, [activeProgramme, isJudgeOnly, judgeId, judges, scores, sheetJudgeId]);
+
+  // Competitors enrolled in the active programme
+  const competitors = useMemo(() => {
+    if (!activeProgramme) return [];
+
+    if (isTeamProg) {
+      // 1. Team Programme Entries
+      const entries = teamProgrammeEntries.filter((e) => e.programmeId === activeProgramme.id);
+      if (entries.length > 0) {
+        return entries.map((entry) => ({
+          key: entry.id,
+          id: entry.id,
+          name: entry.entryName,
+          teamId: entry.teamId,
+          teamName: entry.teamName || teams.find((t) => t.id === entry.teamId)?.name || entry.teamId,
+          teamCode: teams.find((t) => t.id === entry.teamId)?.code || '',
+          isTeamEntry: true,
+          chestNumber: entry.id.replace('TPE-', '#'),
+          subtitle: `${entry.memberParticipantIds?.length || 0} members • ${entry.categoryName || entry.categoryId || 'General'}`,
+        }));
       }
 
-      const prog = programmes.find((p) => p.id === s.programmeId);
-      const team = teams.find((t) => t.id === s.teamId);
-      const participant = participants.find((pt) => pt.id === s.participantId);
+      // 2. Registered Team IDs
+      if (activeProgramme.registeredTeamIds && activeProgramme.registeredTeamIds.length > 0) {
+        return activeProgramme.registeredTeamIds.map((tId) => {
+          const tm = teams.find((t) => t.id === tId);
+          return {
+            key: tId,
+            id: tId,
+            name: tm?.name || tId,
+            teamId: tId,
+            teamName: tm?.name || tId,
+            teamCode: tm?.code || '',
+            isTeamEntry: false,
+            chestNumber: tm?.code || tId,
+            subtitle: `Team Entry (${tm?.code || tId})`,
+          };
+        });
+      }
 
-      const sText = search.toLowerCase();
-      const matchesSearch =
-        (prog?.name ? prog.name.toLowerCase().includes(sText) : false) ||
-        (prog?.code ? prog.code.toLowerCase().includes(sText) : false) ||
-        (s.judgeName ? s.judgeName.toLowerCase().includes(sText) : false) ||
-        (team?.name ? team.name.toLowerCase().includes(sText) : false) ||
-        (participant?.name ? participant.name.toLowerCase().includes(sText) : false);
-      if (!matchesSearch) return false;
+      // 3. Fallback to all teams
+      return teams.map((tm) => ({
+        key: tm.id,
+        id: tm.id,
+        name: tm.name,
+        teamId: tm.id,
+        teamName: tm.name,
+        teamCode: tm.code,
+        isTeamEntry: false,
+        chestNumber: tm.code,
+        subtitle: `Team Entry (${tm.code})`,
+      }));
+    } else {
+      // Individual Programme
+      const candidateIds = new Set<string>();
+      (activeProgramme.registeredParticipantIds || []).forEach((id) => candidateIds.add(id));
+      participants.forEach((p) => {
+        if (p.registeredProgrammes?.includes(activeProgramme.id)) candidateIds.add(p.id);
+      });
+      (assignments || []).forEach((asg) => {
+        if (asg.programmeId === activeProgramme.id) {
+          (asg.participantIds || []).forEach((pId) => candidateIds.add(pId));
+        }
+      });
 
-      if (filterProgramme !== 'all' && s.programmeId !== filterProgramme) return false;
-      if (filterStatus !== 'all' && s.status !== filterStatus) return false;
-      if (filterJudge !== 'all' && s.judgeId !== filterJudge) return false;
+      const registered = participants.filter((p) => candidateIds.has(p.id));
+      const targetList = registered.length > 0
+        ? registered
+        : participants.filter((p) => !activeProgramme.category || p.category === activeProgramme.category || participants.length <= 10);
 
-      return true;
+      const finalList = targetList.length > 0 ? targetList : participants;
+
+      return finalList
+        .map((pt) => {
+          const tm = teams.find((t) => t.id === pt.teamId);
+          return {
+            key: pt.id,
+            id: pt.id,
+            name: pt.name,
+            teamId: pt.teamId,
+            teamName: tm?.name || pt.teamId,
+            teamCode: tm?.code || '',
+            isTeamEntry: false,
+            chestNumber: pt.chestNumber ? `#${pt.chestNumber}` : pt.id.replace('PT-', '#'),
+            rawChestNumber: pt.chestNumber || '',
+            subtitle: `${pt.category} • ${tm?.name || pt.teamId}`,
+          };
+        })
+        .sort((a, b) => {
+          if (a.rawChestNumber && b.rawChestNumber) {
+            return a.rawChestNumber.localeCompare(b.rawChestNumber, undefined, { numeric: true, sensitivity: 'base' });
+          }
+          if (a.rawChestNumber) return -1;
+          if (b.rawChestNumber) return 1;
+          return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+        });
+    }
+  }, [activeProgramme, isTeamProg, teamProgrammeEntries, teams, participants, assignments]);
+
+  // Fast Score Sheet State: row-keyed marks
+  const [sheetMarks, setSheetMarks] = useState<
+    Record<
+      string,
+      {
+        criteria: Record<string, number>;
+        quickTotal: number;
+        notes: string;
+        isSaved: boolean;
+        existingScoreId?: string;
+      }
+    >
+  >({});
+
+  // Sync existing scores into sheet whenever programme or judge changes
+  useEffect(() => {
+    if (!selectedProgrammeId) return;
+
+    // Look for scores matching this programme and current judge, or any judge if sheetJudgeId is empty
+    const matchingScores = scores.filter(
+      (s) => s.programmeId === selectedProgrammeId && (!sheetJudgeId || s.judgeId === sheetJudgeId)
+    );
+
+    const initialMarks: Record<
+      string,
+      {
+        criteria: Record<string, number>;
+        quickTotal: number;
+        notes: string;
+        isSaved: boolean;
+        existingScoreId?: string;
+      }
+    > = {};
+
+    matchingScores.forEach((s) => {
+      const key = isTeamProg
+        ? s.teamEntryId || s.teamId || ''
+        : s.participantId || '';
+      if (!key) return;
+
+      const critMap: Record<string, number> = {};
+      s.scores.forEach((sc) => {
+        critMap[sc.criterionId] = sc.marksObtained;
+      });
+
+      initialMarks[key] = {
+        criteria: critMap,
+        quickTotal: s.totalScore,
+        notes: s.notes || '',
+        isSaved: true,
+        existingScoreId: s.id,
+      };
     });
-  }, [scores, search, filterProgramme, filterStatus, filterJudge, programmes, teams, participants, isJudgeOnly, judgeId, currentUser.id]);
 
-  // Filtered added / published results for the 'results' tab
-  const filteredResults = useMemo(() => {
-    return results.filter((r) => {
+    setSheetMarks(initialMarks);
+  }, [selectedProgrammeId, sheetJudgeId, scores, isTeamProg]);
+
+  // Handle total score input change (Simple mode)
+  const handleQuickTotalChange = (key: string, valStr: string) => {
+    const rawVal = valStr === '' ? 0 : parseInt(valStr, 10);
+    const val = isNaN(rawVal) ? 0 : Math.max(0, Math.min(maxTotalMarks, rawVal));
+
+    setSheetMarks((prev) => {
+      const current = prev[key] || {
+        criteria: {},
+        quickTotal: 0,
+        notes: '',
+        isSaved: false,
+      };
+
+      // Distribute proportionally across criteria
+      const updatedCriteria: Record<string, number> = {};
+      if (criteriaList.length > 0 && maxTotalMarks > 0) {
+        let remaining = val;
+        criteriaList.forEach((c, idx) => {
+          if (idx === criteriaList.length - 1) {
+            updatedCriteria[c.id] = Math.max(0, Math.min(c.maxMarks, remaining));
+          } else {
+            const portion = Math.round((c.maxMarks / maxTotalMarks) * val);
+            const clamped = Math.max(0, Math.min(c.maxMarks, portion));
+            updatedCriteria[c.id] = clamped;
+            remaining -= clamped;
+          }
+        });
+      }
+
+      return {
+        ...prev,
+        [key]: {
+          ...current,
+          criteria: updatedCriteria,
+          quickTotal: val,
+          isSaved: false,
+        },
+      };
+    });
+  };
+
+  // Handle individual criterion change (Criteria mode)
+  const handleCriterionChange = (
+    key: string,
+    critId: string,
+    valStr: string,
+    critMax: number
+  ) => {
+    const rawVal = valStr === '' ? 0 : parseInt(valStr, 10);
+    const val = isNaN(rawVal) ? 0 : Math.max(0, Math.min(critMax, rawVal));
+
+    setSheetMarks((prev) => {
+      const current = prev[key] || {
+        criteria: {},
+        quickTotal: 0,
+        notes: '',
+        isSaved: false,
+      };
+      const updatedCriteria = {
+        ...current.criteria,
+        [critId]: val,
+      };
+      const sum = criteriaList.reduce(
+        (acc, c) => acc + (updatedCriteria[c.id] ?? 0),
+        0
+      );
+      return {
+        ...prev,
+        [key]: {
+          ...current,
+          criteria: updatedCriteria,
+          quickTotal: sum,
+          isSaved: false,
+        },
+      };
+    });
+  };
+
+  const handleNotesChange = (key: string, notes: string) => {
+    setSheetMarks((prev) => {
+      const current = prev[key] || {
+        criteria: {},
+        quickTotal: 0,
+        notes: '',
+        isSaved: false,
+      };
+      return {
+        ...prev,
+        [key]: {
+          ...current,
+          notes,
+          isSaved: false,
+        },
+      };
+    });
+  };
+
+  // Save all entered scores to state & database
+  const handleSaveAllScores = (silent = false) => {
+    if (!activeProgramme) {
+      if (!silent) addToast('warning', 'No Event Selected', 'Please select a competition event.');
+      return 0;
+    }
+
+    const effectiveJudgeId = sheetJudgeId || judges[0]?.id || currentUser.id;
+    const judgeObj = judges.find((j) => j.id === effectiveJudgeId) || {
+      name: currentUser.name || 'Official Fest Judge',
+    };
+
+    let savedCount = 0;
+
+    competitors.forEach((comp) => {
+      const data = sheetMarks[comp.key];
+      if (!data || (data.quickTotal === 0 && !data.existingScoreId && !data.notes)) {
+        return;
+      }
+
+      const scoresPayload: ScoreDetail[] = criteriaList.map((crit) => ({
+        criterionId: crit.id,
+        criterionName: crit.name,
+        marksObtained: data.criteria[crit.id] ?? 0,
+        maxMarks: crit.maxMarks,
+      }));
+
+      submitOrUpdateScore({
+        id: data.existingScoreId,
+        programmeId: activeProgramme.id,
+        judgeId: effectiveJudgeId,
+        judgeName: judgeObj.name,
+        participantId: isTeamProg ? undefined : comp.id,
+        teamEntryId: isTeamProg && comp.isTeamEntry ? comp.id : undefined,
+        teamEntryName: isTeamProg ? comp.name : undefined,
+        teamId: comp.teamId,
+        scores: scoresPayload,
+        totalScore: data.quickTotal,
+        notes: data.notes || '',
+        status: 'submitted',
+      });
+
+      savedCount++;
+    });
+
+    // Mark all as saved locally
+    setSheetMarks((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((k) => {
+        if (next[k]) next[k] = { ...next[k], isSaved: true };
+      });
+      return next;
+    });
+
+    if (!silent) {
+      if (savedCount > 0) {
+        addToast(
+          'success',
+          'Scores Saved Successfully',
+          `Saved evaluations for ${savedCount} contestant${savedCount === 1 ? '' : 's'}. You can now publish official results.`
+        );
+      } else {
+        addToast('info', 'No Entries to Save', 'Enter marks for at least one contestant before saving.');
+      }
+    }
+
+    return savedCount;
+  };
+
+  // Live Rankings & Podium Calculation
+  const liveRankings = useMemo(() => {
+    const list = competitors.map((comp) => {
+      const data = sheetMarks[comp.key];
+      const total = data?.quickTotal ?? 0;
+      return {
+        ...comp,
+        total,
+        isSaved: data?.isSaved ?? false,
+      };
+    });
+
+    list.sort((a, b) => b.total - a.total);
+
+    let rank = 1;
+    return list.map((item, index) => {
+      if (index > 0 && item.total < list[index - 1].total) {
+        rank = index + 1;
+      }
+      return {
+        ...item,
+        rank: item.total > 0 ? rank : null,
+      };
+    });
+  }, [competitors, sheetMarks]);
+
+  const livePodium = useMemo(() => {
+    return liveRankings.filter((r) => r.rank !== null && r.rank <= 3 && r.total > 0);
+  }, [liveRankings]);
+
+  const podiumTies = useMemo(() => {
+    const map: Record<number, typeof livePodium> = {};
+    livePodium.forEach((p) => {
+      map[p.total] = map[p.total] || [];
+      map[p.total].push(p);
+    });
+    return Object.values(map).filter((group) => group.length > 1);
+  }, [livePodium]);
+
+  // Quick navigation: next and prev programme
+  const currentProgIndex = scorableProgrammes.findIndex((p) => p.id === selectedProgrammeId);
+  const handlePrevProgramme = () => {
+    if (currentProgIndex > 0) {
+      setSelectedProgrammeId(scorableProgrammes[currentProgIndex - 1].id);
+    }
+  };
+  const handleNextProgramme = () => {
+    if (currentProgIndex < scorableProgrammes.length - 1) {
+      setSelectedProgrammeId(scorableProgrammes[currentProgIndex + 1].id);
+    }
+  };
+
+  // Grouped Published Results for Tab 2
+  const groupedResultsByProgramme = useMemo(() => {
+    const filtered = results.filter((r) => {
       if (resultsFilterProgramme !== 'all' && r.programmeId !== resultsFilterProgramme) {
         return false;
       }
@@ -145,12 +585,9 @@ export const ScoresPage: React.FC = () => {
         String(r.rank).includes(q)
       );
     });
-  }, [results, resultsFilterProgramme, resultsSearch, programmes, teams, participants]);
 
-  // Grouped results by programme for unified event record view in 'results' tab
-  const groupedResultsByProgramme = useMemo(() => {
     const map = new Map<string, typeof results>();
-    filteredResults.forEach((r) => {
+    filtered.forEach((r) => {
       const key = r.programmeId || 'unassigned';
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(r);
@@ -185,466 +622,67 @@ export const ScoresPage: React.FC = () => {
       return codeA.localeCompare(codeB, undefined, { numeric: true, sensitivity: 'base' }) ||
         (a.programme?.name || '').localeCompare(b.programme?.name || '', undefined, { sensitivity: 'base' });
     });
-  }, [filteredResults, programmes]);
+  }, [results, resultsFilterProgramme, resultsSearch, programmes, teams, participants]);
 
-  // Programmes available for scoring (restricted for judges to assigned events, sorted by code)
-  const scorableProgrammes = useMemo(() => {
-    let list = programmes;
-    if (isJudgeOnly && judgeId) {
-      const assigned = programmes.filter((p) => p.assignedJudgeIds?.includes(judgeId));
-      if (assigned.length > 0) return [...assigned].sort((a, b) =>
-        (a.code || '').localeCompare(b.code || '', undefined, { numeric: true, sensitivity: 'base' }) ||
-        (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' })
-      );
-      // Fallback: If no specific programmes are assigned to this judge yet, allow evaluating active programmes in this fest
-      return [...programmes].sort((a, b) =>
-        (a.code || '').localeCompare(b.code || '', undefined, { numeric: true, sensitivity: 'base' }) ||
-        (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' })
-      );
-    }
-    return [...programmes].sort((a, b) =>
-      (a.code || '').localeCompare(b.code || '', undefined, { numeric: true, sensitivity: 'base' }) ||
-      (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' })
-    );
-  }, [programmes, isJudgeOnly, judgeId]);
-
-  // =========================================================================
-  // FAST SCORE SHEET STATE & LOGIC
-  // =========================================================================
-  const [sheetProgrammeId, setSheetProgrammeId] = useState<string>(() => scorableProgrammes[0]?.id || programmes[0]?.id || '');
-  const [sheetJudgeId, setSheetJudgeId] = useState<string>('');
-  const [sheetMode, setSheetMode] = useState<'criteria' | 'quick'>('criteria');
-  const [sheetStatus, setSheetStatus] = useState<ScoreStatus>('submitted');
-
-  // Currently selected programme in the Fast Score Sheet
-  const activeSheetProg = useMemo(
-    () => programmes.find((p) => p.id === sheetProgrammeId),
-    [programmes, sheetProgrammeId]
-  );
-
-  const isSheetProgTeam = useMemo(() => {
-    if (!activeSheetProg) return false;
-    return (
-      activeSheetProg.type === 'team' ||
-      activeSheetProg.type === 'group' ||
-      activeSheetProg.programmeType === 'team'
-    );
-  }, [activeSheetProg]);
-
-  // Synchronize sheetProgrammeId if programmes change or current selection is not in scorableProgrammes
-  useEffect(() => {
-    if (scorableProgrammes.length > 0) {
-      if (!scorableProgrammes.some((p) => p.id === sheetProgrammeId)) {
-        setSheetProgrammeId(scorableProgrammes[0].id);
+  // Filtered score submissions for Audit Tab (Tab 3)
+  const filteredAuditScores = useMemo(() => {
+    return scores.filter((s) => {
+      if (isJudgeOnly && judgeId && s.judgeId !== judgeId && s.judgeId !== currentUser.id) {
+        return false;
       }
-    }
-  }, [scorableProgrammes, sheetProgrammeId]);
+      const prog = programmes.find((p) => p.id === s.programmeId);
+      const team = teams.find((t) => t.id === s.teamId);
+      const participant = participants.find((pt) => pt.id === s.participantId);
 
-  // Automatically set or synchronize judge when programme or judge changes
-  useEffect(() => {
-    if (isJudgeOnly && judgeId) {
-      setSheetJudgeId(judgeId);
-      return;
-    }
-    if (activeSheetProg) {
-      if (activeSheetProg.assignedJudgeIds && activeSheetProg.assignedJudgeIds.length > 0) {
-        if (!sheetJudgeId || !activeSheetProg.assignedJudgeIds.includes(sheetJudgeId)) {
-          setSheetJudgeId(activeSheetProg.assignedJudgeIds[0]);
-        }
-      } else if ((!sheetJudgeId || !judges.some((j) => j.id === sheetJudgeId)) && judges.length > 0) {
-        setSheetJudgeId(judges[0].id);
-      }
-    }
-  }, [activeSheetProg, isJudgeOnly, judgeId, judges, sheetJudgeId]);
+      const sText = auditSearch.toLowerCase();
+      const matchesSearch =
+        (prog?.name ? prog.name.toLowerCase().includes(sText) : false) ||
+        (prog?.code ? prog.code.toLowerCase().includes(sText) : false) ||
+        (s.judgeName ? s.judgeName.toLowerCase().includes(sText) : false) ||
+        (team?.name ? team.name.toLowerCase().includes(sText) : false) ||
+        (participant?.name ? participant.name.toLowerCase().includes(sText) : false);
+      if (!matchesSearch) return false;
 
-  // Scoring criteria for the active programme
-  const sheetCriteriaList = useMemo(() => {
-    if (activeSheetProg?.criteria && activeSheetProg.criteria.length > 0) {
-      return activeSheetProg.criteria;
-    }
-    return [
-      {
-        id: 'performance',
-        name: 'Performance & Presentation',
-        maxMarks: 100,
-      },
-    ];
-  }, [activeSheetProg]);
+      if (auditFilterProgramme !== 'all' && s.programmeId !== auditFilterProgramme) return false;
+      if (auditFilterStatus !== 'all' && s.status !== auditFilterStatus) return false;
+      if (auditFilterJudge !== 'all' && s.judgeId !== auditFilterJudge) return false;
 
-  const sheetMaxTotalMarks = useMemo(() => {
-    return sheetCriteriaList.reduce((sum, c) => sum + c.maxMarks, 0);
-  }, [sheetCriteriaList]);
-
-  // Dynamically resolve only the competitors enrolled in this specific programme
-  const sheetCompetitors = useMemo(() => {
-    if (!activeSheetProg) return [];
-
-    if (isSheetProgTeam) {
-      // 1. Check Team Programme Entries
-      const entries = teamProgrammeEntries.filter((e) => e.programmeId === activeSheetProg.id);
-      if (entries.length > 0) {
-        return entries.map((entry) => ({
-          key: entry.id,
-          id: entry.id,
-          name: entry.entryName,
-          teamId: entry.teamId,
-          teamName: entry.teamName || teams.find((t) => t.id === entry.teamId)?.name || entry.teamId,
-          isTeamEntry: true,
-          chestNumber: entry.id.replace('TPE-', '#'),
-          subtitle: `${entry.memberParticipantIds?.length || 0} members • ${entry.categoryName || entry.categoryId || 'General'}`,
-        }));
-      }
-
-      // 2. Fallback to registeredTeamIds on programme
-      if (activeSheetProg.registeredTeamIds && activeSheetProg.registeredTeamIds.length > 0) {
-        return activeSheetProg.registeredTeamIds.map((tId) => {
-          const tm = teams.find((t) => t.id === tId);
-          return {
-            key: tId,
-            id: tId,
-            name: tm?.name || tId,
-            teamId: tId,
-            teamName: tm?.name || tId,
-            isTeamEntry: false,
-            chestNumber: tm?.code || tId,
-            subtitle: `Team Entry (${tm?.code || tId})`,
-          };
-        });
-      }
-
-      // 3. Fallback to all teams in the fest
-      return teams.map((tm) => ({
-        key: tm.id,
-        id: tm.id,
-        name: tm.name,
-        teamId: tm.id,
-        teamName: tm.name,
-        isTeamEntry: false,
-        chestNumber: tm.code,
-        subtitle: `Team Entry (${tm.code})`,
-      }));
-    } else {
-      // Individual Programme Competitors
-      const candidateIds = new Set<string>();
-      (activeSheetProg.registeredParticipantIds || []).forEach((id) => candidateIds.add(id));
-      participants.forEach((p) => {
-        if (p.registeredProgrammes?.includes(activeSheetProg.id)) candidateIds.add(p.id);
-      });
-      (assignments || []).forEach((asg) => {
-        if (asg.programmeId === activeSheetProg.id) {
-          (asg.participantIds || []).forEach((pId) => candidateIds.add(pId));
-        }
-      });
-
-      const registered = participants.filter((p) => candidateIds.has(p.id));
-      const targetList = registered.length > 0
-        ? registered
-        : participants.filter((p) => !activeSheetProg.category || p.category === activeSheetProg.category || participants.length <= 10);
-
-      const finalList = targetList.length > 0 ? targetList : participants;
-
-      return finalList
-        .map((pt) => {
-          const tm = teams.find((t) => t.id === pt.teamId);
-          return {
-            key: pt.id,
-            id: pt.id,
-            name: pt.name,
-            teamId: pt.teamId,
-            teamName: tm?.name || pt.teamId,
-            isTeamEntry: false,
-            chestNumber: pt.chestNumber ? `#${pt.chestNumber}` : pt.id.replace('PT-', '#'),
-            rawChestNumber: pt.chestNumber || '',
-            subtitle: `${pt.category} • ${tm?.name || pt.teamId}`,
-          };
-        })
-        .sort((a, b) => {
-          if (a.rawChestNumber && b.rawChestNumber) {
-            return a.rawChestNumber.localeCompare(b.rawChestNumber, undefined, { numeric: true, sensitivity: 'base' });
-          }
-          if (a.rawChestNumber) return -1;
-          if (b.rawChestNumber) return 1;
-          return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
-        });
-    }
-  }, [activeSheetProg, isSheetProgTeam, teamProgrammeEntries, teams, participants, assignments]);
-
-  // Fast Score Sheet State: row-keyed marks
-  const [sheetMarks, setSheetMarks] = useState<
-    Record<
-      string,
-      {
-        criteria: Record<string, number>;
-        quickTotal: number;
-        notes: string;
-        isSaved: boolean;
-        existingScoreId?: string;
-      }
-    >
-  >({});
-
-  // Synchronize existing submitted scores into sheet whenever programme or judge changes
-  useEffect(() => {
-    if (!sheetProgrammeId || !sheetJudgeId) return;
-
-    const existingScores = scores.filter(
-      (s) => s.programmeId === sheetProgrammeId && s.judgeId === sheetJudgeId
-    );
-
-    const initialMarks: Record<
-      string,
-      {
-        criteria: Record<string, number>;
-        quickTotal: number;
-        notes: string;
-        isSaved: boolean;
-        existingScoreId?: string;
-      }
-    > = {};
-
-    existingScores.forEach((s) => {
-      const key = isSheetProgTeam
-        ? s.teamEntryId || s.teamId || ''
-        : s.participantId || '';
-      if (!key) return;
-
-      const critMap: Record<string, number> = {};
-      s.scores.forEach((sc) => {
-        critMap[sc.criterionId] = sc.marksObtained;
-      });
-
-      initialMarks[key] = {
-        criteria: critMap,
-        quickTotal: s.totalScore,
-        notes: s.notes || '',
-        isSaved: true,
-        existingScoreId: s.id,
-      };
+      return true;
     });
+  }, [scores, auditSearch, auditFilterProgramme, auditFilterStatus, auditFilterJudge, programmes, teams, participants, isJudgeOnly, judgeId, currentUser.id]);
 
-    setSheetMarks(initialMarks);
-  }, [sheetProgrammeId, sheetJudgeId, scores, isSheetProgTeam]);
+  // Single Entry / Edit Score Modal Form State
+  const [modalFormJudgeId, setModalFormJudgeId] = useState('');
+  const [modalFormParticipantId, setModalFormParticipantId] = useState('');
+  const [modalFormTeamEntryId, setModalFormTeamEntryId] = useState('');
+  const [modalFormTeamId, setModalFormTeamId] = useState('');
+  const [modalFormStatus, setModalFormStatus] = useState<ScoreStatus>('submitted');
+  const [modalFormNotes, setModalFormNotes] = useState('');
+  const [modalCriteriaScores, setModalCriteriaScores] = useState<ScoreDetail[]>([]);
+  const [modalProgrammeId, setModalProgrammeId] = useState('');
 
-  // Handle criterion input change
-  const handleSheetCriterionChange = (
-    key: string,
-    critId: string,
-    valStr: string,
-    maxVal: number
-  ) => {
-    const rawVal = valStr === '' ? 0 : parseInt(valStr, 10);
-    const val = isNaN(rawVal) ? 0 : Math.max(0, Math.min(maxVal, rawVal));
+  const modalActiveProg = programmes.find((p) => p.id === modalProgrammeId);
 
-    setSheetMarks((prev) => {
-      const current = prev[key] || {
-        criteria: {},
-        quickTotal: 0,
-        notes: '',
-        isSaved: false,
-      };
-      const updatedCriteria = {
-        ...current.criteria,
-        [critId]: val,
-      };
-      const sum = sheetCriteriaList.reduce(
-        (acc, c) => acc + (updatedCriteria[c.id] ?? 0),
-        0
-      );
-      return {
-        ...prev,
-        [key]: {
-          ...current,
-          criteria: updatedCriteria,
-          quickTotal: sum,
-          isSaved: false,
-        },
-      };
-    });
-  };
-
-  // Handle quick total input change
-  const handleSheetQuickTotalChange = (
-    key: string,
-    valStr: string,
-    maxTotal: number
-  ) => {
-    const rawVal = valStr === '' ? 0 : parseInt(valStr, 10);
-    const val = isNaN(rawVal) ? 0 : Math.max(0, Math.min(maxTotal, rawVal));
-
-    setSheetMarks((prev) => {
-      const current = prev[key] || {
-        criteria: {},
-        quickTotal: 0,
-        notes: '',
-        isSaved: false,
-      };
-
-      // Distribute proportionally across criteria
-      const updatedCriteria: Record<string, number> = {};
-      if (sheetCriteriaList.length > 0 && maxTotal > 0) {
-        let remaining = val;
-        sheetCriteriaList.forEach((c, idx) => {
-          if (idx === sheetCriteriaList.length - 1) {
-            updatedCriteria[c.id] = Math.max(0, Math.min(c.maxMarks, remaining));
-          } else {
-            const portion = Math.round((c.maxMarks / maxTotal) * val);
-            const clamped = Math.max(0, Math.min(c.maxMarks, portion));
-            updatedCriteria[c.id] = clamped;
-            remaining -= clamped;
-          }
-        });
-      }
-
-      return {
-        ...prev,
-        [key]: {
-          ...current,
-          criteria: updatedCriteria,
-          quickTotal: val,
-          isSaved: false,
-        },
-      };
-    });
-  };
-
-  // Handle notes change
-  const handleSheetNotesChange = (key: string, notes: string) => {
-    setSheetMarks((prev) => {
-      const current = prev[key] || {
-        criteria: {},
-        quickTotal: 0,
-        notes: '',
-        isSaved: false,
-      };
-      return {
-        ...prev,
-        [key]: {
-          ...current,
-          notes,
-          isSaved: false,
-        },
-      };
-    });
-  };
-
-  // Save all scores from the sheet in one atomic action
-  const handleSaveAllSheetMarks = () => {
-    if (!activeSheetProg || !sheetJudgeId) {
-      addToast('warning', 'Missing Details', 'Please select a programme and judge.');
-      return;
-    }
-
-    const judgeObj = judges.find((j) => j.id === sheetJudgeId) || {
-      name: currentUser.name,
-    };
-
-    let savedCount = 0;
-
-    sheetCompetitors.forEach((comp) => {
-      const data = sheetMarks[comp.key];
-      // Only save if marks have been entered or existing record exists
-      if (!data || (data.quickTotal === 0 && !data.existingScoreId && !data.notes)) {
-        return;
-      }
-
-      const scoresPayload: ScoreDetail[] = sheetCriteriaList.map((crit) => ({
-        criterionId: crit.id,
-        criterionName: crit.name,
-        marksObtained: data.criteria[crit.id] ?? 0,
-        maxMarks: crit.maxMarks,
-      }));
-
-      submitOrUpdateScore({
-        id: data.existingScoreId,
-        programmeId: activeSheetProg.id,
-        judgeId: sheetJudgeId,
-        judgeName: judgeObj.name,
-        participantId: isSheetProgTeam ? undefined : comp.id,
-        teamEntryId: isSheetProgTeam && comp.isTeamEntry ? comp.id : undefined,
-        teamEntryName: isSheetProgTeam ? comp.name : undefined,
-        teamId: comp.teamId,
-        scores: scoresPayload,
-        totalScore: data.quickTotal,
-        notes: data.notes || '',
-        status: sheetStatus,
-      });
-
-      savedCount++;
-    });
-
-    if (savedCount > 0) {
-      addToast(
-        'success',
-        'Scores Saved',
-        `Successfully saved score evaluation for ${savedCount} competitor(s).`
-      );
-    } else {
-      addToast('info', 'No Entries to Save', 'Enter marks for at least one competitor before saving.');
-    }
-  };
-
-  // Compute live ranks and tie detection
-  const sheetRankings = useMemo(() => {
-    const list = sheetCompetitors.map((comp) => {
-      const data = sheetMarks[comp.key];
-      const total = data?.quickTotal ?? 0;
-      return {
-        ...comp,
-        total,
-        isSaved: data?.isSaved ?? false,
-      };
-    });
-
-    list.sort((a, b) => b.total - a.total);
-
-    let rank = 1;
-    return list.map((item, index) => {
-      if (index > 0 && item.total < list[index - 1].total) {
-        rank = index + 1;
-      }
-      return {
-        ...item,
-        rank: item.total > 0 ? rank : null,
-      };
-    });
-  }, [sheetCompetitors, sheetMarks]);
-
-  const sheetPodium = useMemo(() => {
-    return sheetRankings.filter((r) => r.rank !== null && r.rank <= 3 && r.total > 0);
-  }, [sheetRankings]);
-
-  const sheetPodiumTies = useMemo(() => {
-    const map: Record<number, typeof sheetPodium> = {};
-    sheetPodium.forEach((p) => {
-      map[p.total] = map[p.total] || [];
-      map[p.total].push(p);
-    });
-    return Object.values(map).filter((group) => group.length > 1);
-  }, [sheetPodium]);
-
-  // =========================================================================
-  // SINGLE ENTRY / EDIT MODAL WORKFLOW (HISTORICAL COMPATIBILITY)
-  // =========================================================================
   const handleOpenAddScore = () => {
     setEditingScore(null);
-    const defaultProg = scorableProgrammes[0] || programmes[0];
-    if (!defaultProg) {
-      addToast('warning', 'No Programmes', 'No programmes assigned to you for scoring.');
+    const targetProg = activeProgramme || scorableProgrammes[0] || programmes[0];
+    if (!targetProg) {
+      addToast('warning', 'No Events', 'No competition events available.');
       return;
     }
 
-    const isTeam = defaultProg.type === 'team' || defaultProg.type === 'group' || defaultProg.programmeType === 'team';
-    const entries = teamProgrammeEntries.filter((e) => e.programmeId === defaultProg.id);
+    const isTeam = targetProg.type === 'team' || targetProg.type === 'group' || targetProg.programmeType === 'team';
+    const entries = teamProgrammeEntries.filter((e) => e.programmeId === targetProg.id);
 
-    setSelectedProgrammeId(defaultProg.id);
-    setFormJudgeId(judgeId || defaultProg.assignedJudgeIds[0] || judges[0]?.id || '');
-    setFormParticipantId(defaultProg.registeredParticipantIds[0] || participants[0]?.id || '');
-    setFormTeamEntryId(entries[0]?.id || '');
-    setFormTeamId(entries[0]?.teamId || defaultProg.registeredTeamIds[0] || teams[0]?.id || '');
-    setFormStatus('submitted');
-    setFormNotes('');
-    setCriteriaScores(
-      defaultProg.criteria.map((c) => ({
+    setModalProgrammeId(targetProg.id);
+    setModalFormJudgeId(sheetJudgeId || targetProg.assignedJudgeIds[0] || judges[0]?.id || '');
+    setModalFormParticipantId(targetProg.registeredParticipantIds[0] || participants[0]?.id || '');
+    setModalFormTeamEntryId(entries[0]?.id || '');
+    setModalFormTeamId(entries[0]?.teamId || targetProg.registeredTeamIds[0] || teams[0]?.id || '');
+    setModalFormStatus('submitted');
+    setModalFormNotes('');
+    setModalCriteriaScores(
+      targetProg.criteria.map((c) => ({
         criterionId: c.id,
         criterionName: c.name,
         marksObtained: Math.round(c.maxMarks * 0.8),
@@ -656,50 +694,24 @@ export const ScoresPage: React.FC = () => {
 
   const handleOpenEditScore = (s: ScoreSubmission) => {
     setEditingScore(s);
-    setSelectedProgrammeId(s.programmeId);
-    setFormJudgeId(s.judgeId);
-    setFormParticipantId(s.participantId || '');
-    setFormTeamEntryId(s.teamEntryId || '');
-    setFormTeamId(s.teamId || '');
-    setFormStatus(s.status);
-    setFormNotes(s.notes || '');
-    setCriteriaScores(s.scores.map((sc) => ({ ...sc })));
+    setModalProgrammeId(s.programmeId);
+    setModalFormJudgeId(s.judgeId);
+    setModalFormParticipantId(s.participantId || '');
+    setModalFormTeamEntryId(s.teamEntryId || '');
+    setModalFormTeamId(s.teamId || '');
+    setModalFormStatus(s.status);
+    setModalFormNotes(s.notes || '');
+    setModalCriteriaScores(s.scores.map((sc) => ({ ...sc })));
     setIsScoreModalOpen(true);
   };
 
-  const handleProgrammeChangeInModal = (progId: string) => {
-    setSelectedProgrammeId(progId);
-    const prog = programmes.find((p) => p.id === progId);
-    if (!prog) return;
-
-    const entries = teamProgrammeEntries.filter((e) => e.programmeId === progId);
-
-    setFormJudgeId(judgeId || prog.assignedJudgeIds[0] || judges[0]?.id || '');
-    setFormParticipantId(prog.registeredParticipantIds[0] || participants[0]?.id || '');
-    setFormTeamEntryId(entries[0]?.id || '');
-    setFormTeamId(entries[0]?.teamId || prog.registeredTeamIds[0] || teams[0]?.id || '');
-    setCriteriaScores(
-      prog.criteria.map((c) => ({
-        criterionId: c.id,
-        criterionName: c.name,
-        marksObtained: Math.round(c.maxMarks * 0.75),
-        maxMarks: c.maxMarks,
-      }))
-    );
-  };
-
-  const handleSubmitScoreForm = (e: React.FormEvent) => {
+  const handleSubmitModalForm = (e: React.FormEvent) => {
     e.preventDefault();
-    const prog = programmes.find((p) => p.id === selectedProgrammeId);
-    const judge = judges.find((j) => j.id === formJudgeId) || { name: currentUser.name };
+    const prog = programmes.find((p) => p.id === modalProgrammeId);
+    const judge = judges.find((j) => j.id === modalFormJudgeId) || { name: currentUser.name };
     if (!prog) return;
 
-    if (isJudgeOnly && judgeId && prog.assignedJudgeIds && prog.assignedJudgeIds.length > 0 && !prog.assignedJudgeIds.includes(judgeId)) {
-      addToast('error', 'Unauthorized Score Submission', 'Judges can only record scores for events assigned to them.');
-      return;
-    }
-
-    for (const item of criteriaScores) {
+    for (const item of modalCriteriaScores) {
       if (item.marksObtained < 0 || item.marksObtained > item.maxMarks) {
         addToast(
           'error',
@@ -711,60 +723,78 @@ export const ScoresPage: React.FC = () => {
     }
 
     const isTeam = prog.type === 'team' || prog.type === 'group' || prog.programmeType === 'team';
-    const entryObj = formTeamEntryId ? teamProgrammeEntries.find((e) => e.id === formTeamEntryId) : undefined;
+    const entryObj = modalFormTeamEntryId ? teamProgrammeEntries.find((e) => e.id === modalFormTeamEntryId) : undefined;
 
     submitOrUpdateScore({
       id: editingScore?.id,
-      programmeId: selectedProgrammeId,
-      judgeId: formJudgeId,
+      programmeId: modalProgrammeId,
+      judgeId: modalFormJudgeId,
       judgeName: judge.name,
-      participantId: isTeam ? undefined : formParticipantId,
-      teamEntryId: isTeam ? formTeamEntryId : undefined,
-      teamEntryName: isTeam ? (entryObj?.entryName || teams.find((t) => t.id === formTeamId)?.name) : undefined,
-      teamId: isTeam ? (entryObj?.teamId || formTeamId) : formTeamId,
-      scores: criteriaScores,
-      totalScore: criteriaScores.reduce((sum, item) => sum + item.marksObtained, 0),
-      notes: formNotes,
-      status: formStatus,
+      participantId: isTeam ? undefined : modalFormParticipantId,
+      teamEntryId: isTeam ? modalFormTeamEntryId : undefined,
+      teamEntryName: isTeam ? (entryObj?.entryName || teams.find((t) => t.id === modalFormTeamId)?.name) : undefined,
+      teamId: isTeam ? (entryObj?.teamId || modalFormTeamId) : modalFormTeamId,
+      scores: modalCriteriaScores,
+      totalScore: modalCriteriaScores.reduce((sum, item) => sum + item.marksObtained, 0),
+      notes: modalFormNotes,
+      status: modalFormStatus,
     });
 
     setIsScoreModalOpen(false);
   };
 
-  const canApprove = hasPermission(['super_admin', 'admin', 'score_manager']);
-  const canRecord = canApprove || isJudgeOnly;
+  // Programme status helper
+  const getProgrammeStatus = (p: typeof programmes[0]) => {
+    if (p.resultPublished) return 'published';
+    const progScores = scores.filter((s) => s.programmeId === p.id);
+    if (progScores.length > 0) return 'draft';
+    return 'pending';
+  };
+
+  const publishedProgrammesCount = programmes.filter((p) => p.resultPublished).length;
+  const scoredProgrammesCount = programmes.filter((p) => scores.some((s) => s.programmeId === p.id)).length;
 
   return (
-    <div className="space-y-5">
-      {/* Top Header */}
+    <div className="space-y-5 max-w-7xl mx-auto">
+      {/* =================================================================== */}
+      {/* 1. TOP HEADER & STREAMLINED TABS                                    */}
+      {/* =================================================================== */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
         <div>
-          <h2 className="text-base font-bold text-slate-900">
-            {isJudgeOnly ? 'Jury Adjudication & Scoring Sheet' : 'Scores & Results Management'}
-          </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+              {isJudgeOnly ? 'Judge Scoring Sheet' : 'Scoring & Results'}
+            </h1>
+            <span className="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+              {isJudgeOnly ? 'Jury Mode' : 'Fest Admin'}
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 mt-1">
             {isJudgeOnly
-              ? 'Evaluate competition performances, enter official criteria marks, and submit scores.'
-              : 'Record judge evaluation sheets, review marks, calibrate scores, and publish ratified results.'}
+              ? 'Evaluate competition performances, enter marks, and submit scores.'
+              : 'Enter marks for competitors, review podium rankings, and publish official results to the leaderboard.'}
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* View Mode Switcher */}
-          <div className="inline-flex p-1 bg-slate-100 rounded-lg border border-slate-200 text-xs">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Main 3 View Tabs */}
+          <div className="inline-flex p-1 bg-slate-100 rounded-lg border border-slate-200 text-xs shadow-2xs">
             <button
-              onClick={() => setActiveTab('sheet')}
+              type="button"
+              onClick={() => setActiveTab('score')}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 font-semibold rounded-md transition-all ${
-                activeTab === 'sheet'
+                activeTab === 'score'
                   ? 'bg-white text-purple-700 shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              <span>Fast Score Sheet</span>
+              <FileSpreadsheet className="w-3.5 h-3.5 text-purple-600" />
+              <span>Score Event</span>
             </button>
+
             {!isJudgeOnly && (
               <button
+                type="button"
                 onClick={() => setActiveTab('results')}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 font-semibold rounded-md transition-all ${
                   activeTab === 'results'
@@ -773,138 +803,207 @@ export const ScoresPage: React.FC = () => {
                 }`}
               >
                 <Trophy className="w-3.5 h-3.5 text-amber-500" />
-                <span>Added Results ({results.length})</span>
+                <span>Published Results ({results.length})</span>
               </button>
             )}
+
             <button
-              onClick={() => setActiveTab('all')}
+              type="button"
+              onClick={() => setActiveTab('audit')}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 font-semibold rounded-md transition-all ${
-                activeTab === 'all'
+                activeTab === 'audit'
                   ? 'bg-white text-slate-900 shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <History className="w-3.5 h-3.5" />
-              <span>All Submissions ({filteredScores.length})</span>
+              <History className="w-3.5 h-3.5 text-slate-500" />
+              <span>Audit Submissions ({filteredAuditScores.length})</span>
             </button>
           </div>
 
           {canRecord && (
             <button
+              type="button"
               onClick={handleOpenAddScore}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-slate-900 hover:bg-slate-800 rounded transition-colors shadow-xs"
-              title="Record or calibrate single competitor score"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded shadow-2xs transition-colors"
+              title="Add or calibrate an individual score entry manually"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Record Single Score</span>
+              <span className="hidden sm:inline">Add Single Score</span>
             </button>
           )}
         </div>
       </div>
 
+      {/* Helpful 3-Step Quick Guide Banner (Dismissible) */}
+      {showHelpBanner && activeTab === 'score' && (
+        <div className="bg-gradient-to-r from-purple-50 via-indigo-50 to-blue-50 border border-purple-100 rounded-lg p-3 text-xs text-purple-950 flex items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-center gap-2.5">
+            <Sparkles className="w-4 h-4 text-purple-600 shrink-0" />
+            <span>
+              <strong className="font-semibold text-purple-900">How Scoring Works:</strong>{' '}
+              <span className="font-medium text-purple-800">1. Select an event</span> ➜{' '}
+              <span className="font-medium text-purple-800">2. Type marks for contestants</span> ➜{' '}
+              <span className="font-medium text-purple-800">3. Click "Publish Results"</span> to update the public leaderboard!
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowHelpBanner(false)}
+            className="text-purple-400 hover:text-purple-700 p-0.5 rounded transition-colors"
+            title="Dismiss tip"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* =================================================================== */}
-      {/* TAB 1: FAST SCORE SHEET (PRIMARY STREAMLINED INTERFACE)             */}
+      {/* TAB 1: EASY EVENT SCORING SHEET                                     */}
       {/* =================================================================== */}
-      {activeTab === 'sheet' && (
+      {activeTab === 'score' && (
         <div className="space-y-4">
-          {/* Sheet Selector Bar */}
-          <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-xs space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5 items-end">
-              {/* Programme Selector */}
-              <div className="md:col-span-5">
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  1. Select Competition Programme
-                </label>
-                <select
-                  value={sheetProgrammeId}
-                  onChange={(e) => setSheetProgrammeId(e.target.value)}
-                  className="w-full text-xs font-semibold bg-white border border-slate-300 rounded px-3 py-2 text-slate-900 focus:outline-none focus:border-purple-600"
-                >
-                  {scorableProgrammes.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      [{p.code}] {p.name} • {p.category} ({p.type === 'team' || p.type === 'group' || p.programmeType === 'team' ? 'Team' : 'Solo'})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Judge Selector */}
-              <div className="md:col-span-4">
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  2. Select Adjudicating Judge
-                </label>
-                <select
-                  disabled={isJudgeOnly}
-                  value={sheetJudgeId}
-                  onChange={(e) => setSheetJudgeId(e.target.value)}
-                  className="w-full text-xs bg-white border border-slate-300 rounded px-3 py-2 text-slate-900 focus:outline-none focus:border-purple-600 disabled:bg-slate-50 disabled:text-slate-500"
-                >
-                  {judges.map((j) => (
-                    <option key={j.id} value={j.id}>
-                      {j.name} ({j.designation || 'Jury Member'})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Mode Toggle & Status */}
-              <div className="md:col-span-3 flex items-center justify-between md:justify-end gap-2">
-                <div className="inline-flex p-1 bg-slate-100 rounded border border-slate-200 text-xs">
+          {/* Smart Event Selector & Info Strip */}
+          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs space-y-3.5">
+            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+              {/* Event Picker Controls */}
+              <div className="flex-1 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                {/* Prev / Next Quick Step Buttons */}
+                <div className="flex items-center gap-1 shrink-0">
                   <button
                     type="button"
-                    onClick={() => setSheetMode('criteria')}
-                    className={`px-2.5 py-1 rounded font-medium transition-all ${
-                      sheetMode === 'criteria'
-                        ? 'bg-white text-purple-700 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
+                    onClick={handlePrevProgramme}
+                    disabled={currentProgIndex <= 0}
+                    className="p-2 border border-slate-200 rounded-lg bg-slate-50 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-slate-700"
+                    title="Previous event"
                   >
-                    Criteria Mode
+                    <ChevronLeft className="w-4 h-4" />
                   </button>
                   <button
                     type="button"
-                    onClick={() => setSheetMode('quick')}
-                    className={`px-2.5 py-1 rounded font-medium transition-all ${
-                      sheetMode === 'quick'
-                        ? 'bg-white text-purple-700 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
+                    onClick={handleNextProgramme}
+                    disabled={currentProgIndex >= scorableProgrammes.length - 1}
+                    className="p-2 border border-slate-200 rounded-lg bg-slate-50 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-slate-700"
+                    title="Next event"
                   >
-                    Quick Total
+                    <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
+
+                {/* Primary Event Dropdown */}
+                <div className="flex-1 min-w-[260px] relative">
+                  <select
+                    value={selectedProgrammeId}
+                    onChange={(e) => setSelectedProgrammeId(e.target.value)}
+                    className="w-full text-xs font-bold bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-lg px-3.5 py-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:bg-white transition-all cursor-pointer truncate"
+                  >
+                    {scorableProgrammes.map((p) => {
+                      const status = getProgrammeStatus(p);
+                      const statusSymbol = status === 'published' ? '🟢 Published' : status === 'draft' ? '🟡 Draft' : '⚪ Pending';
+                      const typeLabel = (p.type === 'team' || p.type === 'group' || p.programmeType === 'team') ? 'Team' : 'Solo';
+                      return (
+                        <option key={p.id} value={p.id}>
+                          {p.code ? `[${p.code}] ` : ''}{p.name} • {p.category} ({typeLabel}) — {statusSymbol}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                {/* Search / Browse All Events Button */}
+                <button
+                  type="button"
+                  onClick={() => setIsEventPickerOpen(true)}
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 border border-slate-200 hover:border-slate-300 rounded-lg bg-white text-xs font-medium text-slate-700 hover:bg-slate-50 shadow-2xs transition-colors shrink-0"
+                >
+                  <Search className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Search Events ({scorableProgrammes.length})</span>
+                </button>
+              </div>
+
+              {/* Right Side: Simple Mode vs Criteria Mode & Judge */}
+              <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2.5 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                {/* Scoring Judge Selection */}
+                <div className="flex items-center gap-1.5 text-xs">
+                  <span className="text-slate-500 font-medium hidden md:inline">Judge:</span>
+                  <select
+                    disabled={isJudgeOnly}
+                    value={sheetJudgeId}
+                    onChange={(e) => setSheetJudgeId(e.target.value)}
+                    className="text-xs bg-white border border-slate-300 rounded-md px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-purple-600 disabled:bg-slate-100 disabled:text-slate-500 max-w-[160px] truncate"
+                  >
+                    {judges.length === 0 ? (
+                      <option value="">Default Jury</option>
+                    ) : (
+                      judges.map((j) => (
+                        <option key={j.id} value={j.id}>
+                          {j.name}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
+
+                {/* Mode Toggle (Simple Marks vs Detailed Criteria) */}
+                {criteriaList.length > 1 && (
+                  <div className="inline-flex p-0.5 bg-slate-100 rounded-md border border-slate-200 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setSheetMode('simple')}
+                      className={`px-2.5 py-1 rounded font-medium transition-all ${
+                        sheetMode === 'simple'
+                          ? 'bg-white text-purple-700 shadow-2xs font-bold'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Simple Marks
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSheetMode('criteria')}
+                      className={`px-2.5 py-1 rounded font-medium transition-all ${
+                        sheetMode === 'criteria'
+                          ? 'bg-white text-purple-700 shadow-2xs font-bold'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Criteria ({criteriaList.length})
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Event Info Strip */}
-            {activeSheetProg && (
-              <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600">
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="font-semibold text-slate-800">
-                    Category: <span className="font-normal text-slate-600">{activeSheetProg.category}</span>
+            {/* Event Details Card */}
+            {activeProgramme && (
+              <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-slate-600">
+                  <span className="font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 font-mono text-[11px]">
+                    {activeProgramme.code}
                   </span>
-                  <span>•</span>
-                  <span>
-                    Venue: <strong className="text-slate-700">{activeSheetProg.venue || 'Main Stage'}</strong> ({activeSheetProg.stage || 'Stage 1'})
-                  </span>
-                  <span>•</span>
-                  <span>
-                    Schedule: <strong className="text-slate-700">{activeSheetProg.date}</strong> at {activeSheetProg.startTime || '10:00'}
-                  </span>
-                  <span>•</span>
-                  <span>
-                    Max Marks: <strong className="text-purple-700 font-mono">{sheetMaxTotalMarks} pts</strong>
-                  </span>
+                  <span className="font-semibold text-slate-800">{activeProgramme.name}</span>
+                  <span className="text-slate-300">•</span>
+                  <span>Category: <strong className="text-slate-700">{activeProgramme.category}</strong></span>
+                  <span className="text-slate-300">•</span>
+                  <span>Type: <strong className="text-slate-700">{isTeamProg ? 'Team Squad' : 'Individual Solo'}</strong></span>
+                  <span className="text-slate-300">•</span>
+                  <span>Max Marks: <strong className="text-purple-700 font-mono font-bold">{maxTotalMarks} pts</strong></span>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {activeSheetProg.resultPublished ? (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Results Published
+                  {activeProgramme.resultPublished ? (
+                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-300 px-3 py-1 rounded-full shadow-2xs">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Live on Public Leaderboard</span>
+                    </span>
+                  ) : scores.some((s) => s.programmeId === activeProgramme.id) ? (
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-300 px-3 py-1 rounded-full shadow-2xs">
+                      <Clock className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Draft Scores Saved (Not Published)</span>
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded">
-                      <Clock className="w-3.5 h-3.5" /> Scoring In Progress
+                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 bg-slate-100 border border-slate-200 px-3 py-1 rounded-full">
+                      <span>Ready for Scoring</span>
                     </span>
                   )}
                 </div>
@@ -912,56 +1011,58 @@ export const ScoresPage: React.FC = () => {
             )}
           </div>
 
-          {/* Live Podium Standings & Tie Alert Banner */}
-          {sheetPodium.length > 0 && (
-            <div className="bg-gradient-to-r from-amber-500/10 via-purple-500/10 to-indigo-500/10 border border-purple-200/80 rounded-lg p-3.5 shadow-xs">
+          {/* Real-time Podium & Standings Preview */}
+          {livePodium.length > 0 && (
+            <div className="bg-gradient-to-r from-amber-500/10 via-purple-500/10 to-indigo-500/10 border border-purple-200 rounded-xl p-3.5 shadow-xs">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-2.5">
                 <div className="flex items-center gap-2 font-bold text-xs text-slate-900">
                   <Trophy className="w-4 h-4 text-amber-500" />
-                  <span>Live Podium Evaluation Standings</span>
+                  <span>Current Event Winners (Live Evaluation)</span>
                   <span className="text-[11px] font-normal text-slate-500">
-                    (Updates in real-time as you enter marks)
+                    — Updates automatically as you type
                   </span>
                 </div>
 
-                {sheetPodiumTies.length > 0 && sheetPodiumTies[0]?.length > 0 && (
-                  <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-900 bg-amber-100 border border-amber-300 px-2.5 py-1 rounded shadow-xs">
+                {podiumTies.length > 0 && podiumTies[0]?.length > 1 && (
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-900 bg-amber-100 border border-amber-300 px-2.5 py-1 rounded shadow-2xs">
                     <AlertTriangle className="w-3.5 h-3.5 text-amber-700 animate-pulse" />
-                    Tie Detected on Podium ({sheetPodiumTies[0].map((t) => t.name).join(' & ')} tied at {sheetPodiumTies[0][0]?.total ?? 0} pts)
+                    Tie Detected ({podiumTies[0].map((t) => t.name).join(' & ')} tied at {podiumTies[0][0]?.total ?? 0} pts)
                   </span>
                 )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                {sheetPodium.map((pod) => {
-                  const medal = pod.rank === 1 ? '🥇 1st' : pod.rank === 2 ? '🥈 2nd' : '🥉 3rd';
+                {livePodium.map((pod) => {
+                  const medal = pod.rank === 1 ? '🥇 1st Place' : pod.rank === 2 ? '🥈 2nd Place' : '🥉 3rd Place';
                   const bg =
                     pod.rank === 1
-                      ? 'bg-amber-50 border-amber-300 text-amber-950'
+                      ? 'bg-amber-50/90 border-amber-300 text-amber-950 ring-1 ring-amber-300/50'
                       : pod.rank === 2
-                      ? 'bg-slate-50 border-slate-300 text-slate-950'
-                      : 'bg-orange-50 border-orange-300 text-orange-950';
+                      ? 'bg-slate-50/90 border-slate-300 text-slate-950'
+                      : 'bg-orange-50/90 border-orange-300 text-orange-950';
 
                   return (
                     <div
                       key={pod.key}
-                      className={`p-2.5 rounded-md border flex items-center justify-between text-xs ${bg}`}
+                      className={`p-3 rounded-lg border flex items-center justify-between text-xs transition-all ${bg}`}
                     >
                       <div className="min-w-0 pr-2">
                         <div className="flex items-center gap-1.5 font-bold truncate">
                           <span>{medal}</span>
-                          <span className="truncate">{pod.name}</span>
                         </div>
-                        <div className="text-[11px] text-slate-600 truncate">
+                        <div className="font-semibold text-slate-900 truncate mt-0.5">
+                          {pod.name}
+                        </div>
+                        <div className="text-[11px] text-slate-600 truncate mt-0.5">
                           {pod.chestNumber} • {pod.teamName}
                         </div>
                       </div>
-                      <div className="text-right">
-                        <span className="font-mono font-black text-sm block">
+                      <div className="text-right shrink-0">
+                        <span className="font-mono font-black text-lg block text-slate-900">
                           {pod.total}
                         </span>
                         <span className="text-[10px] text-slate-500 uppercase font-semibold">
-                          pts
+                          points
                         </span>
                       </div>
                     </div>
@@ -971,34 +1072,48 @@ export const ScoresPage: React.FC = () => {
             </div>
           )}
 
-          {/* Interactive Competitor Scoring Table */}
-          <div className="bg-white border border-slate-200 rounded-lg shadow-xs overflow-hidden">
-            <div className="p-3 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 bg-slate-50/70">
+          {/* Contestant Scoring Table */}
+          <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
+            <div className="p-3.5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 bg-slate-50/70">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                  Contestant Score Sheet
+                  Contestants to Score
                 </span>
-                <span className="text-xs text-slate-500 font-mono">
-                  ({sheetCompetitors.length} enrolled competitor{sheetCompetitors.length === 1 ? '' : 's'})
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 font-mono">
+                  {competitors.length} {isTeamProg ? 'Teams' : 'Participants'}
                 </span>
               </div>
 
-              <div className="text-xs text-slate-500 italic">
-                Use <kbd className="px-1.5 py-0.5 bg-white border border-slate-300 rounded font-mono text-[10px]">Tab</kbd> to jump between competitors
+              <div className="flex items-center gap-3 text-xs text-slate-500">
+                <span className="hidden sm:inline italic">
+                  Tip: Use <kbd className="px-1.5 py-0.5 bg-white border border-slate-300 rounded font-mono text-[10px]">Tab</kbd> or <kbd className="px-1.5 py-0.5 bg-white border border-slate-300 rounded font-mono text-[10px]">Enter</kbd> to step down quickly
+                </span>
+                {competitors.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmResetMarks(true)}
+                    className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 hover:text-rose-600 transition-colors"
+                    title="Clear entered marks on this sheet"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span>Reset Sheet</span>
+                  </button>
+                )}
               </div>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="bg-slate-50/90 border-b border-slate-200 text-[11px] font-semibold text-slate-600 uppercase tracking-wider">
-                    <th className="py-2.5 px-3 w-16 text-center">Rank</th>
-                    <th className="py-2.5 px-3 w-24">Chest #</th>
-                    <th className="py-2.5 px-3 min-w-[180px]">Competitor / Team</th>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                    <th className="py-3 px-3 w-16 text-center">Rank</th>
+                    <th className="py-3 px-3 w-28">Chest #</th>
+                    <th className="py-3 px-4 min-w-[200px]">Contestant / House</th>
 
-                    {sheetMode === 'criteria' ? (
-                      sheetCriteriaList.map((crit) => (
-                        <th key={crit.id} className="py-2.5 px-3 text-center min-w-[100px]">
+                    {/* Simple Marks column or Criteria columns */}
+                    {sheetMode === 'criteria' && criteriaList.length > 1 ? (
+                      criteriaList.map((crit) => (
+                        <th key={crit.id} className="py-3 px-3 text-center min-w-[100px]">
                           <div>{crit.name}</div>
                           <div className="text-[10px] text-purple-600 font-normal font-mono">
                             max {crit.maxMarks}
@@ -1006,38 +1121,49 @@ export const ScoresPage: React.FC = () => {
                         </th>
                       ))
                     ) : (
-                      <th className="py-2.5 px-3 text-center min-w-[120px]">
-                        <div>Total Score</div>
+                      <th className="py-3 px-4 text-center min-w-[130px]">
+                        <div>Marks / Score</div>
                         <div className="text-[10px] text-purple-600 font-normal font-mono">
-                          max {sheetMaxTotalMarks}
+                          out of {maxTotalMarks}
                         </div>
                       </th>
                     )}
 
-                    <th className="py-2.5 px-3 text-center w-28">Calculated</th>
-                    <th className="py-2.5 px-3 min-w-[180px]">Adjudicator Remarks</th>
-                    <th className="py-2.5 px-3 text-center w-20">Status</th>
+                    {sheetMode === 'criteria' && criteriaList.length > 1 && (
+                      <th className="py-3 px-3 text-center w-24">Total</th>
+                    )}
+
+                    <th className="py-3 px-4 min-w-[180px]">Judge Remarks (Optional)</th>
+                    <th className="py-3 px-3 text-center w-24">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {sheetCompetitors.length === 0 ? (
+                  {competitors.length === 0 ? (
                     <tr>
-                      <td colSpan={sheetCriteriaList.length + 5} className="py-12 text-center text-slate-400">
+                      <td colSpan={criteriaList.length + 5} className="py-12 text-center text-slate-400">
                         <Users className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                        No competitors currently registered or available for this event.
+                        <p className="font-semibold text-slate-700">No contestants enrolled in this event yet</p>
+                        <p className="text-xs text-slate-500 mt-1">
+                          Assign participants or teams to this event in the Programmes or Participants page.
+                        </p>
                       </td>
                     </tr>
                   ) : (
-                    sheetCompetitors.map((comp) => {
+                    competitors.map((comp) => {
                       const data = sheetMarks[comp.key];
                       const total = data?.quickTotal ?? 0;
-                      const rankedObj = sheetRankings.find((r) => r.key === comp.key);
+                      const rankedObj = liveRankings.find((r) => r.key === comp.key);
                       const rank = rankedObj?.rank;
 
                       return (
-                        <tr key={comp.key} className="hover:bg-slate-50/60 transition-colors">
+                        <tr
+                          key={comp.key}
+                          className={`hover:bg-slate-50/80 transition-colors ${
+                            rank === 1 ? 'bg-amber-50/20' : rank === 2 ? 'bg-slate-50/30' : rank === 3 ? 'bg-orange-50/20' : ''
+                          }`}
+                        >
                           {/* Live Rank */}
-                          <td className="py-3 px-3 text-center font-bold">
+                          <td className="py-3.5 px-3 text-center font-bold">
                             {rank === 1 ? (
                               <span className="text-amber-600 font-extrabold text-sm" title="1st Place">🥇 1</span>
                             ) : rank === 2 ? (
@@ -1051,25 +1177,31 @@ export const ScoresPage: React.FC = () => {
                             )}
                           </td>
 
-                          {/* Chest Number */}
-                          <td className="py-3 px-3 font-mono font-semibold text-slate-700">
-                            <span className="px-2 py-0.5 bg-slate-100 rounded text-slate-800 text-[11px] border border-slate-200">
+                          {/* Chest Number (High contrast for easy reading) */}
+                          <td className="py-3.5 px-3 font-mono font-bold">
+                            <span className="px-2.5 py-1 bg-purple-50 text-purple-900 border border-purple-200 rounded-md text-xs shadow-2xs">
                               {comp.chestNumber}
                             </span>
                           </td>
 
-                          {/* Competitor Details */}
-                          <td className="py-3 px-3">
-                            <div className="font-bold text-slate-900">{comp.name}</div>
-                            <div className="text-[11px] text-slate-500">{comp.subtitle}</div>
+                          {/* Contestant / Team info */}
+                          <td className="py-3.5 px-4">
+                            <div className="font-bold text-slate-900 text-xs sm:text-sm">{comp.name}</div>
+                            <div className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                              <span className="font-semibold text-slate-700 bg-slate-100 px-1.5 py-0.2 rounded">
+                                {comp.teamName}
+                              </span>
+                              <span>•</span>
+                              <span>{comp.subtitle}</span>
+                            </div>
                           </td>
 
-                          {/* Marks Input Columns */}
-                          {sheetMode === 'criteria' ? (
-                            sheetCriteriaList.map((crit) => {
+                          {/* Marks Input (Simple or Criteria) */}
+                          {sheetMode === 'criteria' && criteriaList.length > 1 ? (
+                            criteriaList.map((crit) => {
                               const val = data?.criteria[crit.id] ?? '';
                               return (
-                                <td key={crit.id} className="py-3 px-3 text-center">
+                                <td key={crit.id} className="py-3.5 px-3 text-center">
                                   <input
                                     type="number"
                                     min={0}
@@ -1077,75 +1209,69 @@ export const ScoresPage: React.FC = () => {
                                     placeholder="0"
                                     value={val}
                                     onChange={(e) =>
-                                      handleSheetCriterionChange(
+                                      handleCriterionChange(
                                         comp.key,
                                         crit.id,
                                         e.target.value,
                                         crit.maxMarks
                                       )
                                     }
-                                    className="w-16 text-center font-mono font-bold text-xs bg-white border border-slate-300 rounded px-2 py-1 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600"
+                                    className="w-16 text-center font-mono font-bold text-xs bg-white border border-slate-300 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-purple-600"
                                   />
                                 </td>
                               );
                             })
                           ) : (
-                            <td className="py-3 px-3 text-center">
-                              <input
-                                type="number"
-                                min={0}
-                                max={sheetMaxTotalMarks}
-                                placeholder="0"
-                                value={data?.quickTotal ? data.quickTotal : ''}
-                                onChange={(e) =>
-                                  handleSheetQuickTotalChange(
-                                    comp.key,
-                                    e.target.value,
-                                    sheetMaxTotalMarks
-                                  )
-                                }
-                                className="w-20 text-center font-mono font-black text-sm bg-white border border-slate-300 rounded px-2 py-1 text-purple-700 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600"
-                              />
+                            <td className="py-3.5 px-4 text-center">
+                              <div className="inline-flex items-center gap-1.5">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={maxTotalMarks}
+                                  placeholder="0"
+                                  value={data?.quickTotal ? data.quickTotal : ''}
+                                  onChange={(e) => handleQuickTotalChange(comp.key, e.target.value)}
+                                  className="w-20 text-center font-mono font-black text-sm bg-white border border-slate-300 hover:border-purple-400 rounded-md px-2.5 py-1.5 text-purple-900 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-purple-600 shadow-2xs transition-all"
+                                />
+                                <span className="text-[11px] text-slate-400 font-mono">
+                                  /{maxTotalMarks}
+                                </span>
+                              </div>
                             </td>
                           )}
 
-                          {/* Total Score */}
-                          <td className="py-3 px-3 text-center">
-                            <span
-                              className={`font-mono text-sm font-bold ${
-                                total > 0 ? 'text-purple-700' : 'text-slate-400'
-                              }`}
-                            >
-                              {total}
-                            </span>
-                            <span className="text-[10px] text-slate-400 font-mono block">
-                              / {sheetMaxTotalMarks}
-                            </span>
-                          </td>
+                          {/* Calculated Total for Criteria Mode */}
+                          {sheetMode === 'criteria' && criteriaList.length > 1 && (
+                            <td className="py-3.5 px-3 text-center">
+                              <span className={`font-mono text-sm font-bold ${total > 0 ? 'text-purple-700' : 'text-slate-400'}`}>
+                                {total}
+                              </span>
+                            </td>
+                          )}
 
                           {/* Remarks */}
-                          <td className="py-3 px-3">
+                          <td className="py-3.5 px-4">
                             <input
                               type="text"
-                              placeholder="e.g. Clean timing, good rhythm..."
+                              placeholder="e.g. Good rhythm, minor mistake..."
                               value={data?.notes || ''}
-                              onChange={(e) => handleSheetNotesChange(comp.key, e.target.value)}
-                              className="w-full text-xs bg-white border border-slate-200 rounded px-2 py-1 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-purple-600"
+                              onChange={(e) => handleNotesChange(comp.key, e.target.value)}
+                              className="w-full text-xs bg-white border border-slate-200 rounded-md px-2.5 py-1.5 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-purple-600"
                             />
                           </td>
 
                           {/* Status */}
-                          <td className="py-3 px-3 text-center">
+                          <td className="py-3.5 px-3 text-center">
                             {data?.isSaved ? (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                                <Check className="w-3 h-3" /> Saved
+                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                <Check className="w-3 h-3 text-emerald-600" /> Saved
                               </span>
                             ) : total > 0 ? (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
                                 Unsaved
                               </span>
                             ) : (
-                              <span className="text-[10px] text-slate-400 font-mono">Pending</span>
+                              <span className="text-[11px] text-slate-400 font-mono">Pending</span>
                             )}
                           </td>
                         </tr>
@@ -1156,53 +1282,73 @@ export const ScoresPage: React.FC = () => {
               </table>
             </div>
 
-            {/* Bottom Actions Bar */}
+            {/* Bottom Actions Bar (Sticky & Crystal Clear) */}
             <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="text-xs text-slate-600">
+              <div className="text-xs text-slate-600 flex items-center gap-2">
                 <span>
-                  Scored: <strong className="text-slate-900">{sheetRankings.filter((r) => r.total > 0).length}</strong> of{' '}
-                  <strong className="text-slate-900">{sheetCompetitors.length}</strong> competitors
+                  Scored: <strong className="text-slate-900 font-mono">{liveRankings.filter((r) => r.total > 0).length}</strong> of{' '}
+                  <strong className="text-slate-900 font-mono">{competitors.length}</strong> contestants
                 </span>
+                {liveRankings.some((r) => r.total > 0 && !r.isSaved) && (
+                  <span className="text-amber-700 font-semibold text-[11px] bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                    Unsaved changes
+                  </span>
+                )}
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto justify-end">
+                {/* Save Draft Scores Button */}
                 {canRecord && (
                   <button
                     type="button"
-                    onClick={handleSaveAllSheetMarks}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-purple-600 hover:bg-purple-700 rounded transition-colors shadow-xs"
+                    onClick={() => handleSaveAllScores(false)}
+                    className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold text-slate-800 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg shadow-2xs transition-all cursor-pointer"
                   >
-                    <Save className="w-4 h-4" />
-                    <span>Save All Scores</span>
+                    <Save className="w-3.5 h-3.5 text-slate-600" />
+                    <span>Save Draft</span>
                   </button>
                 )}
 
-                {canApprove && activeSheetProg && (
+                {/* Ratify & Publish Results Button */}
+                {canApprove && activeProgramme && (
                   <>
-                    {activeSheetProg.resultPublished ? (
+                    {activeProgramme.resultPublished ? (
                       <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded">
-                          <CheckCircle2 className="w-4 h-4" />
-                          <span>Results Live on Public Portal</span>
-                        </span>
                         <button
                           type="button"
-                          onClick={() => setConfirmDeleteProgrammeResultsId(activeSheetProg.id)}
-                          className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-rose-700 hover:text-white bg-rose-50 hover:bg-rose-600 border border-rose-200 hover:border-rose-600 rounded transition-colors shadow-xs cursor-pointer"
-                          title="Delete added results and retract from public portal"
+                          onClick={() => {
+                            // Auto save then re-publish
+                            handleSaveAllScores(true);
+                            setConfirmPublishId(activeProgramme.id);
+                          }}
+                          className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-purple-700 hover:bg-purple-800 rounded-lg shadow-xs transition-colors cursor-pointer"
+                          title="Update published results with newly entered scores"
                         >
-                          <Trash2 className="w-4 h-4" />
-                          <span>Delete Added Results</span>
+                          <Trophy className="w-3.5 h-3.5 text-amber-300" />
+                          <span>Update Results</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeleteProgrammeResultsId(activeProgramme.id)}
+                          className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-rose-700 hover:text-white bg-rose-50 hover:bg-rose-600 border border-rose-200 rounded-lg transition-colors shadow-2xs cursor-pointer"
+                          title="Retract and delete results from public portal"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Retract Results</span>
                         </button>
                       </div>
                     ) : (
                       <button
                         type="button"
-                        onClick={() => setConfirmPublishId(activeSheetProg.id)}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded transition-colors shadow-xs"
+                        onClick={() => {
+                          // Auto save marks first before opening publish dialog
+                          handleSaveAllScores(true);
+                          setConfirmPublishId(activeProgramme.id);
+                        }}
+                        className="inline-flex items-center justify-center gap-1.5 px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs transition-colors cursor-pointer"
                       >
-                        <Trophy className="w-4 h-4 text-amber-400" />
-                        <span>Ratify & Publish Results</span>
+                        <Trophy className="w-4 h-4 text-amber-300" />
+                        <span>Ratify & Publish Results 🚀</span>
                       </button>
                     )}
                   </>
@@ -1214,57 +1360,65 @@ export const ScoresPage: React.FC = () => {
       )}
 
       {/* =================================================================== */}
-      {/* TAB 2: ADDED / PUBLISHED RESULTS MANAGEMENT                         */}
+      {/* TAB 2: PUBLISHED WINNERS & LEADERBOARD RESULTS                      */}
       {/* =================================================================== */}
       {activeTab === 'results' && (
         <div className="space-y-4">
-          {/* Summary Strip & Quick Actions */}
+          {/* Summary Stat Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="p-3.5 bg-white border border-slate-200 rounded-lg shadow-xs flex items-center justify-between">
+            <div className="p-3.5 bg-white border border-slate-200 rounded-xl shadow-xs flex items-center justify-between">
               <div>
-                <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Total Added Results</span>
-                <div className="font-mono font-black text-xl text-slate-900 mt-0.5">{results.length}</div>
-              </div>
-              <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                <Trophy className="w-5 h-5" />
-              </div>
-            </div>
-
-            <div className="p-3.5 bg-white border border-slate-200 rounded-lg shadow-xs flex items-center justify-between">
-              <div>
-                <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Ratified Programmes</span>
-                <div className="font-mono font-black text-xl text-slate-900 mt-0.5">
-                  {new Set(results.map((r) => r.programmeId)).size}
+                <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">
+                  Published Programmes
+                </span>
+                <div className="font-mono font-black text-2xl text-slate-900 mt-0.5">
+                  {publishedProgrammesCount} <span className="text-xs font-normal text-slate-400">/ {programmes.length}</span>
                 </div>
               </div>
-              <div className="w-9 h-9 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
                 <CheckCircle2 className="w-5 h-5" />
               </div>
             </div>
 
-            <div className="p-3.5 bg-white border border-slate-200 rounded-lg shadow-xs flex items-center justify-between">
+            <div className="p-3.5 bg-white border border-slate-200 rounded-xl shadow-xs flex items-center justify-between">
               <div>
-                <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Leaderboard Points Awarded</span>
-                <div className="font-mono font-black text-xl text-emerald-600 mt-0.5">
+                <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">
+                  Total Awarded Winners
+                </span>
+                <div className="font-mono font-black text-2xl text-slate-900 mt-0.5">
+                  {results.length}
+                </div>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <Trophy className="w-5 h-5 text-amber-500" />
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-white border border-slate-200 rounded-xl shadow-xs flex items-center justify-between">
+              <div>
+                <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">
+                  Leaderboard Points Distributed
+                </span>
+                <div className="font-mono font-black text-2xl text-emerald-600 mt-0.5">
                   {results.reduce((sum, r) => sum + (r.pointsAwarded || 0), 0)} pts
                 </div>
               </div>
-              <div className="w-9 h-9 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
                 <Award className="w-5 h-5" />
               </div>
             </div>
           </div>
 
-          {/* Filter Bar */}
-          <div className="p-3.5 bg-white border border-slate-200 rounded-lg shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
+          {/* Search & Filter Bar */}
+          <div className="p-3.5 bg-white border border-slate-200 rounded-xl shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
             <div className="flex-1 w-full md:w-auto relative">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Search result by contestant, chest number, house, or programme..."
+                placeholder="Search winner by contestant name, chest number, house, or event..."
                 value={resultsSearch}
                 onChange={(e) => setResultsSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-900"
+                className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600"
               />
             </div>
 
@@ -1274,7 +1428,7 @@ export const ScoresPage: React.FC = () => {
                 <select
                   value={resultsFilterProgramme}
                   onChange={(e) => setResultsFilterProgramme(e.target.value)}
-                  className="text-xs border border-slate-200 rounded-md px-2 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-900"
+                  className="text-xs border border-slate-200 rounded-lg px-2.5 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-600"
                 >
                   <option value="all">All Programmes ({programmes.length})</option>
                   {programmes.map((p) => {
@@ -1287,27 +1441,17 @@ export const ScoresPage: React.FC = () => {
                   })}
                 </select>
               </div>
-
-              {resultsFilterProgramme !== 'all' && results.some((r) => r.programmeId === resultsFilterProgramme) && canApprove && (
-                <button
-                  type="button"
-                  onClick={() => setConfirmDeleteProgrammeResultsId(resultsFilterProgramme)}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-600 hover:text-white border border-rose-200 hover:border-rose-600 rounded transition-colors shadow-xs cursor-pointer"
-                  title="Delete all results for this selected programme"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Delete Programme Results</span>
-                </button>
-              )}
             </div>
           </div>
 
-          {/* Results Data Grouped By Event/Programme */}
+          {/* Results List Grouped by Programme */}
           {groupedResultsByProgramme.length === 0 ? (
-            <div className="bg-white border border-slate-200 rounded-lg p-12 text-center text-slate-400">
+            <div className="bg-white border border-slate-200 rounded-xl p-12 text-center text-slate-400">
               <Trophy className="w-10 h-10 mx-auto mb-2 text-slate-300" />
-              <h4 className="text-sm font-bold text-slate-700">No Score Records Found</h4>
-              <p className="text-xs text-slate-500 mt-1">No added or published results match your current search and filter criteria.</p>
+              <h4 className="text-sm font-bold text-slate-700">No Published Results Found</h4>
+              <p className="text-xs text-slate-500 mt-1">
+                Score an event and click "Ratify & Publish Results" to publish official rankings here.
+              </p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -1319,102 +1463,88 @@ export const ScoresPage: React.FC = () => {
                 return (
                   <div
                     key={group.programmeId}
-                    className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden transition-all hover:border-slate-300"
+                    className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden"
                   >
-                    {/* Event Header Banner with Status, Pool Points, and Event Actions */}
+                    {/* Event Banner */}
                     <div className="p-3.5 sm:p-4 bg-slate-50/90 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                      <div className="space-y-1">
-                        <div className="flex flex-wrap items-center gap-2">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
                           {prog?.code && (
                             <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-200 text-slate-800">
                               {prog.code}
                             </span>
                           )}
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
-                              isTeam
-                                ? 'bg-sky-50 text-sky-700 border border-sky-200'
-                                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            }`}
-                          >
-                            {isTeam ? 'Team Programme' : 'Solo / Individual'}
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${isTeam ? 'bg-sky-50 text-sky-700 border border-sky-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
+                            {isTeam ? 'Team Event' : 'Solo Event'}
                           </span>
                           {prog?.category && (
                             <span className="px-2 py-0.5 rounded text-[10px] bg-purple-50 text-purple-700 border border-purple-200 font-medium">
                               {prog.category}
                             </span>
                           )}
-                          {prog?.venue && (
-                            <span className="text-[11px] text-slate-500 hidden sm:inline">
-                              • {prog.venue} {prog.stage ? `(${prog.stage})` : ''}
-                            </span>
-                          )}
                         </div>
-
-                        <h3 className="text-base font-bold text-slate-900 leading-snug">
+                        <h3 className="text-base font-bold text-slate-900">
                           {progName}
                         </h3>
                       </div>
 
-                      {/* Right Side: Points, Status Badges, and Unified Event Controls */}
                       <div className="flex flex-wrap items-center gap-2">
-                        <div className="px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded font-mono text-xs font-bold">
-                          {group.totalPoints} pts awarded
+                        <div className="px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg font-mono text-xs font-bold">
+                          +{group.totalPoints} pts awarded
                         </div>
 
                         {group.isPublished ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-100/70 border border-emerald-300 px-2.5 py-1 rounded">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-100/70 border border-emerald-300 px-2.5 py-1 rounded-md">
                             <CheckCircle2 className="w-3.5 h-3.5" /> Published
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded">
-                            <Clock className="w-3.5 h-3.5" /> Draft / Unratified
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-md">
+                            <Clock className="w-3.5 h-3.5" /> Draft
                           </span>
                         )}
 
-                        {/* Edit in Fast Score Sheet button */}
+                        {/* Open in Scoring Sheet */}
                         {prog && (
                           <button
                             type="button"
                             onClick={() => {
-                              setSheetProgrammeId(prog.id);
-                              setActiveTab('sheet');
+                              setSelectedProgrammeId(prog.id);
+                              setActiveTab('score');
                             }}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded transition-colors shadow-2xs cursor-pointer"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-md transition-colors shadow-2xs cursor-pointer"
                             title="Open event in score sheet to review marks or re-evaluate"
                           >
                             <Edit2 className="w-3 h-3" />
-                            <span>Score Sheet</span>
+                            <span>Edit in Sheet</span>
                           </button>
                         )}
 
-                        {/* Delete all results for this programme */}
+                        {/* Retract / Delete Results */}
                         {canApprove && (
                           <button
                             type="button"
                             onClick={() => setConfirmDeleteProgrammeResultsId(group.programmeId)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded transition-colors shadow-2xs cursor-pointer"
-                            title="Delete all results and retract publication for this event"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-md transition-colors shadow-2xs cursor-pointer"
+                            title="Delete all results and retract from public portal"
                           >
                             <Trash2 className="w-3 h-3" />
-                            <span>Delete Results</span>
+                            <span>Retract</span>
                           </button>
                         )}
                       </div>
                     </div>
 
-                    {/* Unified Winners Table for this Event (Rank #1, #2, #3 consolidated together) */}
+                    {/* Winners Table */}
                     <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs min-w-[620px]">
+                      <table className="w-full text-left text-xs min-w-[580px]">
                         <thead>
                           <tr className="bg-slate-50/50 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                             <th className="py-2.5 px-4 text-center w-20">Rank</th>
-                            <th className="py-2.5 px-4">Contestant / Squad Entry</th>
+                            <th className="py-2.5 px-4">Winner / Contestant</th>
                             <th className="py-2.5 px-4">House / Team</th>
-                            <th className="py-2.5 px-3 text-center">Score / Marks</th>
+                            <th className="py-2.5 px-3 text-center">Final Score</th>
                             <th className="py-2.5 px-3 text-center">Points Awarded</th>
-                            <th className="py-2.5 px-3">Ratified At</th>
-                            <th className="py-2.5 px-4 text-right">Delete</th>
+                            <th className="py-2.5 px-4 text-right">Action</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -1433,13 +1563,7 @@ export const ScoresPage: React.FC = () => {
                               <tr
                                 key={res.id}
                                 className={`hover:bg-slate-50/70 transition-colors ${
-                                  isGold
-                                    ? 'bg-amber-50/30'
-                                    : isSilver
-                                    ? 'bg-slate-50/30'
-                                    : isBronze
-                                    ? 'bg-orange-50/20'
-                                    : ''
+                                  isGold ? 'bg-amber-50/30' : isSilver ? 'bg-slate-50/30' : isBronze ? 'bg-orange-50/20' : ''
                                 }`}
                               >
                                 <td className="py-3 px-4 text-center">
@@ -1495,12 +1619,6 @@ export const ScoresPage: React.FC = () => {
                                   </span>
                                 </td>
 
-                                <td className="py-3 px-3 font-mono text-[11px] text-slate-500">
-                                  {res.publishedAt
-                                    ? res.publishedAt.slice(0, 16).replace('T', ' ')
-                                    : 'Ratified'}
-                                </td>
-
                                 <td className="py-3 px-4 text-right">
                                   {canApprove && (
                                     <button
@@ -1509,8 +1627,8 @@ export const ScoresPage: React.FC = () => {
                                       className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-600 hover:text-white hover:bg-rose-600 bg-rose-50 border border-rose-200 rounded transition-colors shadow-2xs cursor-pointer"
                                       title="Delete this individual result entry"
                                     >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                      <span>Delete</span>
+                                      <Trash2 className="w-3 h-3" />
+                                      <span>Remove</span>
                                     </button>
                                   )}
                                 </td>
@@ -1529,29 +1647,29 @@ export const ScoresPage: React.FC = () => {
       )}
 
       {/* =================================================================== */}
-      {/* TAB 3: HISTORICAL SUBMISSIONS TABLE & AUDIT DOSSIER                */}
+      {/* TAB 3: AUDIT DOSSIER & ALL SUBMISSIONS                              */}
       {/* =================================================================== */}
-      {activeTab === 'all' && (
+      {activeTab === 'audit' && (
         <div className="space-y-4">
-          {/* Filter and Search Bar */}
-          <div className="bg-white border border-slate-200 rounded-lg p-3.5 shadow-xs">
+          {/* Filters Bar */}
+          <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-xs">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div className="relative">
                 <Search className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
-                  placeholder="Search programme, judge, participant..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded focus:outline-none focus:border-slate-400 text-slate-800"
+                  placeholder="Search programme, judge, contestant..."
+                  value={auditSearch}
+                  onChange={(e) => setAuditSearch(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-md focus:outline-none focus:border-purple-600 text-slate-800"
                 />
               </div>
 
               <div>
                 <select
-                  value={filterProgramme}
-                  onChange={(e) => setFilterProgramme(e.target.value)}
-                  className="w-full text-xs bg-white border border-slate-200 rounded px-2.5 py-1.5 focus:outline-none focus:border-slate-400 text-slate-800 truncate"
+                  value={auditFilterProgramme}
+                  onChange={(e) => setAuditFilterProgramme(e.target.value)}
+                  className="w-full text-xs bg-white border border-slate-200 rounded-md px-2.5 py-1.5 focus:outline-none focus:border-purple-600 text-slate-800 truncate"
                 >
                   <option value="all">All Programmes ({programmes.length})</option>
                   {programmes.map((p) => (
@@ -1564,11 +1682,11 @@ export const ScoresPage: React.FC = () => {
 
               <div>
                 <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  className="w-full text-xs bg-white border border-slate-200 rounded px-2.5 py-1.5 focus:outline-none focus:border-slate-400 text-slate-800"
+                  value={auditFilterStatus}
+                  onChange={(e) => setAuditFilterStatus(e.target.value)}
+                  className="w-full text-xs bg-white border border-slate-200 rounded-md px-2.5 py-1.5 focus:outline-none focus:border-purple-600 text-slate-800"
                 >
-                  <option value="all">All Score Statuses</option>
+                  <option value="all">All Statuses</option>
                   <option value="pending">Pending</option>
                   <option value="submitted">Submitted</option>
                   <option value="reviewed">Reviewed</option>
@@ -1579,9 +1697,9 @@ export const ScoresPage: React.FC = () => {
 
               <div>
                 <select
-                  value={filterJudge}
-                  onChange={(e) => setFilterJudge(e.target.value)}
-                  className="w-full text-xs bg-white border border-slate-200 rounded px-2.5 py-1.5 focus:outline-none focus:border-slate-400 text-slate-800"
+                  value={auditFilterJudge}
+                  onChange={(e) => setAuditFilterJudge(e.target.value)}
+                  className="w-full text-xs bg-white border border-slate-200 rounded-md px-2.5 py-1.5 focus:outline-none focus:border-purple-600 text-slate-800"
                 >
                   <option value="all">All Judges</option>
                   {judges.map((j) => (
@@ -1594,70 +1712,8 @@ export const ScoresPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Programme Results Publication Status Widget */}
-          <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-xs">
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2.5">
-              Programmes Ready for Result Publication
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {programmes.map((prog) => {
-                const progScores = scores.filter((s) => s.programmeId === prog.id);
-                const hasScores = progScores.length > 0;
-                const isPublished = prog.resultPublished;
-
-                return (
-                  <div
-                    key={prog.id}
-                    className="p-3 rounded border border-slate-200 flex items-center justify-between text-xs"
-                  >
-                    <div>
-                      <div className="font-semibold text-slate-900 truncate max-w-[180px]">
-                        {prog.name}
-                      </div>
-                      <div className="text-[11px] text-slate-500 font-mono">
-                        {prog.code} • {progScores.length} score entries
-                      </div>
-                    </div>
-
-                    <div>
-                      {isPublished ? (
-                        <div className="flex items-center gap-1.5">
-                          <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700 font-semibold bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
-                            <CheckCircle2 className="w-3 h-3" /> Published
-                          </span>
-                          {canApprove && (
-                            <button
-                              type="button"
-                              onClick={() => setConfirmDeleteProgrammeResultsId(prog.id)}
-                              className="p-1 rounded text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer"
-                              title="Delete added results for this programme"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      ) : hasScores && canApprove ? (
-                        <button
-                          onClick={() => setConfirmPublishId(prog.id)}
-                          className="px-2.5 py-1 rounded bg-slate-900 text-white font-medium hover:bg-slate-800 text-[11px] flex items-center gap-1"
-                        >
-                          <Trophy className="w-3 h-3" />
-                          <span>Publish</span>
-                        </button>
-                      ) : (
-                        <span className="text-[11px] text-slate-400 italic">
-                          {hasScores ? 'Reviewing' : 'No entries'}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Scores Table */}
-          <div className="bg-white border border-slate-200 rounded-lg shadow-xs overflow-hidden">
+          {/* Submissions Table */}
+          <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
@@ -1666,22 +1722,22 @@ export const ScoresPage: React.FC = () => {
                     <th className="py-3 px-3">Programme</th>
                     <th className="py-3 px-3">Competitor / Team</th>
                     <th className="py-3 px-3">Judge</th>
-                    <th className="py-3 px-2 text-center">Total Score</th>
+                    <th className="py-3 px-2 text-center">Score</th>
                     <th className="py-3 px-2 text-center">Status</th>
                     <th className="py-3 px-3">Submitted At</th>
                     <th className="py-3 px-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredScores.length === 0 ? (
+                  {filteredAuditScores.length === 0 ? (
                     <tr>
                       <td colSpan={8} className="py-12 text-center text-slate-400">
-                        <FileCheck2 className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                        <History className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                         No score submissions matching current filter.
                       </td>
                     </tr>
                   ) : (
-                    filteredScores.map((score) => {
+                    filteredAuditScores.map((score) => {
                       const prog = programmes.find((p) => p.id === score.programmeId);
                       const team = teams.find((t) => t.id === score.teamId);
                       const participant = participants.find((pt) => pt.id === score.participantId);
@@ -1732,7 +1788,7 @@ export const ScoresPage: React.FC = () => {
                               <button
                                 onClick={() => setViewingScore(score)}
                                 className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100"
-                                title="View Breakdown & Revisions"
+                                title="View Breakdown & Audit"
                               >
                                 <Eye className="w-3.5 h-3.5" />
                               </button>
@@ -1787,23 +1843,167 @@ export const ScoresPage: React.FC = () => {
         </div>
       )}
 
-      {/* Record / Edit Score Modal (Single Entry / Calibration) */}
+      {/* =================================================================== */}
+      {/* QUICK EVENT SEARCH / PICKER MODAL                                   */}
+      {/* =================================================================== */}
+      <Modal
+        isOpen={isEventPickerOpen}
+        onClose={() => setIsEventPickerOpen(false)}
+        title="Select Competition Event to Score"
+        maxWidth="lg"
+      >
+        <div className="space-y-3.5 text-xs">
+          {/* Search & Filter */}
+          <div className="space-y-2">
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                autoFocus
+                placeholder="Search by event name, code, or category..."
+                value={eventPickerSearch}
+                onChange={(e) => setEventPickerSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600"
+              />
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setEventPickerFilter('all')}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
+                  eventPickerFilter === 'all'
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                All Events ({scorableProgrammes.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setEventPickerFilter('pending')}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
+                  eventPickerFilter === 'pending'
+                    ? 'bg-amber-600 text-white'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                Pending Scoring ({scorableProgrammes.filter((p) => !p.resultPublished).length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setEventPickerFilter('published')}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
+                  eventPickerFilter === 'published'
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                Published ({scorableProgrammes.filter((p) => p.resultPublished).length})
+              </button>
+            </div>
+          </div>
+
+          {/* List of Programmes */}
+          <div className="max-h-96 overflow-y-auto space-y-2 pr-1 divide-y divide-slate-100">
+            {scorableProgrammes
+              .filter((p) => {
+                if (eventPickerFilter === 'published' && !p.resultPublished) return false;
+                if (eventPickerFilter === 'pending' && p.resultPublished) return false;
+                if (!eventPickerSearch.trim()) return true;
+                const q = eventPickerSearch.toLowerCase();
+                return (
+                  p.name.toLowerCase().includes(q) ||
+                  (p.code && p.code.toLowerCase().includes(q)) ||
+                  (p.category && p.category.toLowerCase().includes(q))
+                );
+              })
+              .map((prog) => {
+                const status = getProgrammeStatus(prog);
+                const isCurrent = prog.id === selectedProgrammeId;
+                const isTeam = prog.type === 'team' || prog.type === 'group' || prog.programmeType === 'team';
+
+                return (
+                  <div
+                    key={prog.id}
+                    onClick={() => {
+                      setSelectedProgrammeId(prog.id);
+                      setIsEventPickerOpen(false);
+                    }}
+                    className={`p-3 rounded-lg flex items-center justify-between gap-3 cursor-pointer transition-all ${
+                      isCurrent
+                        ? 'bg-purple-50 border border-purple-200'
+                        : 'hover:bg-slate-50 border border-transparent hover:border-slate-200'
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        {prog.code && (
+                          <span className="font-mono font-bold text-[11px] bg-slate-200 px-1.5 py-0.2 rounded text-slate-800">
+                            {prog.code}
+                          </span>
+                        )}
+                        <h4 className="font-bold text-slate-900 truncate">{prog.name}</h4>
+                        {isCurrent && (
+                          <span className="text-[10px] font-bold text-purple-700 bg-purple-100 px-1.5 py-0.2 rounded">
+                            Active
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-2">
+                        <span>{prog.category}</span>
+                        <span>•</span>
+                        <span>{isTeam ? 'Team Squad' : 'Solo'}</span>
+                        {prog.venue && (
+                          <>
+                            <span>•</span>
+                            <span>{prog.venue}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="shrink-0 flex items-center gap-2">
+                      {status === 'published' ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                          <CheckCircle2 className="w-3 h-3" /> Published
+                        </span>
+                      ) : status === 'draft' ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
+                          <Clock className="w-3 h-3" /> Draft
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-slate-400 font-medium bg-slate-100 px-2 py-0.5 rounded">
+                          Pending
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      </Modal>
+
+      {/* =================================================================== */}
+      {/* RECORD / EDIT SCORE MODAL (SINGLE ENTRY / CALIBRATION)              */}
+      {/* =================================================================== */}
       <Modal
         isOpen={isScoreModalOpen}
         onClose={() => setIsScoreModalOpen(false)}
-        title={editingScore ? `Edit Score: ${editingScore.id}` : 'Record Judges Evaluation Sheet'}
+        title={editingScore ? `Edit Score: ${editingScore.id}` : 'Record Single Score'}
         maxWidth="lg"
       >
-        <form onSubmit={handleSubmitScoreForm} className="space-y-4 text-xs">
+        <form onSubmit={handleSubmitModalForm} className="space-y-4 text-xs">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block font-medium text-slate-700 mb-1">
                 Programme / Competition *
               </label>
               <select
-                value={selectedProgrammeId}
-                onChange={(e) => handleProgrammeChangeInModal(e.target.value)}
-                className="w-full border border-slate-300 rounded px-2.5 py-1.5 bg-white"
+                value={modalProgrammeId}
+                onChange={(e) => setModalProgrammeId(e.target.value)}
+                className="w-full border border-slate-300 rounded px-2.5 py-1.5 bg-white font-medium"
               >
                 {programmes.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -1818,31 +2018,31 @@ export const ScoresPage: React.FC = () => {
                 Adjudicating Judge *
               </label>
               <select
-                value={formJudgeId}
-                onChange={(e) => setFormJudgeId(e.target.value)}
+                value={modalFormJudgeId}
+                onChange={(e) => setModalFormJudgeId(e.target.value)}
                 className="w-full border border-slate-300 rounded px-2.5 py-1.5 bg-white"
               >
                 {judges.map((j) => (
                   <option key={j.id} value={j.id}>
-                    {j.name} ({j.designation})
+                    {j.name} ({j.designation || 'Jury Member'})
                   </option>
                 ))}
               </select>
             </div>
 
-            {activeFormProgramme?.type === 'individual' || activeFormProgramme?.programmeType === 'individual' ? (
+            {modalActiveProg?.type === 'individual' || modalActiveProg?.programmeType === 'individual' ? (
               <div>
                 <label className="block font-medium text-slate-700 mb-1">
-                  Participant * (Shows Category & Team)
+                  Participant *
                 </label>
                 <select
-                  value={formParticipantId}
+                  value={modalFormParticipantId}
                   onChange={(e) => {
-                    setFormParticipantId(e.target.value);
+                    setModalFormParticipantId(e.target.value);
                     const pt = participants.find((p) => p.id === e.target.value);
-                    if (pt) setFormTeamId(pt.teamId);
+                    if (pt) setModalFormTeamId(pt.teamId);
                   }}
-                  className="w-full border border-slate-300 rounded px-2.5 py-1.5 bg-white"
+                  className="w-full border border-slate-300 rounded px-2.5 py-1.5 bg-white font-medium"
                 >
                   {participants.map((pt) => {
                     const tm = teams.find((t) => t.id === pt.teamId);
@@ -1859,58 +2059,36 @@ export const ScoresPage: React.FC = () => {
                 <label className="block font-medium text-slate-700 mb-1">
                   Competing Team Entry *
                 </label>
-                {teamProgrammeEntries.filter((e) => e.programmeId === selectedProgrammeId).length > 0 ? (
-                  <div className="space-y-2">
-                    <select
-                      value={formTeamEntryId}
-                      onChange={(e) => {
-                        setFormTeamEntryId(e.target.value);
-                        const ent = teamProgrammeEntries.find((item) => item.id === e.target.value);
-                        if (ent) setFormTeamId(ent.teamId);
-                      }}
-                      className="w-full border border-slate-300 rounded px-2.5 py-1.5 bg-white font-medium"
-                    >
-                      {teamProgrammeEntries
-                        .filter((e) => e.programmeId === selectedProgrammeId)
-                        .map((ent) => (
-                          <option key={ent.id} value={ent.id}>
-                            {ent.entryName} ({ent.teamName}) — {ent.memberParticipantIds.length} members
-                          </option>
-                        ))}
-                    </select>
-
-                    {(() => {
-                      const ent = teamProgrammeEntries.find((item) => item.id === formTeamEntryId);
-                      if (!ent) return null;
-                      return (
-                        <div className="p-2.5 bg-purple-50 rounded border border-purple-200 text-xs text-purple-900">
-                          <span className="font-semibold block mb-0.5">
-                            Team Entry Members ({ent.memberParticipantIds.length}):
-                          </span>
-                          <span className="text-slate-700">
-                            {ent.memberNames?.join(', ') || ent.memberParticipantIds.join(', ')}
-                          </span>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                ) : (
-                  <div className="space-y-1.5">
-                    <select
-                      value={formTeamId}
-                      onChange={(e) => setFormTeamId(e.target.value)}
-                      className="w-full border border-slate-300 rounded px-2.5 py-1.5 bg-white"
-                    >
-                      {teams.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.name} ({t.code})
+                {teamProgrammeEntries.filter((e) => e.programmeId === modalProgrammeId).length > 0 ? (
+                  <select
+                    value={modalFormTeamEntryId}
+                    onChange={(e) => {
+                      setModalFormTeamEntryId(e.target.value);
+                      const ent = teamProgrammeEntries.find((item) => item.id === e.target.value);
+                      if (ent) setModalFormTeamId(ent.teamId);
+                    }}
+                    className="w-full border border-slate-300 rounded px-2.5 py-1.5 bg-white font-medium"
+                  >
+                    {teamProgrammeEntries
+                      .filter((e) => e.programmeId === modalProgrammeId)
+                      .map((ent) => (
+                        <option key={ent.id} value={ent.id}>
+                          {ent.entryName} ({ent.teamName})
                         </option>
                       ))}
-                    </select>
-                    <p className="text-[11px] text-amber-700 italic">
-                      No explicit team entries registered yet for this event; score will be awarded directly to the team.
-                    </p>
-                  </div>
+                  </select>
+                ) : (
+                  <select
+                    value={modalFormTeamId}
+                    onChange={(e) => setModalFormTeamId(e.target.value)}
+                    className="w-full border border-slate-300 rounded px-2.5 py-1.5 bg-white"
+                  >
+                    {teams.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} ({t.code})
+                      </option>
+                    ))}
+                  </select>
                 )}
               </div>
             )}
@@ -1918,11 +2096,10 @@ export const ScoresPage: React.FC = () => {
             <div>
               <label className="block font-medium text-slate-700 mb-1">Score Status</label>
               <select
-                value={formStatus}
-                onChange={(e) => setFormStatus(e.target.value as ScoreStatus)}
+                value={modalFormStatus}
+                onChange={(e) => setModalFormStatus(e.target.value as ScoreStatus)}
                 className="w-full border border-slate-300 rounded px-2.5 py-1.5 bg-white"
               >
-                <option value="pending">Pending</option>
                 <option value="submitted">Submitted</option>
                 <option value="reviewed">Reviewed</option>
                 <option value="approved">Approved</option>
@@ -1936,7 +2113,7 @@ export const ScoresPage: React.FC = () => {
               Marks per Evaluation Criteria
             </label>
             <div className="space-y-2 border border-slate-200 rounded p-3 bg-slate-50">
-              {criteriaScores.map((crit, idx) => (
+              {modalCriteriaScores.map((crit, idx) => (
                 <div key={crit.criterionId} className="flex items-center justify-between gap-3">
                   <span className="text-slate-800 font-medium flex-1">
                     {crit.criterionName}
@@ -1949,9 +2126,9 @@ export const ScoresPage: React.FC = () => {
                       max={crit.maxMarks}
                       value={crit.marksObtained}
                       onChange={(e) => {
-                        const updated = [...criteriaScores];
+                        const updated = [...modalCriteriaScores];
                         updated[idx].marksObtained = Number(e.target.value);
-                        setCriteriaScores(updated);
+                        setModalCriteriaScores(updated);
                       }}
                       className="w-20 border border-slate-300 rounded px-2.5 py-1 font-mono text-right text-xs bg-white"
                     />
@@ -1965,7 +2142,7 @@ export const ScoresPage: React.FC = () => {
               <div className="pt-2 border-t border-slate-200 flex justify-between font-bold text-slate-900">
                 <span>Calculated Total:</span>
                 <span className="font-mono text-sm">
-                  {criteriaScores.reduce((sum, item) => sum + item.marksObtained, 0)} marks
+                  {modalCriteriaScores.reduce((sum, item) => sum + item.marksObtained, 0)} marks
                 </span>
               </div>
             </div>
@@ -1973,14 +2150,14 @@ export const ScoresPage: React.FC = () => {
 
           <div>
             <label className="block font-medium text-slate-700 mb-1">
-              Adjudicator Notes / Remarks
+              Remarks (Optional)
             </label>
             <textarea
               rows={2}
-              value={formNotes}
-              onChange={(e) => setFormNotes(e.target.value)}
-              placeholder="e.g. Flawless synchronization, minor pause in intro"
-              className="w-full border border-slate-300 rounded p-2 focus:outline-none focus:border-slate-500"
+              value={modalFormNotes}
+              onChange={(e) => setModalFormNotes(e.target.value)}
+              placeholder="e.g. Excellent timing, expressive performance"
+              className="w-full border border-slate-300 rounded p-2 focus:outline-none focus:border-purple-600"
             />
           </div>
 
@@ -1988,21 +2165,23 @@ export const ScoresPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsScoreModalOpen(false)}
-              className="px-3 py-1.5 text-slate-700 bg-white border border-slate-300 rounded hover:bg-slate-50"
+              className="px-3.5 py-1.5 text-slate-700 bg-white border border-slate-300 rounded hover:bg-slate-50"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-1.5 text-white bg-slate-900 rounded hover:bg-slate-800 font-medium"
+              className="px-4 py-1.5 text-white bg-purple-700 hover:bg-purple-800 rounded font-semibold"
             >
-              {editingScore ? 'Save Calibration' : 'Submit Scores'}
+              {editingScore ? 'Save Calibration' : 'Submit Score'}
             </button>
           </div>
         </form>
       </Modal>
 
-      {/* View Score Details & Revision Audit Modal */}
+      {/* =================================================================== */}
+      {/* VIEW SCORE DOSSIER & REVISION AUDIT MODAL                          */}
+      {/* =================================================================== */}
       {viewingScore && (
         <Modal
           isOpen={!!viewingScore}
@@ -2011,7 +2190,7 @@ export const ScoresPage: React.FC = () => {
           maxWidth="lg"
         >
           <div className="space-y-4 text-xs">
-            <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 rounded border border-slate-200">
+            <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
               <div>
                 <span className="text-[10px] text-slate-400 uppercase font-semibold">Programme</span>
                 <p className="font-semibold text-slate-900">
@@ -2036,40 +2215,6 @@ export const ScoresPage: React.FC = () => {
               </div>
             </div>
 
-            {viewingScore.teamEntryId ? (
-              <div className="p-3 bg-purple-50 rounded border border-purple-200">
-                <span className="text-[10px] text-purple-900 uppercase font-semibold block mb-0.5">
-                  Competing Team Entry
-                </span>
-                <p className="font-bold text-xs text-purple-950">
-                  {viewingScore.teamEntryName || teamProgrammeEntries.find((e) => e.id === viewingScore.teamEntryId)?.entryName || 'Team Entry'}{' '}
-                  <span className="text-slate-500 font-normal">
-                    ({teams.find((t) => t.id === viewingScore.teamId)?.name})
-                  </span>
-                </p>
-                {(() => {
-                  const ent = teamProgrammeEntries.find((e) => e.id === viewingScore.teamEntryId);
-                  if (!ent) return null;
-                  return (
-                    <p className="mt-1 text-[11px] text-slate-700">
-                      <strong className="text-slate-800">Members ({ent.memberParticipantIds.length}):</strong>{' '}
-                      {ent.memberNames?.join(', ') || ent.memberParticipantIds.join(', ')}
-                    </p>
-                  );
-                })()}
-              </div>
-            ) : viewingScore.participantId ? (
-              <div className="p-2.5 bg-blue-50 rounded border border-blue-200 text-xs text-blue-950">
-                <span className="text-[10px] text-blue-800 uppercase font-semibold block mb-0.5">Solo Competitor</span>
-                <p className="font-bold">
-                  {participants.find((p) => p.id === viewingScore.participantId)?.name}
-                  <span className="text-slate-500 font-normal ml-1">
-                    (Category: {participants.find((p) => p.id === viewingScore.participantId)?.category}) • {teams.find((t) => t.id === viewingScore.teamId)?.name}
-                  </span>
-                </p>
-              </div>
-            ) : null}
-
             <div>
               <h4 className="font-semibold text-slate-900 mb-2">Criteria Breakdown</h4>
               <div className="border border-slate-200 rounded divide-y divide-slate-100">
@@ -2088,12 +2233,11 @@ export const ScoresPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Revision Audit History */}
             {viewingScore.revisionHistory && viewingScore.revisionHistory.length > 0 && (
               <div>
                 <h4 className="font-semibold text-slate-900 mb-1 flex items-center gap-1.5">
                   <History className="w-3.5 h-3.5 text-slate-500" />
-                  Score Revision History & Audit Trail
+                  Score Revision History
                 </h4>
                 <div className="space-y-1.5 border border-slate-200 rounded p-2.5 bg-slate-50">
                   {viewingScore.revisionHistory.map((rev, i) => (
@@ -2118,7 +2262,10 @@ export const ScoresPage: React.FC = () => {
         </Modal>
       )}
 
-      {/* Confirmation to Publish Results */}
+      {/* =================================================================== */}
+      {/* CONFIRMATION DIALOGS                                                */}
+      {/* =================================================================== */}
+      {/* Ratify & Publish Results Confirmation */}
       <ConfirmDialog
         isOpen={!!confirmPublishId}
         onClose={() => setConfirmPublishId(null)}
@@ -2128,13 +2275,13 @@ export const ScoresPage: React.FC = () => {
             setConfirmPublishId(null);
           }
         }}
-        title="Ratify & Publish Programme Results"
-        message="This action computes final rankings using server scoring algorithms, updates the overall team points leaderboard, and makes results visible on the visitor Public Page. Proceed?"
-        confirmLabel="Ratify & Publish"
+        title="Ratify & Publish Event Results"
+        message="This will calculate official rankings (1st, 2nd, 3rd...), award leaderboard points to the winning houses/teams, and make results instantly visible to the public. Proceed?"
+        confirmLabel="Publish to Leaderboard 🚀"
         isDestructive={false}
       />
 
-      {/* Confirmation to Delete Single Result Entry */}
+      {/* Delete Single Result Entry Confirmation */}
       <ConfirmDialog
         isOpen={!!confirmDeleteResultId}
         onClose={() => setConfirmDeleteResultId(null)}
@@ -2144,13 +2291,13 @@ export const ScoresPage: React.FC = () => {
             setConfirmDeleteResultId(null);
           }
         }}
-        title="Delete Added Result Entry"
-        message="Are you sure you want to delete this added result entry? The leaderboard points will be automatically recalculated and this contestant's ranking will be removed."
-        confirmLabel="Delete Result"
+        title="Remove Result Entry"
+        message="Are you sure you want to remove this result entry? Leaderboard points for this contestant will be subtracted."
+        confirmLabel="Remove Result"
         isDestructive={true}
       />
 
-      {/* Confirmation to Delete Programme Results */}
+      {/* Delete/Retract All Programme Results Confirmation */}
       <ConfirmDialog
         isOpen={!!confirmDeleteProgrammeResultsId}
         onClose={() => setConfirmDeleteProgrammeResultsId(null)}
@@ -2160,13 +2307,13 @@ export const ScoresPage: React.FC = () => {
             setConfirmDeleteProgrammeResultsId(null);
           }
         }}
-        title="Delete All Results for Programme"
-        message="Are you sure you want to delete all added results for this programme? The programme status will be reset, published results will be retracted from the public portal, and awarded leaderboard points will be subtracted."
-        confirmLabel="Delete & Retract Results"
+        title="Retract Event Results"
+        message="Are you sure you want to retract published results for this event? Winners will be removed from the public website, and awarded leaderboard points will be revoked."
+        confirmLabel="Retract Results"
         isDestructive={true}
       />
 
-      {/* Confirmation to Delete Score Submission */}
+      {/* Delete Raw Score Submission Confirmation */}
       <ConfirmDialog
         isOpen={!!confirmDeleteScoreId}
         onClose={() => setConfirmDeleteScoreId(null)}
@@ -2176,9 +2323,24 @@ export const ScoresPage: React.FC = () => {
             setConfirmDeleteScoreId(null);
           }
         }}
-        title="Delete Score Sheet"
-        message="Are you sure you want to delete this score submission? This will permanently remove the judge's score entry."
+        title="Delete Score Entry"
+        message="Are you sure you want to permanently delete this score submission?"
         confirmLabel="Delete Score"
+        isDestructive={true}
+      />
+
+      {/* Reset Sheet Confirmation */}
+      <ConfirmDialog
+        isOpen={confirmResetMarks}
+        onClose={() => setConfirmResetMarks(false)}
+        onConfirm={() => {
+          setSheetMarks({});
+          setConfirmResetMarks(false);
+          addToast('info', 'Sheet Reset', 'Scores on the sheet have been cleared.');
+        }}
+        title="Clear Current Sheet Marks"
+        message="Are you sure you want to clear all entered marks on this sheet? (Saved submissions in the database will not be deleted until you click Save)."
+        confirmLabel="Clear Marks"
         isDestructive={true}
       />
     </div>
