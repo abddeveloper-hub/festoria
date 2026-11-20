@@ -48,6 +48,8 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
         return { title: 'Programme & Event Roster', breadcrumb: 'Competitions' };
       case 'scores':
         return { title: 'Scores & Results Management', breadcrumb: 'Evaluation' };
+      case 'individual_scores':
+        return { title: 'Individual Scores & Standings', breadcrumb: 'Evaluation' };
       case 'teams':
         return { title: 'Teams & Standings', breadcrumb: 'Houses & Colleges' };
       case 'schedule':

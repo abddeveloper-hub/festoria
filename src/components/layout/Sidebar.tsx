@@ -17,7 +17,8 @@ import {
   X,
   AlertTriangle,
   Sparkles,
-  Share2
+  Share2,
+  Trophy
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -71,6 +72,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
       icon: CheckSquare,
       badge: summaryStats.pendingScores > 0 ? `${summaryStats.pendingScores} pending` : undefined,
       badgeVariant: 'warning',
+    },
+    {
+      id: 'individual_scores',
+      label: 'Individual Scores',
+      icon: Trophy,
     },
     {
       id: 'teams',

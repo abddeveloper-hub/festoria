@@ -112,6 +112,7 @@ export type NavigationTab =
   | 'judges'
   | 'programmes'
   | 'scores'
+  | 'individual_scores'
   | 'teams'
   | 'team_leaders'
   | 'schedule'

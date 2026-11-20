@@ -35,6 +35,9 @@ const ParticipantsPage = lazy(() => import('./pages/ParticipantsPage').then((m) 
 const JudgesPage = lazy(() => import('./pages/JudgesPage').then((m) => ({ default: m.JudgesPage })));
 const ProgrammesPage = lazy(() => import('./pages/ProgrammesPage').then((m) => ({ default: m.ProgrammesPage })));
 const ScoresPage = lazy(() => import('./pages/ScoresPage').then((m) => ({ default: m.ScoresPage })));
+const IndividualScoresPage = lazy(() =>
+  import('./pages/IndividualScoresPage').then((m) => ({ default: m.IndividualScoresPage }))
+);
 const TeamsPage = lazy(() => import('./pages/TeamsPage').then((m) => ({ default: m.TeamsPage })));
 const TeamLeadersPage = lazy(() => import('./pages/TeamLeadersPage').then((m) => ({ default: m.TeamLeadersPage })));
 const SchedulePage = lazy(() => import('./pages/SchedulePage').then((m) => ({ default: m.SchedulePage })));
@@ -119,6 +122,8 @@ const AppContent: React.FC = () => {
         return <ProgrammesPage />;
       case 'scores':
         return <ScoresPage />;
+      case 'individual_scores':
+        return <IndividualScoresPage />;
       case 'teams':
         return <TeamsPage />;
       case 'team_leaders':
