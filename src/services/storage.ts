@@ -247,29 +247,37 @@ export const StorageService = {
   },
 
   getScoreSubmissions(): ScoreSubmission[] {
-    return getStorageItem(STORAGE_KEYS.SCORES, []);
+    return [];
   },
-  saveScoreSubmissions(scores: ScoreSubmission[]): void {
-    setStorageItem(STORAGE_KEYS.SCORES, scores);
+  saveScoreSubmissions(_scores: ScoreSubmission[]): void {
+    if (typeof window !== 'undefined') {
+      try { localStorage.removeItem(STORAGE_KEYS.SCORES); } catch {}
+    }
   },
   getScores(): ScoreSubmission[] {
-    return this.getScoreSubmissions();
+    return [];
   },
-  saveScores(scores: ScoreSubmission[]): void {
-    this.saveScoreSubmissions(scores);
+  saveScores(_scores: ScoreSubmission[]): void {
+    if (typeof window !== 'undefined') {
+      try { localStorage.removeItem(STORAGE_KEYS.SCORES); } catch {}
+    }
   },
 
   getApprovedResults(): ApprovedResult[] {
-    return getStorageItem(STORAGE_KEYS.RESULTS, []);
+    return [];
   },
-  saveApprovedResults(results: ApprovedResult[]): void {
-    setStorageItem(STORAGE_KEYS.RESULTS, results);
+  saveApprovedResults(_results: ApprovedResult[]): void {
+    if (typeof window !== 'undefined') {
+      try { localStorage.removeItem(STORAGE_KEYS.RESULTS); } catch {}
+    }
   },
   getResults(): ApprovedResult[] {
-    return this.getApprovedResults();
+    return [];
   },
-  saveResults(results: ApprovedResult[]): void {
-    this.saveApprovedResults(results);
+  saveResults(_results: ApprovedResult[]): void {
+    if (typeof window !== 'undefined') {
+      try { localStorage.removeItem(STORAGE_KEYS.RESULTS); } catch {}
+    }
   },
 
   getScheduleSlots(): ScheduleSlot[] {

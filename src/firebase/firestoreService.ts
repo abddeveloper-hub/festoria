@@ -810,39 +810,44 @@ export async function deleteProgrammeFromFirestore(programmeId: string): Promise
 }
 
 // ==========================================
-// 6. SCORES & RESULTS SERVICE
+// 6. SCORES & RESULTS SERVICE (Cloud-Authoritative in Firestore)
 // ==========================================
-export async function fetchScores(): Promise<ScoreSubmission[]> {
+export async function fetchScores(festId?: string): Promise<ScoreSubmission[]> {
   if (isFirebaseConfigured && db) {
     try {
       const auth = getFirebaseAuth();
       if (!auth?.currentUser) {
-        return StorageService.getScoreSubmissions();
+        return [];
       }
-      const snap = await getDocs(collection(db, 'scores'));
-      if (!snap.empty) {
-        return snap.docs.map((d) => d.data() as ScoreSubmission);
-      }
+      const q = festId
+        ? query(collection(db, 'scores'), where('festId', '==', festId))
+        : collection(db, 'scores');
+      const snap = await getDocs(q);
+      return snap.docs.map((d) => d.data() as ScoreSubmission);
     } catch (e: any) {
       if (e?.code !== 'permission-denied') {
         console.warn('[Firestore] fetchScores error:', e);
       }
+      return [];
     }
   }
   return StorageService.getScoreSubmissions();
 }
 
 export async function saveScoreToFirestore(score: ScoreSubmission): Promise<void> {
-  const scores = StorageService.getScoreSubmissions();
-  const index = scores.findIndex((s) => s.id === score.id);
-  if (index >= 0) {
-    scores[index] = score;
-  } else {
-    scores.push(score);
+  if (!isFirebaseConfigured) {
+    const scores = StorageService.getScoreSubmissions();
+    const index = scores.findIndex((s) => s.id === score.id);
+    if (index >= 0) {
+      scores[index] = score;
+    } else {
+      scores.push(score);
+    }
+    StorageService.saveScoreSubmissions(scores);
+    return;
   }
-  StorageService.saveScoreSubmissions(scores);
 
-  if (isFirebaseConfigured && db) {
+  if (db) {
     try {
       await setDoc(doc(db, 'scores', score.id), cleanFirestoreData({
         ...score,
@@ -870,29 +875,31 @@ export async function fetchResults(festId?: string): Promise<ApprovedResult[]> {
           : query(collection(db, 'results'), where('published', '==', true));
       }
       const snap = await getDocs(q);
-      if (!snap.empty) {
-        return snap.docs.map((d) => d.data() as ApprovedResult);
-      }
+      return snap.docs.map((d) => d.data() as ApprovedResult);
     } catch (e: any) {
       if (e?.code !== 'permission-denied') {
         console.warn('[Firestore] fetchResults error:', e);
       }
+      return [];
     }
   }
   return StorageService.getApprovedResults();
 }
 
 export async function saveResultToFirestore(result: ApprovedResult): Promise<void> {
-  const results = StorageService.getApprovedResults();
-  const index = results.findIndex((r) => r.id === result.id);
-  if (index >= 0) {
-    results[index] = result;
-  } else {
-    results.push(result);
+  if (!isFirebaseConfigured) {
+    const results = StorageService.getApprovedResults();
+    const index = results.findIndex((r) => r.id === result.id);
+    if (index >= 0) {
+      results[index] = result;
+    } else {
+      results.push(result);
+    }
+    StorageService.saveApprovedResults(results);
+    return;
   }
-  StorageService.saveApprovedResults(results);
 
-  if (isFirebaseConfigured && db) {
+  if (db) {
     try {
       await setDoc(doc(db, 'results', result.id), cleanFirestoreData({
         ...result,
@@ -906,10 +913,13 @@ export async function saveResultToFirestore(result: ApprovedResult): Promise<voi
 }
 
 export async function deleteScoreFromFirestore(scoreId: string): Promise<void> {
-  const scores = StorageService.getScoreSubmissions().filter((s) => s.id !== scoreId);
-  StorageService.saveScoreSubmissions(scores);
+  if (!isFirebaseConfigured) {
+    const scores = StorageService.getScoreSubmissions().filter((s) => s.id !== scoreId);
+    StorageService.saveScoreSubmissions(scores);
+    return;
+  }
 
-  if (isFirebaseConfigured && db) {
+  if (db) {
     try {
       await deleteDoc(doc(db, 'scores', scoreId));
     } catch (e) {
@@ -919,10 +929,13 @@ export async function deleteScoreFromFirestore(scoreId: string): Promise<void> {
 }
 
 export async function deleteResultFromFirestore(resultId: string): Promise<void> {
-  const results = StorageService.getApprovedResults().filter((r) => r.id !== resultId);
-  StorageService.saveApprovedResults(results);
+  if (!isFirebaseConfigured) {
+    const results = StorageService.getApprovedResults().filter((r) => r.id !== resultId);
+    StorageService.saveApprovedResults(results);
+    return;
+  }
 
-  if (isFirebaseConfigured && db) {
+  if (db) {
     try {
       await deleteDoc(doc(db, 'results', resultId));
     } catch (e) {
@@ -932,10 +945,13 @@ export async function deleteResultFromFirestore(resultId: string): Promise<void>
 }
 
 export async function deleteProgrammeResultsFromFirestore(programmeId: string): Promise<void> {
-  const results = StorageService.getApprovedResults().filter((r) => r.programmeId !== programmeId);
-  StorageService.saveApprovedResults(results);
+  if (!isFirebaseConfigured) {
+    const results = StorageService.getApprovedResults().filter((r) => r.programmeId !== programmeId);
+    StorageService.saveApprovedResults(results);
+    return;
+  }
 
-  if (isFirebaseConfigured && db) {
+  if (db) {
     try {
       const q = query(collection(db, 'results'), where('programmeId', '==', programmeId));
       const snap = await getDocs(q);
@@ -1298,6 +1314,49 @@ export function subscribeToLeaderboardResults(
       );
     } catch (e: any) {
       console.warn('[Firestore] Failed to establish leaderboard listener:', e);
+      if (onError) onError(e);
+    }
+  }
+
+  return () => {
+    if (unsubscribeFirestore) {
+      unsubscribeFirestore();
+    }
+  };
+}
+
+/**
+ * Real-time listener for score submissions in Firestore (Admins and Judges).
+ * Returns an unsubscribe cleanup callback.
+ */
+export function subscribeToScores(
+  festId?: string,
+  callback?: (scores: ScoreSubmission[]) => void,
+  onError?: (error: Error) => void
+): () => void {
+  let unsubscribeFirestore: (() => void) | null = null;
+  if (isFirebaseConfigured && db && callback) {
+    try {
+      const auth = getFirebaseAuth();
+      if (auth?.currentUser) {
+        const q = festId
+          ? query(collection(db, 'scores'), where('festId', '==', festId))
+          : collection(db, 'scores');
+        unsubscribeFirestore = onSnapshot(
+          q,
+          (snap) => {
+            const list = snap.docs.map((d) => d.data() as ScoreSubmission);
+            callback(list);
+          },
+          (err) => {
+            if (err?.code !== 'permission-denied') {
+              console.warn('[Firestore] subscribeToScores error:', err);
+            }
+            if (onError) onError(err);
+          }
+        );
+      }
+    } catch (e: any) {
       if (onError) onError(e);
     }
   }

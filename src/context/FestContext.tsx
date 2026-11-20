@@ -101,7 +101,9 @@ import {
   deleteTeamProgrammeEntryFromFirestore,
   fetchJudges,
   saveJudgeToFirestore,
-  deleteJudgeFromFirestore
+  deleteJudgeFromFirestore,
+  subscribeToLeaderboardResults,
+  subscribeToScores
 } from '../firebase/firestoreService';
 
 export type NavigationTab =
@@ -517,8 +519,8 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
   const [programmes, setProgrammes] = useState<Programme[]>(() => StorageService.getProgrammes());
   const [categories, setCategories] = useState<FestCategory[]>(() => StorageService.getCategories());
   const [teamProgrammeEntries, setTeamProgrammeEntries] = useState<TeamProgrammeEntry[]>(() => StorageService.getTeamProgrammeEntries());
-  const [scores, setScores] = useState<ScoreSubmission[]>(() => StorageService.getScoreSubmissions());
-  const [results, setResults] = useState<ApprovedResult[]>(() => StorageService.getApprovedResults());
+  const [scores, setScores] = useState<ScoreSubmission[]>(() => (isFirebaseConfigured ? [] : StorageService.getScoreSubmissions()));
+  const [results, setResults] = useState<ApprovedResult[]>(() => (isFirebaseConfigured ? [] : StorageService.getApprovedResults()));
   const [scheduleSlots, setScheduleSlots] = useState<ScheduleSlot[]>(() => StorageService.getScheduleSlots());
   const [users, setUsers] = useState<User[]>(() => StorageService.getUsers());
   const [currentUser, setCurrentUser] = useState<User>(() => StorageService.getCurrentUser());
@@ -821,8 +823,26 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
   useEffect(() => { StorageService.saveParticipants(participants); }, [participants]);
   useEffect(() => { StorageService.saveJudges(judges); }, [judges]);
   useEffect(() => { StorageService.saveProgrammes(programmes); }, [programmes]);
-  useEffect(() => { StorageService.saveScoreSubmissions(scores); }, [scores]);
-  useEffect(() => { StorageService.saveApprovedResults(results); }, [results]);
+  useEffect(() => {
+    if (!isFirebaseConfigured) {
+      StorageService.saveScoreSubmissions(scores);
+    }
+  }, [scores]);
+  useEffect(() => {
+    if (!isFirebaseConfigured) {
+      StorageService.saveApprovedResults(results);
+    }
+  }, [results]);
+
+  // Purge any legacy stale scores and results from localStorage on connected clients
+  useEffect(() => {
+    if (isFirebaseConfigured && typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('festflow_scores');
+        localStorage.removeItem('festflow_results');
+      } catch {}
+    }
+  }, []);
   useEffect(() => { StorageService.saveScheduleSlots(scheduleSlots); }, [scheduleSlots]);
   useEffect(() => { StorageService.saveUsers(users); }, [users]);
   useEffect(() => { StorageService.setCurrentUser(currentUser); }, [currentUser]);
@@ -1290,6 +1310,39 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     }
   }, [currentUser]);
 
+  // Real-time synchronization of published results and leaderboard rankings across all devices
+  useEffect(() => {
+    if (!isFirebaseConfigured) return;
+    const unsubscribeResults = subscribeToLeaderboardResults(activeFestId, (remotePublishedResults) => {
+      if (Array.isArray(remotePublishedResults)) {
+        setResults((prev) => {
+          const remoteMap = new Map(remotePublishedResults.map((r) => [r.id, r]));
+          const localDrafts = prev.filter((r) => !r.published && !remoteMap.has(r.id));
+          return [...remotePublishedResults, ...localDrafts];
+        });
+      }
+    });
+
+    // Real-time score sync for admins and judges
+    let unsubscribeScores: (() => void) | null = null;
+    if (currentUser.role === 'admin' || currentUser.role === 'fest_admin' || currentUser.role === 'super_admin' || currentUser.role === 'judge') {
+      unsubscribeScores = subscribeToScores(activeFestId, (remoteScores) => {
+        if (Array.isArray(remoteScores)) {
+          setScores((prev) => {
+            const remoteMap = new Map(remoteScores.map((s) => [s.id, s]));
+            const localOnly = prev.filter((s) => !remoteMap.has(s.id));
+            return [...remoteScores, ...localOnly];
+          });
+        }
+      });
+    }
+
+    return () => {
+      unsubscribeResults();
+      if (unsubscribeScores) unsubscribeScores();
+    };
+  }, [activeFestId, currentUser]);
+
   // Retain all valid registered user accounts (Super Admins, Fest Admins, Judges, Team Leaders, and Participants)
   useEffect(() => {
     try {
@@ -1523,15 +1576,15 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
 
   // Dynamic Leaderboard (Scoped to active fest)
   const leaderboard = useMemo(() => {
-    return calculateLeaderboard(festTeams, results, festProgrammes);
-  }, [festTeams, results, festProgrammes]);
+    return calculateLeaderboard(festTeams, festResults, festProgrammes);
+  }, [festTeams, festResults, festProgrammes]);
 
   // Dynamic Category Scoreboards (Scoped to active fest)
   const getCategoryScoreboard = useCallback(
     (categoryName: string): CategoryIndividualLeaderboardEntry[] => {
-      return calculateCategoryScoreboards(categoryName, festParticipants, festTeams, results, festProgrammes);
+      return calculateCategoryScoreboards(categoryName, festParticipants, festTeams, festResults, festProgrammes);
     },
-    [festParticipants, festTeams, results, festProgrammes]
+    [festParticipants, festTeams, festResults, festProgrammes]
   );
 
   // Dynamic Schedule Conflicts (Scoped to active fest)
@@ -1547,8 +1600,8 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     const totalJudges = festJudges.filter((j) => j.status === 'active').length;
     const completedProgrammes = festProgrammes.filter((p) => p.status === 'completed').length;
     const upcomingProgrammes = festProgrammes.filter((p) => p.status === 'scheduled' || p.status === 'ongoing').length;
-    const pendingScores = scores.filter((s) => s.status === 'pending' || s.status === 'submitted' || s.status === 'reviewed').length;
-    const publishedResults = results.filter((r) => r.published).length;
+    const pendingScores = festScores.filter((s) => s.status === 'pending' || s.status === 'submitted' || s.status === 'reviewed').length;
+    const publishedResults = festResults.filter((r) => r.published).length;
 
     return {
       totalParticipants,
@@ -1560,7 +1613,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       pendingScores,
       publishedResults,
     };
-  }, [festParticipants, festTeams, festProgrammes, festJudges, scores, results]);
+  }, [festParticipants, festTeams, festProgrammes, festJudges, festScores, festResults]);
 
   // Participant Management
   const addParticipant = (data: Omit<Participant, 'id' | 'createdAt'>): boolean => {
@@ -2141,6 +2194,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
 
     if (data.id) {
       // Update existing
+      let updatedScoreObj: ScoreSubmission | undefined;
       setScores((prev) =>
         prev.map((s) => {
           if (s.id === data.id) {
@@ -2150,16 +2204,21 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
               previousTotal: s.totalScore,
               reason: data.notes || 'Score calibration update',
             };
-            return {
+            const updated: ScoreSubmission = {
               ...s,
               ...data,
               totalScore,
               revisionHistory: [revision, ...(s.revisionHistory || [])],
             };
+            updatedScoreObj = updated;
+            return updated;
           }
           return s;
         })
       );
+      if (updatedScoreObj) {
+        saveScoreToFirestore(updatedScoreObj);
+      }
       logActivity('UPDATE_SCORE', 'score', data.id, `Revised score for programme ${data.programmeId} by ${currentUser.name}.`);
       addToast('success', 'Score Updated', 'Score entry saved with audit revision.');
     } else {
@@ -2181,6 +2240,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
   };
 
   const updateScoreStatus = (id: string, newStatus: ScoreStatus, notes?: string) => {
+    let updatedScoreObj: ScoreSubmission | undefined;
     setScores((prev) =>
       prev.map((s) => {
         if (s.id === id) {
@@ -2188,11 +2248,16 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
           if (newStatus === 'reviewed') updates.reviewedBy = currentUser.id;
           if (newStatus === 'approved') updates.approvedBy = currentUser.id;
           if (notes) updates.notes = notes;
-          return { ...s, ...updates };
+          const updated = { ...s, ...updates };
+          updatedScoreObj = updated;
+          return updated;
         }
         return s;
       })
     );
+    if (updatedScoreObj) {
+      saveScoreToFirestore(updatedScoreObj);
+    }
     logActivity('CHANGE_SCORE_STATUS', 'score', id, `Changed score ${id} status to ${newStatus.toUpperCase()}.`);
     addToast('info', 'Status Updated', `Score status updated to ${newStatus}.`);
   };
@@ -2237,17 +2302,21 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       } else {
         key = s.participantId || s.teamId || s.id;
       }
-      const teamId = s.teamId || 'TM-01';
+      const participantObj = s.participantId ? participants.find((p) => p.id === s.participantId) : undefined;
+      const entryObj = s.teamEntryId ? teamProgrammeEntries.find((e) => e.id === s.teamEntryId) : undefined;
+      const resolvedTeamId = s.teamId || participantObj?.teamId || entryObj?.teamId || teams[0]?.id || '';
+
       const existing = scoreMap.get(key) || {
         totalScore: 0,
         judgeCount: 0,
-        teamId,
+        teamId: resolvedTeamId,
         participantId: isTeamProgramme ? undefined : s.participantId,
         teamEntryId: isTeamProgramme ? (s.teamEntryId || key) : undefined,
-        entryName: isTeamProgramme ? (s.teamEntryName || teamProgrammeEntries.find(e => e.id === s.teamEntryId)?.entryName) : undefined,
+        entryName: isTeamProgramme ? (s.teamEntryName || entryObj?.entryName || teams.find(t => t.id === resolvedTeamId)?.name) : undefined,
       };
       existing.totalScore += s.totalScore;
       existing.judgeCount += 1;
+      if (!existing.teamId && resolvedTeamId) existing.teamId = resolvedTeamId;
       scoreMap.set(key, existing);
     });
 
@@ -2311,11 +2380,14 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
 
     // Mark programme as completed and resultPublished = true
     setProgrammes((prev) =>
-      prev.map((p) =>
-        p.id === programmeId
-          ? { ...p, status: 'completed', resultPublished: true, publishedAt: now }
-          : p
-      )
+      prev.map((p) => {
+        if (p.id === programmeId) {
+          const updated = { ...p, status: 'completed' as const, resultPublished: true, publishedAt: now };
+          saveProgrammeToFirestore(updated).catch(() => {});
+          return updated;
+        }
+        return p;
+      })
     );
 
     // Update all scores to published
