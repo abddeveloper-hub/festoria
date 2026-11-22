@@ -5,11 +5,7 @@
     <link rel="icon" type="image/jpeg" href="festoria-logo.jpg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Festoria Admin — Control & Ratification Portal</title>
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Domine:wght@600;700;800&family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <!-- Pure Stylesheet -->
+    <!-- Pure Minimalist Stylesheet -->
     <link rel="stylesheet" href="css/style.css" />
     <!-- Supabase Official JS SDK CDN (No bundler needed) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -17,7 +13,8 @@
       .auth-overlay {
         position: fixed;
         inset: 0;
-        background: rgba(31, 27, 24, 0.85);
+        background: rgba(17, 24, 39, 0.6);
+        backdrop-filter: blur(2px);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -26,24 +23,24 @@
       }
       .auth-modal {
         background: #ffffff;
-        border: 2px solid var(--border-dark);
-        border-radius: 8px;
-        padding: 32px;
-        max-width: 400px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 28px;
+        max-width: 380px;
         width: 100%;
-        box-shadow: 6px 6px 0px rgba(0, 0, 0, 0.2);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
       }
       .grid-2 {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 24px;
+        gap: 20px;
       }
       .winner-box {
-        background: var(--bg-alt);
-        border: 1px solid var(--border-color);
-        border-radius: 6px;
-        padding: 14px;
-        margin-bottom: 14px;
+        background: var(--bg-subtle);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 12px;
+        margin-bottom: 12px;
       }
       @media (max-width: 900px) {
         .grid-2 {
@@ -57,7 +54,7 @@
     <!-- AUTHENTICATION GATE (PASSCODE) -->
     <div id="admin-auth-gate" class="auth-overlay">
       <div class="auth-modal">
-        <h3 style="font-family:var(--font-heading); font-size:1.4rem; color:var(--maroon); margin-bottom:8px;">Admin Passcode</h3>
+        <h3 style="font-size:1.25rem; font-weight:700; color:var(--text-main); margin-bottom:6px;">Admin Passcode</h3>
         <p style="font-size:0.84rem; color:var(--text-muted); margin-bottom:20px;">Enter administrative passcode to unlock results ratification.</p>
         <form id="passcode-form">
           <div class="form-group">
@@ -81,24 +78,24 @@
         </a>
         <nav class="nav-links">
           <a href="index.html" class="nav-link">← Public Site</a>
-          <button id="btn-export-backup" class="nav-link" style="background:var(--bg-alt); border:1px solid var(--border-color); cursor:pointer;">💾 Backup</button>
-          <button id="btn-reset-data" class="nav-link" style="background:#fee2e2; color:#991b1b; border:1px solid #fecaca; font-weight:700; cursor:pointer;">🗑 Clear All Data</button>
+          <button id="btn-export-backup" class="nav-link" style="background:var(--bg-subtle); border:1px solid var(--border); cursor:pointer;">💾 Backup</button>
+          <button id="btn-reset-data" class="nav-link" style="background:#fff; color:#dc2626; border:1px solid #fecaca; font-weight:600; cursor:pointer;">🗑 Clear All Data</button>
         </nav>
       </div>
     </header>
 
     <!-- ADMIN CONTENT -->
-    <main id="admin-content" class="container" style="padding-top: 32px; padding-bottom: 60px; display: none;">
+    <main id="admin-content" class="container" style="padding-top: 24px; padding-bottom: 60px; display: none;">
 
       <!-- SUPABASE CONFIGURATION CARD -->
-      <section class="section-card" style="margin-bottom: 24px; border-left: 4px solid var(--maroon);">
+      <section class="section-card" style="margin-bottom: 24px;">
         <div class="section-header">
           <div>
             <h3 class="section-title">Supabase Database Connection</h3>
             <p class="section-subtitle">Connect your Supabase project (from Project Settings -> API in your Supabase dashboard)</p>
           </div>
         </div>
-        <div style="padding: 20px;">
+        <div style="padding: 16px 20px;">
           <div class="grid-2">
             <div class="form-group">
               <label class="form-label">Supabase Project URL</label>
@@ -109,8 +106,8 @@
               <input type="text" id="sb-key" class="form-control" placeholder="eyJhbGciOi..." />
             </div>
           </div>
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
-            <p style="font-size:0.8rem; color:var(--text-muted);">SQL table schema is located in <code>supabase/schema.sql</code>.</p>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+            <p style="font-size:0.75rem; color:var(--text-muted);">SQL table schema is located in <code>supabase/schema.sql</code>.</p>
             <button id="btn-save-sb" class="btn-primary" type="button">Save & Connect Supabase</button>
           </div>
         </div>
@@ -140,7 +137,7 @@
 
                 <!-- 1ST PLACE -->
                 <div class="winner-box">
-                  <div style="font-weight:700; color:var(--maroon); margin-bottom:8px; font-size:0.85rem;">🥇 1ST PLACE (GOLD)</div>
+                  <div style="font-weight:600; color:var(--text-main); margin-bottom:8px; font-size:0.82rem;">🥇 1ST PLACE (GOLD)</div>
                   <div class="form-group">
                     <label class="form-label">Winning House / Team</label>
                     <select id="first-team" class="form-control" required>
@@ -161,7 +158,7 @@
 
                 <!-- 2ND PLACE -->
                 <div class="winner-box">
-                  <div style="font-weight:700; color:#475569; margin-bottom:8px; font-size:0.85rem;">🥈 2ND PLACE (SILVER)</div>
+                  <div style="font-weight:600; color:var(--text-main); margin-bottom:8px; font-size:0.82rem;">🥈 2ND PLACE (SILVER)</div>
                   <div class="form-group">
                     <label class="form-label">House / Team</label>
                     <select id="second-team" class="form-control"></select>
@@ -180,7 +177,7 @@
 
                 <!-- 3RD PLACE -->
                 <div class="winner-box">
-                  <div style="font-weight:700; color:#b45309; margin-bottom:8px; font-size:0.85rem;">🥉 3RD PLACE (BRONZE)</div>
+                  <div style="font-weight:600; color:var(--text-main); margin-bottom:8px; font-size:0.82rem;">🥉 3RD PLACE (BRONZE)</div>
                   <div class="form-group">
                     <label class="form-label">House / Team</label>
                     <select id="third-team" class="form-control"></select>

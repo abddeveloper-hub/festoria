@@ -157,7 +157,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             ${res.programme_name}
             <div style="font-size:0.75rem; color:var(--text-muted); font-weight:normal;">${res.category || 'General'}</div>
           </td>
-          <td style="font-weight:800; color:var(--maroon);">${rankBadge}</td>
+          <td style="font-weight:700; color:var(--text-main);">${rankBadge}</td>
           <td style="font-weight:700;">${res.entry_name || res.team_name}</td>
           <td><span style="font-size:0.84rem; font-weight:600;">${res.team_name || '-'}</span></td>
           <td style="font-weight:700;">${res.final_score ?? '-'}</td>
@@ -178,7 +178,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     announcementsList.innerHTML = announcements.map((a) => `
       <div style="background:#fff; border:1px solid var(--border-color); border-radius:6px; padding:12px 16px; margin-bottom:10px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-          <h4 style="font-size:0.92rem; font-weight:700; color:var(--maroon);">${a.title}</h4>
+          <h4 style="font-size:0.92rem; font-weight:700; color:var(--text-main);">${a.title}</h4>
           <span style="font-size:0.72rem; color:var(--text-muted);">${a.created_at || ''}</span>
         </div>
         <p style="font-size:0.84rem; color:var(--text-main);">${a.content}</p>
