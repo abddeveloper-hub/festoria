@@ -803,7 +803,7 @@ export const ScoresPage: React.FC = () => {
                 }`}
               >
                 <Trophy className="w-3.5 h-3.5 text-amber-500" />
-                <span>Published Results ({results.length})</span>
+                <span>Published Results ({publishedProgrammesCount})</span>
               </button>
             )}
 
