@@ -34,6 +34,9 @@ copyDir(path.resolve('supabase'), path.join(distDir, 'supabase'));
 const rootFiles = [
   'index.html',
   'admin.html',
+  'participant.html',
+  'team-leader.html',
+  'super-admin.html',
   'festoria-logo.jpg',
   'favicon.svg'
 ];
@@ -45,14 +48,17 @@ for (const file of rootFiles) {
   }
 }
 
-// 3. Generate 404.html from index.html for GitHub Pages routing
+// 3. Copy public folder assets if any
+copyDir(path.resolve('public'), distDir);
+
+// 4. Generate 404.html from index.html for GitHub Pages routing
 const indexPath = path.join(distDir, 'index.html');
 const fallbackPath = path.join(distDir, '404.html');
 if (fs.existsSync(indexPath)) {
   fs.copyFileSync(indexPath, fallbackPath);
 }
 
-// 4. Mirror into /dist/festoria/ for subpath compatibility
+// 5. Mirror into /dist/festoria/ for subpath compatibility without recursion
 const festoriaDir = path.join(distDir, 'festoria');
 copyDir(distDir, festoriaDir, ['festoria']);
 

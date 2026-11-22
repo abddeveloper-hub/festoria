@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/jpeg" href="festoria-logo.jpg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Festoria Admin — Results Ratification Portal</title>
+    <title>Festoria Admin — Control & Ratification Portal</title>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -81,7 +81,8 @@
         </a>
         <nav class="nav-links">
           <a href="index.html" class="nav-link">← Public Site</a>
-          <button id="btn-export-backup" class="nav-link" style="background:var(--bg-alt); border:1px solid var(--border-color); cursor:pointer;">💾 Download Backup</button>
+          <button id="btn-export-backup" class="nav-link" style="background:var(--bg-alt); border:1px solid var(--border-color); cursor:pointer;">💾 Backup</button>
+          <button id="btn-reset-data" class="nav-link" style="background:#fee2e2; color:#991b1b; border:1px solid #fecaca; font-weight:700; cursor:pointer;">🗑 Clear All Data</button>
         </nav>
       </div>
     </header>
@@ -118,86 +119,155 @@
       <!-- TWO-COLUMN WORKSPACE -->
       <div class="grid-2">
 
-        <!-- COLUMN 1: PUBLISH RESULTS FORM -->
-        <section class="section-card">
-          <div class="section-header">
-            <div>
-              <h3 class="section-title">Ratify & Publish Results</h3>
-              <p class="section-subtitle">Scores are recorded with atomic dual-persistence (Never Lost)</p>
+        <!-- COLUMN 1: PUBLISH RESULTS & ENTRY -->
+        <div>
+          <!-- RATIFY & PUBLISH RESULTS -->
+          <section class="section-card" style="margin-bottom: 24px;">
+            <div class="section-header">
+              <div>
+                <h3 class="section-title">Ratify & Publish Results</h3>
+                <p class="section-subtitle">Scores are recorded with atomic dual-persistence (Never Lost)</p>
+              </div>
             </div>
-          </div>
-          <div style="padding: 20px;">
-            <form id="publish-results-form">
-              <div class="form-group">
-                <label class="form-label">Select Programme</label>
-                <select id="select-programme" class="form-control" required>
-                  <option value="">Loading programmes...</option>
-                </select>
-              </div>
-
-              <!-- 1ST PLACE -->
-              <div class="winner-box">
-                <div style="font-weight:700; color:var(--maroon); margin-bottom:8px; font-size:0.85rem;">🥇 1ST PLACE (GOLD)</div>
+            <div style="padding: 20px;">
+              <form id="publish-results-form">
                 <div class="form-group">
-                  <label class="form-label">Winning House / Team</label>
-                  <select id="first-team" class="form-control" required></select>
+                  <label class="form-label">Select Programme</label>
+                  <select id="select-programme" class="form-control" required>
+                    <option value="">No programmes created yet. Add programmes below.</option>
+                  </select>
+                </div>
+
+                <!-- 1ST PLACE -->
+                <div class="winner-box">
+                  <div style="font-weight:700; color:var(--maroon); margin-bottom:8px; font-size:0.85rem;">🥇 1ST PLACE (GOLD)</div>
+                  <div class="form-group">
+                    <label class="form-label">Winning House / Team</label>
+                    <select id="first-team" class="form-control" required>
+                      <option value="">No teams available. Add teams below.</option>
+                    </select>
+                  </div>
+                  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                    <div>
+                      <label class="form-label">Judge Score</label>
+                      <input type="number" id="first-score" class="form-control" value="100" min="0" max="100" />
+                    </div>
+                    <div>
+                      <label class="form-label">Points Awarded</label>
+                      <input type="number" id="first-points" class="form-control" value="10" min="1" max="50" />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 2ND PLACE -->
+                <div class="winner-box">
+                  <div style="font-weight:700; color:#475569; margin-bottom:8px; font-size:0.85rem;">🥈 2ND PLACE (SILVER)</div>
+                  <div class="form-group">
+                    <label class="form-label">House / Team</label>
+                    <select id="second-team" class="form-control"></select>
+                  </div>
+                  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                    <div>
+                      <label class="form-label">Judge Score</label>
+                      <input type="number" id="second-score" class="form-control" value="90" min="0" max="100" />
+                    </div>
+                    <div>
+                      <label class="form-label">Points Awarded</label>
+                      <input type="number" id="second-points" class="form-control" value="7" min="0" max="50" />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 3RD PLACE -->
+                <div class="winner-box">
+                  <div style="font-weight:700; color:#b45309; margin-bottom:8px; font-size:0.85rem;">🥉 3RD PLACE (BRONZE)</div>
+                  <div class="form-group">
+                    <label class="form-label">House / Team</label>
+                    <select id="third-team" class="form-control"></select>
+                  </div>
+                  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                    <div>
+                      <label class="form-label">Judge Score</label>
+                      <input type="number" id="third-score" class="form-control" value="80" min="0" max="100" />
+                    </div>
+                    <div>
+                      <label class="form-label">Points Awarded</label>
+                      <input type="number" id="third-points" class="form-control" value="4" min="0" max="50" />
+                    </div>
+                  </div>
+                </div>
+
+                <button type="submit" class="btn-primary" style="width: 100%; padding: 12px; font-size:1rem;">Ratify & Publish Official Results</button>
+              </form>
+            </div>
+          </section>
+
+          <!-- ADD NEW TEAM -->
+          <section class="section-card" style="margin-bottom: 24px;">
+            <div class="section-header">
+              <h3 class="section-title">Add Competing House / Team</h3>
+            </div>
+            <div style="padding: 20px;">
+              <form id="add-team-form">
+                <div class="form-group">
+                  <label class="form-label">Team / House Name</label>
+                  <input type="text" id="new-team-name" class="form-control" placeholder="e.g. MUKKA" required />
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 2fr; gap:12px;">
+                  <div class="form-group">
+                    <label class="form-label">Code / Chest</label>
+                    <input type="text" id="new-team-code" class="form-control" placeholder="0001" required />
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Institution / Details</label>
+                    <input type="text" id="new-team-inst" class="form-control" placeholder="e.g. MADRASA MUKKA" />
+                  </div>
+                </div>
+                <button type="submit" class="btn-primary" style="width: 100%;">+ Add Team</button>
+              </form>
+            </div>
+          </section>
+
+          <!-- ADD NEW PROGRAMME -->
+          <section class="section-card">
+            <div class="section-header">
+              <h3 class="section-title">Add Competition Programme</h3>
+            </div>
+            <div style="padding: 20px;">
+              <form id="add-programme-form">
+                <div style="display:grid; grid-template-columns: 1fr 2fr; gap:12px;">
+                  <div class="form-group">
+                    <label class="form-label">Code</label>
+                    <input type="text" id="new-prog-code" class="form-control" placeholder="e.g. LOZ-01" required />
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Programme Name</label>
+                    <input type="text" id="new-prog-name" class="form-control" placeholder="e.g. QURAN RECITATION" required />
+                  </div>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-                  <div>
-                    <label class="form-label">Judge Score</label>
-                    <input type="number" id="first-score" class="form-control" value="100" min="0" max="100" />
+                  <div class="form-group">
+                    <label class="form-label">Category</label>
+                    <select id="new-prog-cat" class="form-control">
+                      <option value="Zero zone">Zero zone</option>
+                      <option value="Ground zone">Ground zone</option>
+                      <option value="Mid zone">Mid zone</option>
+                      <option value="High zone">High zone</option>
+                      <option value="General">General</option>
+                    </select>
                   </div>
-                  <div>
-                    <label class="form-label">Points Awarded</label>
-                    <input type="number" id="first-points" class="form-control" value="10" min="1" max="50" />
+                  <div class="form-group">
+                    <label class="form-label">Venue / Stage</label>
+                    <input type="text" id="new-prog-venue" class="form-control" placeholder="e.g. Main Stage" />
                   </div>
                 </div>
-              </div>
+                <button type="submit" class="btn-primary" style="width: 100%;">+ Add Programme</button>
+              </form>
+            </div>
+          </section>
+        </div>
 
-              <!-- 2ND PLACE -->
-              <div class="winner-box">
-                <div style="font-weight:700; color:#475569; margin-bottom:8px; font-size:0.85rem;">🥈 2ND PLACE (SILVER)</div>
-                <div class="form-group">
-                  <label class="form-label">House / Team</label>
-                  <select id="second-team" class="form-control"></select>
-                </div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-                  <div>
-                    <label class="form-label">Judge Score</label>
-                    <input type="number" id="second-score" class="form-control" value="90" min="0" max="100" />
-                  </div>
-                  <div>
-                    <label class="form-label">Points Awarded</label>
-                    <input type="number" id="second-points" class="form-control" value="7" min="0" max="50" />
-                  </div>
-                </div>
-              </div>
-
-              <!-- 3RD PLACE -->
-              <div class="winner-box">
-                <div style="font-weight:700; color:#b45309; margin-bottom:8px; font-size:0.85rem;">🥉 3RD PLACE (BRONZE)</div>
-                <div class="form-group">
-                  <label class="form-label">House / Team</label>
-                  <select id="third-team" class="form-control"></select>
-                </div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-                  <div>
-                    <label class="form-label">Judge Score</label>
-                    <input type="number" id="third-score" class="form-control" value="80" min="0" max="100" />
-                  </div>
-                  <div>
-                    <label class="form-label">Points Awarded</label>
-                    <input type="number" id="third-points" class="form-control" value="4" min="0" max="50" />
-                  </div>
-                </div>
-              </div>
-
-              <button type="submit" class="btn-primary" style="width: 100%; padding: 12px; font-size:1rem;">Ratify & Publish Official Results</button>
-            </form>
-          </div>
-        </section>
-
-        <!-- COLUMN 2: STANDINGS & RECENT RATIFICATIONS -->
+        <!-- COLUMN 2: STANDINGS, RESULTS & ANNOUNCEMENTS -->
         <div>
           <!-- CURRENT TEAM STANDINGS -->
           <section class="section-card" style="margin-bottom: 24px;">
@@ -231,7 +301,7 @@
             <div class="section-header">
               <div>
                 <h3 class="section-title">Recently Published Results</h3>
-                <p class="section-subtitle">Latest 15 ratified entries</p>
+                <p class="section-subtitle">Latest ratified entries</p>
               </div>
             </div>
             <div class="table-responsive">
