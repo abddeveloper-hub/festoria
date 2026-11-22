@@ -1346,6 +1346,32 @@ export async function deleteAnnouncementFromFirestore(announcementId: string): P
 // ==========================================
 // 12. FEST SETTINGS SERVICE
 // ==========================================
+export async function fetchFestSettings(festId: string = 'FEST-01'): Promise<FestSettings | null> {
+  if (isFirebaseConfigured && db && festId) {
+    try {
+      const snap = await getDoc(doc(db, 'fest_settings', festId));
+      if (snap.exists()) {
+        return snap.data() as FestSettings;
+      }
+      // Fallback: check FEST-01 or FEST-04 if primary active festId doc not found
+      if (festId !== 'FEST-01') {
+        const fallbackSnap = await getDoc(doc(db, 'fest_settings', 'FEST-01'));
+        if (fallbackSnap.exists()) {
+          return fallbackSnap.data() as FestSettings;
+        }
+      } else {
+        const fallbackSnap = await getDoc(doc(db, 'fest_settings', 'FEST-04'));
+        if (fallbackSnap.exists()) {
+          return fallbackSnap.data() as FestSettings;
+        }
+      }
+    } catch (e) {
+      console.warn('[Firestore] fetchFestSettings error:', e);
+    }
+  }
+  return null;
+}
+
 export async function saveFestSettingsToFirestore(
   festId: string,
   settings: FestSettings
@@ -1362,6 +1388,32 @@ export async function saveFestSettingsToFirestore(
     } catch (e) {
       console.warn('[Firestore] saveFestSettingsToFirestore error:', e);
     }
+  }
+}
+
+export async function batchUpdateResultsInFirestore(resultsToUpdate: ApprovedResult[]): Promise<void> {
+  if (!isFirebaseConfigured || !db || resultsToUpdate.length === 0) return;
+  try {
+    const firestore = db;
+    for (let i = 0; i < resultsToUpdate.length; i += 400) {
+      const chunk = resultsToUpdate.slice(i, i + 400);
+      const batch = writeBatch(firestore);
+      chunk.forEach((res) => {
+        const ref = doc(firestore, 'results', res.id);
+        batch.set(
+          ref,
+          cleanFirestoreData({
+            ...res,
+            festId: res.festId,
+            updatedAt: serverTimestamp(),
+          }),
+          { merge: true }
+        );
+      });
+      await batch.commit();
+    }
+  } catch (e) {
+    console.warn('[Firestore] batchUpdateResultsInFirestore error:', e);
   }
 }
 

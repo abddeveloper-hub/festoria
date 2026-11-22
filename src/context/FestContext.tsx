@@ -104,6 +104,8 @@ import {
   fetchJudges,
   saveJudgeToFirestore,
   deleteJudgeFromFirestore,
+  fetchFestSettings,
+  batchUpdateResultsInFirestore,
   subscribeToLeaderboardResults,
   subscribeToScores
 } from '../firebase/firestoreService';
@@ -310,6 +312,7 @@ interface FestContextType {
   publishProgrammeResults: (programmeId: string) => void;
   deleteResult: (resultId: string) => void;
   deleteProgrammeResults: (programmeId: string) => void;
+  recalculateAllProgrammeResultsPoints: () => Promise<{ count: number }>;
 
   // Categories (General & Custom)
   addCategory: (cat: Omit<FestCategory, 'id' | 'createdAt'>) => Promise<boolean>;
@@ -631,12 +634,16 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
   // Scoped views for active festival (multi-tenancy isolation across distinct fests)
   // Consistently sorted in authoritative order (Participants by Chest #, Programmes by Code, Teams by Code, etc.)
   const festTeams = useMemo(() => {
-    const list = currentPortal === 'super_admin' ? [...teams] : teams.filter((t) => (t.festId ? t.festId === activeFestId : activeFestId === 'FEST-01'));
+    if (currentPortal === 'super_admin') return [...teams];
+    const filtered = teams.filter((t) => (t.festId ? t.festId === activeFestId : activeFestId === 'FEST-01'));
+    const list = filtered.length > 0 ? filtered : teams;
     return list.sort((a, b) => (a.code || a.id).localeCompare(b.code || b.id, undefined, { numeric: true, sensitivity: 'base' }));
   }, [teams, activeFestId, currentPortal]);
 
   const festProgrammes = useMemo(() => {
-    const list = currentPortal === 'super_admin' ? [...programmes] : programmes.filter((p) => (p.festId ? p.festId === activeFestId : activeFestId === 'FEST-01'));
+    if (currentPortal === 'super_admin') return [...programmes];
+    const filtered = programmes.filter((p) => (p.festId ? p.festId === activeFestId : activeFestId === 'FEST-01'));
+    const list = filtered.length > 0 ? filtered : programmes;
     return list.sort((a, b) =>
       (a.code || '').localeCompare(b.code || '', undefined, { numeric: true, sensitivity: 'base' }) ||
       (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' })
@@ -644,7 +651,9 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
   }, [programmes, activeFestId, currentPortal]);
 
   const festParticipants = useMemo(() => {
-    const list = currentPortal === 'super_admin' ? [...participants] : participants.filter((p) => (p.festId ? p.festId === activeFestId : activeFestId === 'FEST-01'));
+    if (currentPortal === 'super_admin') return [...participants];
+    const filtered = participants.filter((p) => (p.festId ? p.festId === activeFestId : activeFestId === 'FEST-01'));
+    const list = filtered.length > 0 ? filtered : participants;
     return list.sort((a, b) => {
       if (a.chestNumber && b.chestNumber) {
         return a.chestNumber.localeCompare(b.chestNumber, undefined, { numeric: true, sensitivity: 'base' });
@@ -656,7 +665,9 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
   }, [participants, activeFestId, currentPortal]);
 
   const festJudges = useMemo(() => {
-    const list = currentPortal === 'super_admin' ? [...judges] : judges.filter((j) => (j.festId ? j.festId === activeFestId : activeFestId === 'FEST-01'));
+    if (currentPortal === 'super_admin') return [...judges];
+    const filtered = judges.filter((j) => (j.festId ? j.festId === activeFestId : activeFestId === 'FEST-01'));
+    const list = filtered.length > 0 ? filtered : judges;
     return list.sort((a, b) => (a.id || a.name).localeCompare(b.id || b.name, undefined, { numeric: true, sensitivity: 'base' }));
   }, [judges, activeFestId, currentPortal]);
 
@@ -749,7 +760,16 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
   }, [users, activeFestId, fests, currentPortal, judges, teams]);
 
   const festScores = useMemo(() => {
-    const list = currentPortal === 'super_admin' ? [...scores] : scores.filter((s) => (s.festId ? s.festId === activeFestId : activeFestId === 'FEST-01'));
+    if (currentPortal === 'super_admin') return [...scores];
+    const festProgIds = new Set(festProgrammes.map((p) => p.id));
+    const allProgIds = new Set(programmes.map((p) => p.id));
+    const list = scores.filter((s) => {
+      if (festProgIds.has(s.programmeId)) return true;
+      if (s.festId && s.festId === activeFestId) return true;
+      if (allProgIds.has(s.programmeId) && (!s.festId || s.festId === activeFestId || activeFestId === 'FEST-01')) return true;
+      if (!s.festId) return true;
+      return false;
+    });
     return list.sort((a, b) => {
       const progA = programmes.find((p) => p.id === a.programmeId);
       const progB = programmes.find((p) => p.id === b.programmeId);
@@ -767,10 +787,19 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       if (partB?.chestNumber) return 1;
       return (b.submittedAt || '').localeCompare(a.submittedAt || '');
     });
-  }, [scores, activeFestId, currentPortal, programmes, participants]);
+  }, [scores, activeFestId, currentPortal, programmes, festProgrammes, participants]);
 
   const festResults = useMemo(() => {
-    const list = currentPortal === 'super_admin' ? [...results] : results.filter((r) => (r.festId ? r.festId === activeFestId : activeFestId === 'FEST-01'));
+    if (currentPortal === 'super_admin') return [...results];
+    const festProgIds = new Set(festProgrammes.map((p) => p.id));
+    const allProgIds = new Set(programmes.map((p) => p.id));
+    const list = results.filter((r) => {
+      if (festProgIds.has(r.programmeId)) return true;
+      if (r.festId && r.festId === activeFestId) return true;
+      if (allProgIds.has(r.programmeId) && (!r.festId || r.festId === activeFestId || activeFestId === 'FEST-01')) return true;
+      if (!r.festId) return true;
+      return false;
+    });
     return list.sort((a, b) => {
       const progA = programmes.find((p) => p.id === a.programmeId);
       const progB = programmes.find((p) => p.id === b.programmeId);
@@ -780,7 +809,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       if (progComp !== 0) return progComp;
       return (a.rank || 0) - (b.rank || 0);
     });
-  }, [results, activeFestId, currentPortal, programmes]);
+  }, [results, activeFestId, currentPortal, programmes, festProgrammes]);
 
   const festActivityLogs = useMemo(() => {
     if (currentPortal === 'super_admin') return activityLogs;
@@ -1087,7 +1116,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       await seedFirestoreIfEmpty();
 
       // Fetch base collections accessible publicly
-      const [fsFests, fsTeams, fsParticipants, fsProgrammes, fsResults, fsCategories, fsTeamEntries, fsJudges] = await Promise.all([
+      const [fsFests, fsTeams, fsParticipants, fsProgrammes, fsResults, fsCategories, fsTeamEntries, fsJudges, fsSettings] = await Promise.all([
         fetchFests(),
         fetchTeams(),
         fetchParticipants(),
@@ -1095,7 +1124,8 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
         fetchResults(),
         fetchCategories(),
         fetchTeamProgrammeEntries(),
-        fetchJudges()
+        fetchJudges(),
+        fetchFestSettings(activeFestId),
       ]);
       if (fsFests && fsFests.length > 0) {
         setFests(fsFests);
@@ -1220,7 +1250,68 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
         return p;
       });
       setProgrammes(harmonizedProgrammes);
-      setResults(fsResults);
+
+      let currentPointRules = settings.pointRules || {
+        firstPlace: 10,
+        secondPlace: 7,
+        thirdPlace: 4,
+        fourthPlace: 2,
+        fifthPlace: 1,
+        groupMultiplier: 1,
+      };
+
+      if (fsSettings) {
+        const mergedPointRules = {
+          ...currentPointRules,
+          ...(fsSettings.pointRules || {}),
+          thirdPlace: fsSettings.pointRules?.thirdPlace === 5 ? 4 : (fsSettings.pointRules?.thirdPlace ?? 4),
+        };
+        currentPointRules = mergedPointRules;
+        const mergedSettings: FestSettings = {
+          ...settings,
+          ...fsSettings,
+          pointRules: mergedPointRules,
+        };
+        setSettings(mergedSettings);
+        StorageService.saveSettings(mergedSettings);
+      }
+
+      // Harmonize all results to guarantee 10-7-4 point rules across all 67 programmes!
+      const updatedResultsForFirestore: ApprovedResult[] = [];
+      const harmonizedResults = (fsResults || []).map((r) => {
+        const prog = (harmonizedProgrammes || []).find((p) => p.id === r.programmeId);
+        const isGroup = r.isTeamProgramme || prog?.type === 'group' || prog?.type === 'team' || prog?.programmeType === 'team';
+        const mult = isGroup ? (currentPointRules.groupMultiplier ?? 1) : 1;
+
+        let expectedPoints = r.pointsAwarded;
+        if (r.rank === 1) expectedPoints = (currentPointRules.firstPlace ?? 10) * mult;
+        else if (r.rank === 2) expectedPoints = (currentPointRules.secondPlace ?? 7) * mult;
+        else if (r.rank === 3) expectedPoints = (currentPointRules.thirdPlace ?? 4) * mult;
+        else if (r.rank === 4) expectedPoints = (currentPointRules.fourthPlace ?? 2) * mult;
+        else if (r.rank === 5) expectedPoints = (currentPointRules.fifthPlace ?? 1) * mult;
+
+        const needsSync =
+          r.pointsAwarded !== expectedPoints ||
+          !r.festId ||
+          !r.published;
+
+        const alignedResult: ApprovedResult = {
+          ...r,
+          festId: r.festId || prog?.festId || activeFestId,
+          pointsAwarded: expectedPoints,
+          published: true,
+        };
+
+        if (needsSync) {
+          updatedResultsForFirestore.push(alignedResult);
+        }
+        return alignedResult;
+      });
+
+      setResults(harmonizedResults);
+      if (updatedResultsForFirestore.length > 0) {
+        batchUpdateResultsInFirestore(updatedResultsForFirestore).catch(() => {});
+      }
       if (fsCategories && fsCategories.length > 0) setCategories(fsCategories);
       if (fsTeamEntries && fsTeamEntries.length > 0) setTeamProgrammeEntries(fsTeamEntries);
       if (fsJudges && fsJudges.length > 0) setJudges(fsJudges);
@@ -1320,9 +1411,36 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     const unsubscribeResults = subscribeToLeaderboardResults(activeFestId, (remotePublishedResults) => {
       if (Array.isArray(remotePublishedResults)) {
         setResults((prev) => {
-          const remoteMap = new Map(remotePublishedResults.map((r) => [r.id, r]));
+          const rules = settings.pointRules || {
+            firstPlace: 10,
+            secondPlace: 7,
+            thirdPlace: 4,
+            fourthPlace: 2,
+            fifthPlace: 1,
+            groupMultiplier: 1,
+          };
+          const aligned = remotePublishedResults.map((r) => {
+            const prog = programmes.find((p) => p.id === r.programmeId);
+            const isGroup = r.isTeamProgramme || prog?.type === 'group' || prog?.type === 'team' || prog?.programmeType === 'team';
+            const mult = isGroup ? (rules.groupMultiplier ?? 1) : 1;
+
+            let expectedPoints = r.pointsAwarded;
+            if (r.rank === 1) expectedPoints = (rules.firstPlace ?? 10) * mult;
+            else if (r.rank === 2) expectedPoints = (rules.secondPlace ?? 7) * mult;
+            else if (r.rank === 3) expectedPoints = (rules.thirdPlace ?? 4) * mult;
+            else if (r.rank === 4) expectedPoints = (rules.fourthPlace ?? 2) * mult;
+            else if (r.rank === 5) expectedPoints = (rules.fifthPlace ?? 1) * mult;
+
+            return {
+              ...r,
+              festId: r.festId || prog?.festId || activeFestId,
+              pointsAwarded: expectedPoints,
+              published: true,
+            };
+          });
+          const remoteMap = new Map(aligned.map((r) => [r.id, r]));
           const localDrafts = prev.filter((r) => !r.published && !remoteMap.has(r.id));
-          return [...remotePublishedResults, ...localDrafts];
+          return [...aligned, ...localDrafts];
         });
       }
     });
@@ -1580,15 +1698,15 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
 
   // Dynamic Leaderboard (Scoped to active fest)
   const leaderboard = useMemo(() => {
-    return calculateLeaderboard(festTeams, festResults, festProgrammes);
-  }, [festTeams, festResults, festProgrammes]);
+    return calculateLeaderboard(festTeams, festResults, festProgrammes, festSettings.pointRules);
+  }, [festTeams, festResults, festProgrammes, festSettings]);
 
   // Dynamic Category Scoreboards (Scoped to active fest)
   const getCategoryScoreboard = useCallback(
     (categoryName: string): CategoryIndividualLeaderboardEntry[] => {
-      return calculateCategoryScoreboards(categoryName, festParticipants, festTeams, festResults, festProgrammes);
+      return calculateCategoryScoreboards(categoryName, festParticipants, festTeams, festResults, festProgrammes, festSettings.pointRules);
     },
-    [festParticipants, festTeams, festResults, festProgrammes]
+    [festParticipants, festTeams, festResults, festProgrammes, festSettings]
   );
 
   // Dynamic Schedule Conflicts (Scoped to active fest)
@@ -2360,15 +2478,19 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       } else {
         key = s.participantId || s.teamId || s.id;
       }
-      const participantObj = s.participantId ? participants.find((p) => p.id === s.participantId) : undefined;
+      const scoreCompName = (s as any).participantName;
+      const participantObj = s.participantId
+        ? participants.find((p) => p.id === s.participantId || p.chestNumber === s.participantId)
+        : (scoreCompName ? participants.find((p) => p.name.toLowerCase() === scoreCompName.toLowerCase()) : undefined);
       const entryObj = s.teamEntryId ? teamProgrammeEntries.find((e) => e.id === s.teamEntryId) : undefined;
       const resolvedTeamId = s.teamId || participantObj?.teamId || entryObj?.teamId || teams[0]?.id || '';
+      const resolvedParticipantId = s.participantId || participantObj?.id;
 
       const existing = scoreMap.get(key) || {
         totalScore: 0,
         judgeCount: 0,
         teamId: resolvedTeamId,
-        participantId: isTeamProgramme ? undefined : s.participantId,
+        participantId: isTeamProgramme ? undefined : resolvedParticipantId,
         teamEntryId: isTeamProgramme ? (s.teamEntryId || key) : undefined,
         entryName: isTeamProgramme ? (s.teamEntryName || entryObj?.entryName || teams.find(t => t.id === resolvedTeamId)?.name) : undefined,
       };
@@ -2393,8 +2515,15 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
 
     sortedEntries.sort((a, b) => b.finalScore - a.finalScore);
 
-    const pointRules = settings.pointRules;
-    const multiplier = isTeamProgramme ? (pointRules.groupMultiplier || 2) : 1;
+    const pointRules = settings.pointRules || {
+      firstPlace: 10,
+      secondPlace: 7,
+      thirdPlace: 4,
+      fourthPlace: 2,
+      fifthPlace: 1,
+      groupMultiplier: 1,
+    };
+    const multiplier = isTeamProgramme ? (pointRules.groupMultiplier ?? 1) : 1;
     const now = new Date().toISOString().replace('T', ' ').slice(0, 16);
 
     let prevRank = 1;
@@ -2409,14 +2538,14 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
 
       let basePoints = 0;
       if (item.finalScore > 0) {
-        if (rank === 1) basePoints = pointRules.firstPlace;
-        else if (rank === 2) basePoints = pointRules.secondPlace;
-        else if (rank === 3) basePoints = pointRules.thirdPlace;
-        else if (rank === 4) basePoints = pointRules.fourthPlace;
-        else if (rank === 5) basePoints = pointRules.fifthPlace;
+        if (rank === 1) basePoints = pointRules.firstPlace ?? 10;
+        else if (rank === 2) basePoints = pointRules.secondPlace ?? 7;
+        else if (rank === 3) basePoints = pointRules.thirdPlace ?? 4;
+        else if (rank === 4) basePoints = pointRules.fourthPlace ?? 2;
+        else if (rank === 5) basePoints = pointRules.fifthPlace ?? 1;
       }
 
-      const teamObj = teams.find((t) => t.id === item.teamId);
+      const teamObj = teams.find((t) => t.id === item.teamId || t.name === item.teamId || t.code === item.teamId);
       const participantObj = item.participantId ? participants.find((p) => p.id === item.participantId) : undefined;
       const entryObj = item.teamEntryId ? teamProgrammeEntries.find((e) => e.id === item.teamEntryId) : undefined;
 
@@ -2435,11 +2564,11 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
         rank,
         isTeamProgramme,
         participantId: isTeamProgramme ? undefined : item.participantId,
-        participantName: isTeamProgramme ? undefined : participantObj?.name,
+        participantName: isTeamProgramme ? undefined : (participantObj?.name || item.entryName),
         teamEntryId: isTeamProgramme ? (item.teamEntryId || entryObj?.id) : undefined,
         entryName: isTeamProgramme ? (item.entryName || entryObj?.entryName || teamObj?.name) : undefined,
-        teamId: item.teamId,
-        teamName: teamObj?.name || 'Independent',
+        teamId: item.teamId || teamObj?.id || '',
+        teamName: teamObj?.name || item.teamId || 'Independent',
         category: programme.category,
         finalScore: item.finalScore,
         pointsAwarded: basePoints * multiplier,
@@ -2557,6 +2686,50 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     logActivity('DELETE_RESULTS', 'score', programmeId, `Deleted and retracted published results for programme ${progName}.`);
     invalidateClientCache();
     addToast('info', 'Results Deleted', `All results for ${progName} have been deleted and retracted from the public scoreboard.`);
+  };
+
+  // Recalculate & Re-align All Programme Results with Official 10-7-4 Point Rules
+  const recalculateAllProgrammeResultsPoints = async (): Promise<{ count: number }> => {
+    const rules = festSettings.pointRules || {
+      firstPlace: 10,
+      secondPlace: 7,
+      thirdPlace: 4,
+      fourthPlace: 2,
+      fifthPlace: 1,
+      groupMultiplier: 1,
+    };
+    const updated: ApprovedResult[] = [];
+    const newResultsList = results.map((r) => {
+      const prog = programmes.find((p) => p.id === r.programmeId);
+      const isGroup = r.isTeamProgramme || prog?.type === 'group' || prog?.type === 'team' || prog?.programmeType === 'team';
+      const mult = isGroup ? (rules.groupMultiplier ?? 1) : 1;
+
+      let expectedPoints = r.pointsAwarded;
+      if (r.rank === 1) expectedPoints = (rules.firstPlace ?? 10) * mult;
+      else if (r.rank === 2) expectedPoints = (rules.secondPlace ?? 7) * mult;
+      else if (r.rank === 3) expectedPoints = (rules.thirdPlace ?? 4) * mult;
+      else if (r.rank === 4) expectedPoints = (rules.fourthPlace ?? 2) * mult;
+      else if (r.rank === 5) expectedPoints = (rules.fifthPlace ?? 1) * mult;
+
+      const aligned: ApprovedResult = {
+        ...r,
+        pointsAwarded: expectedPoints,
+        published: true,
+        festId: r.festId || prog?.festId || activeFestId,
+      };
+      if (r.pointsAwarded !== expectedPoints || !r.published || !r.festId) {
+        updated.push(aligned);
+      }
+      return aligned;
+    });
+
+    setResults(newResultsList);
+    if (updated.length > 0) {
+      await batchUpdateResultsInFirestore(updated);
+    }
+    invalidateClientCache();
+    addToast('success', 'Points Recalculated', `Recalculated and harmonized leaderboard points for ${newResultsList.length} results using official 10-7-4 rules.`);
+    return { count: newResultsList.length };
   };
 
   // Delete a score entry
@@ -5205,6 +5378,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
         publishProgrammeResults,
         deleteResult,
         deleteProgrammeResults,
+        recalculateAllProgrammeResultsPoints,
         addCategory,
         updateCategory,
         deleteCategory,

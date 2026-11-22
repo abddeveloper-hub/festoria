@@ -52,6 +52,7 @@ export const ScoresPage: React.FC = () => {
     publishProgrammeResults,
     deleteResult,
     deleteProgrammeResults,
+    recalculateAllProgrammeResultsPoints,
     teamProgrammeEntries,
     assignments,
     hasPermission,
@@ -75,6 +76,7 @@ export const ScoresPage: React.FC = () => {
   // Search & Filter for Published Results Tab
   const [resultsSearch, setResultsSearch] = useState('');
   const [resultsFilterProgramme, setResultsFilterProgramme] = useState('all');
+  const [isRecalculatingPoints, setIsRecalculatingPoints] = useState(false);
 
   // Modals & Dialogs State
   const [isScoreModalOpen, setIsScoreModalOpen] = useState(false);
@@ -1500,6 +1502,26 @@ export const ScoresPage: React.FC = () => {
                   })}
                 </select>
               </div>
+
+              {hasPermission(['admin', 'fest_admin', 'super_admin']) && (
+                <button
+                  type="button"
+                  disabled={isRecalculatingPoints}
+                  onClick={async () => {
+                    setIsRecalculatingPoints(true);
+                    try {
+                      await recalculateAllProgrammeResultsPoints();
+                    } finally {
+                      setIsRecalculatingPoints(false);
+                    }
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-95 rounded-lg shadow-xs transition-all cursor-pointer whitespace-nowrap disabled:opacity-50"
+                  title="Recalculate official 10-7-4 points for all results"
+                >
+                  <RotateCcw className={`w-3.5 h-3.5 ${isRecalculatingPoints ? 'animate-spin' : ''}`} />
+                  <span>{isRecalculatingPoints ? 'Recalculating...' : 'Recalculate 10-7-4 Points'}</span>
+                </button>
+              )}
             </div>
           </div>
 

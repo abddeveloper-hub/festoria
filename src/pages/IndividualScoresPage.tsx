@@ -138,35 +138,79 @@ export const IndividualScoresPage: React.FC = () => {
 
   // Build Comprehensive Individual Standings
   const individualStandings = useMemo(() => {
-    // 1. Group scores and results by participant
+    const pointRules = settings?.pointRules || {
+      firstPlace: 10,
+      secondPlace: 7,
+      thirdPlace: 4,
+      fourthPlace: 2,
+      fifthPlace: 1,
+      groupMultiplier: 1,
+    };
+
+    // 1. Group scores and results by participant (with flexible matching by id, chest, and name)
     const scoresByParticipant = new Map<string, ScoreSubmission[]>();
     scores.forEach((s) => {
       if (s.participantId) {
         const list = scoresByParticipant.get(s.participantId) || [];
         list.push(s);
         scoresByParticipant.set(s.participantId, list);
+        scoresByParticipant.set(s.participantId.toLowerCase().trim(), list);
       }
     });
 
     const resultsByParticipant = new Map<string, ApprovedResult[]>();
+    const resultsByChest = new Map<string, ApprovedResult[]>();
+    const resultsByName = new Map<string, ApprovedResult[]>();
+
     results.forEach((r) => {
-      if (r.participantId && r.published) {
+      const isPub =
+        r.published === true ||
+        (r.published as any) === 'true' ||
+        (r as any).status === 'published' ||
+        programmesMap.get(r.programmeId)?.resultPublished;
+      if (!isPub) return;
+
+      if (r.participantId) {
         const list = resultsByParticipant.get(r.participantId) || [];
         list.push(r);
         resultsByParticipant.set(r.participantId, list);
+        resultsByParticipant.set(r.participantId.toLowerCase().trim(), list);
+
+        const cleanChest = r.participantId.replace(/^#/, '').toLowerCase().trim();
+        const chestList = resultsByChest.get(cleanChest) || [];
+        chestList.push(r);
+        resultsByChest.set(cleanChest, chestList);
+      }
+      if (r.participantName) {
+        const cleanName = r.participantName.toLowerCase().trim();
+        const nameList = resultsByName.get(cleanName) || [];
+        nameList.push(r);
+        resultsByName.set(cleanName, nameList);
       }
     });
 
     // 2. Build standings for each participant
     const list: IndividualStanding[] = participants.map((p) => {
-      const pScores = scoresByParticipant.get(p.id) || [];
-      const pResults = resultsByParticipant.get(p.id) || [];
+      const pScores = [
+        ...(scoresByParticipant.get(p.id) || []),
+        ...(scoresByParticipant.get(p.id.toLowerCase().trim()) || []),
+        ...(p.chestNumber ? (scoresByParticipant.get(p.chestNumber.toLowerCase().trim()) || []) : [])
+      ];
+      const uniqueScores = Array.from(new Map(pScores.map((s) => [s.id, s])).values());
+
+      const rawPResults = [
+        ...(resultsByParticipant.get(p.id) || []),
+        ...(resultsByParticipant.get(p.id.toLowerCase().trim()) || []),
+        ...(p.chestNumber ? (resultsByChest.get(p.chestNumber.replace(/^#/, '').toLowerCase().trim()) || []) : []),
+        ...(p.name ? (resultsByName.get(p.name.toLowerCase().trim()) || []) : [])
+      ];
+      const uniqueResults = Array.from(new Map(rawPResults.map((r) => [r.id, r])).values());
 
       // Collect all programme IDs associated with this participant
       const progIds = new Set<string>();
       (p.registeredProgrammes || []).forEach((id) => progIds.add(id));
-      pScores.forEach((s) => progIds.add(s.programmeId));
-      pResults.forEach((r) => progIds.add(r.programmeId));
+      uniqueScores.forEach((s) => progIds.add(s.programmeId));
+      uniqueResults.forEach((r) => progIds.add(r.programmeId));
 
       const records: ParticipantProgrammeRecord[] = [];
       let totalMarks = 0;
@@ -185,8 +229,8 @@ export const IndividualScoresPage: React.FC = () => {
         if (isTeam) return;
 
         // Find score & result for this specific programme
-        const s = pScores.find((sc) => sc.programmeId === pId);
-        const r = pResults.find((res) => res.programmeId === pId);
+        const s = uniqueScores.find((sc) => sc.programmeId === pId);
+        const r = uniqueResults.find((res) => res.programmeId === pId);
 
         let marks = 0;
         let points = 0;
@@ -195,15 +239,23 @@ export const IndividualScoresPage: React.FC = () => {
 
         if (r) {
           marks = r.finalScore || 0;
-          points = r.pointsAwarded || 0;
           rankNum = r.rank;
           status = 'published';
+
+          // Authoritative point rules: 10, 7, 4 for 1st, 2nd, 3rd!
+          if (r.rank === 1) points = pointRules.firstPlace ?? 10;
+          else if (r.rank === 2) points = pointRules.secondPlace ?? 7;
+          else if (r.rank === 3) points = pointRules.thirdPlace ?? 4;
+          else if (r.rank === 4) points = pointRules.fourthPlace ?? 2;
+          else if (r.rank === 5) points = pointRules.fifthPlace ?? 1;
+          else points = r.pointsAwarded || 0;
+
           if (r.rank === 1) firsts++;
           else if (r.rank === 2) seconds++;
           else if (r.rank === 3) thirds++;
         } else if (s) {
           marks = s.totalScore || 0;
-          status = s.status === 'approved' ? 'approved' : s.status === 'reviewed' ? 'submitted' : s.status as any;
+          status = s.status === 'approved' ? 'approved' : s.status === 'reviewed' ? 'submitted' : (s.status as any);
         }
 
         if (s || r) {
@@ -271,7 +323,7 @@ export const IndividualScoresPage: React.FC = () => {
     });
 
     return list;
-  }, [participants, scores, results, programmesMap, teamsMap]);
+  }, [participants, scores, results, programmesMap, teamsMap, settings]);
 
   // Filtered Standings
   const filteredStandings = useMemo(() => {

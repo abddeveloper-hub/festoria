@@ -21,7 +21,8 @@ import {
   ProgrammeAssignment,
   TeamLeaderInvitation,
   FestCategory,
-  TeamProgrammeEntry
+  TeamProgrammeEntry,
+  ScoringPointRules
 } from '../types';
 
 export const DEFAULT_FEST_CATEGORIES: FestCategory[] = [
@@ -84,10 +85,10 @@ export const DEFAULT_PRODUCTION_SETTINGS: FestSettings = {
   pointRules: {
     firstPlace: 10,
     secondPlace: 7,
-    thirdPlace: 5,
-    fourthPlace: 3,
+    thirdPlace: 4,
+    fourthPlace: 2,
     fifthPlace: 1,
-    groupMultiplier: 2,
+    groupMultiplier: 1,
   },
   tieBreakPolicy: 'average_marks',
   publicResultsVisible: true,
@@ -181,9 +182,17 @@ export const GUEST_USER: User = {
 export const StorageService = {
   getSettings(): FestSettings {
     const stored = getStorageItem<FestSettings>(STORAGE_KEYS.SETTINGS, DEFAULT_PRODUCTION_SETTINGS);
+    const pointRules = {
+      ...DEFAULT_PRODUCTION_SETTINGS.pointRules,
+      ...(stored.pointRules || {}),
+    };
+    if (pointRules.thirdPlace === 5 || pointRules.thirdPlace === undefined) {
+      pointRules.thirdPlace = 4;
+    }
     return {
       ...DEFAULT_PRODUCTION_SETTINGS,
       ...stored,
+      pointRules,
       contactEmail:
         stored.contactEmail && stored.contactEmail !== 'contact@festoria.app'
           ? stored.contactEmail
@@ -506,14 +515,46 @@ export interface TeamLeaderboardEntry {
 export function calculateLeaderboard(
   teams: Team[],
   results: ApprovedResult[],
-  programmes: Programme[]
+  programmes: Programme[],
+  pointRules?: ScoringPointRules
 ): TeamLeaderboardEntry[] {
-  // Only published results contribute to public / ratified points
-  const activeResults = results.filter((r) => r.published);
+  const rules: ScoringPointRules = pointRules || {
+    firstPlace: 10,
+    secondPlace: 7,
+    thirdPlace: 4,
+    fourthPlace: 2,
+    fifthPlace: 1,
+    groupMultiplier: 1,
+  };
+
+  const progMap = new Map(programmes.map((p) => [p.id, p]));
+
+  // Include published results or any results for completed/published programmes
+  const activeResults = results.filter((r) => {
+    if (r.published === true || (r.published as any) === 'true' || (r as any).status === 'published') return true;
+    const prog = progMap.get(r.programmeId);
+    return prog?.resultPublished || prog?.status === 'completed';
+  });
+
+  const teamById = new Map<string, Team>();
+  const teamByCode = new Map<string, Team>();
+  const teamByName = new Map<string, Team>();
+
+  teams.forEach((t) => {
+    teamById.set(t.id, t);
+    teamById.set(t.id.toLowerCase().trim(), t);
+    if (t.code) {
+      teamByCode.set(t.code.toLowerCase().trim(), t);
+    }
+    if (t.name) {
+      teamByName.set(t.name.toLowerCase().trim(), t);
+    }
+  });
 
   const teamStats = new Map<
     string,
     {
+      team: Team;
       totalPoints: number;
       first: number;
       second: number;
@@ -525,6 +566,7 @@ export function calculateLeaderboard(
 
   teams.forEach((t) => {
     teamStats.set(t.id, {
+      team: t,
       totalPoints: 0,
       first: 0,
       second: 0,
@@ -535,21 +577,48 @@ export function calculateLeaderboard(
   });
 
   activeResults.forEach((res) => {
-    const stats = teamStats.get(res.teamId);
-    if (!stats) return;
+    let matchedTeam: Team | undefined;
+    if (res.teamId) {
+      matchedTeam =
+        teamById.get(res.teamId) ||
+        teamById.get(res.teamId.toLowerCase().trim()) ||
+        teamByCode.get(res.teamId.toLowerCase().trim()) ||
+        teamByName.get(res.teamId.toLowerCase().trim());
+    }
+    if (!matchedTeam && res.teamName) {
+      matchedTeam =
+        teamByName.get(res.teamName.toLowerCase().trim()) ||
+        teamByCode.get(res.teamName.toLowerCase().trim());
+    }
 
-    stats.totalPoints += res.pointsAwarded;
-    stats.totalResults += 1;
-    if (res.rank === 1) stats.first += 1;
-    else if (res.rank === 2) stats.second += 1;
-    else if (res.rank === 3) stats.third += 1;
-    else stats.other += 1;
-  });
+    // Dynamic team resolution if not already present
+    if (!matchedTeam && (res.teamId || res.teamName)) {
+      const fallbackId = res.teamId || `TM-${res.teamName}`;
+      const newTeam: Team = {
+        id: fallbackId,
+        festId: res.festId || 'FEST-01',
+        name: res.teamName || res.teamId || 'Team',
+        code: (res.teamName || res.teamId || 'TM').slice(0, 3).toUpperCase(),
+        colorHex: '#6366f1',
+        status: 'active',
+        institution: '',
+        teamLeaderName: '',
+        teamLeaderContact: '',
+        createdAt: new Date().toISOString(),
+      };
+      matchedTeam = newTeam;
+      teams.push(newTeam);
+      teamById.set(newTeam.id, newTeam);
+      teamById.set(newTeam.id.toLowerCase().trim(), newTeam);
+      if (newTeam.name) teamByName.set(newTeam.name.toLowerCase().trim(), newTeam);
+    }
 
-  const entries: TeamLeaderboardEntry[] = teams
-    .filter((t) => t.status === 'active')
-    .map((team) => {
-      const stats = teamStats.get(team.id) || {
+    if (!matchedTeam) return;
+
+    let stats = teamStats.get(matchedTeam.id);
+    if (!stats) {
+      stats = {
+        team: matchedTeam,
         totalPoints: 0,
         first: 0,
         second: 0,
@@ -557,17 +626,41 @@ export function calculateLeaderboard(
         other: 0,
         totalResults: 0,
       };
-      return {
-        team,
-        totalPoints: stats.totalPoints,
-        rank: 0,
-        firstPlaceCount: stats.first,
-        secondPlaceCount: stats.second,
-        thirdPlaceCount: stats.third,
-        otherPlacesCount: stats.other,
-        totalResults: stats.totalResults,
-      };
-    });
+      teamStats.set(matchedTeam.id, stats);
+    }
+
+    const prog = progMap.get(res.programmeId);
+    const isGroup = res.isTeamProgramme || prog?.type === 'group' || prog?.type === 'team' || prog?.programmeType === 'team';
+    const mult = isGroup ? (rules.groupMultiplier ?? 1) : 1;
+
+    let points = 0;
+    if (res.rank === 1) points = (rules.firstPlace ?? 10) * mult;
+    else if (res.rank === 2) points = (rules.secondPlace ?? 7) * mult;
+    else if (res.rank === 3) points = (rules.thirdPlace ?? 4) * mult;
+    else if (res.rank === 4) points = (rules.fourthPlace ?? 2) * mult;
+    else if (res.rank === 5) points = (rules.fifthPlace ?? 1) * mult;
+    else points = res.pointsAwarded || 0;
+
+    stats.totalPoints += (isNaN(points) ? 0 : points);
+    stats.totalResults += 1;
+    if (res.rank === 1) stats.first += 1;
+    else if (res.rank === 2) stats.second += 1;
+    else if (res.rank === 3) stats.third += 1;
+    else stats.other += 1;
+  });
+
+  const entries: TeamLeaderboardEntry[] = Array.from(teamStats.values())
+    .filter((s) => s.team.status === 'active')
+    .map((s) => ({
+      team: s.team,
+      totalPoints: s.totalPoints,
+      rank: 0,
+      firstPlaceCount: s.first,
+      secondPlaceCount: s.second,
+      thirdPlaceCount: s.third,
+      otherPlacesCount: s.other,
+      totalResults: s.totalResults,
+    }));
 
   // Sort descending by points, tie-breaking by 1st places, then 2nd places
   entries.sort((a, b) => {
@@ -624,12 +717,30 @@ export function calculateCategoryScoreboards(
   participants: Participant[],
   teams: Team[],
   results: ApprovedResult[],
-  programmes: Programme[]
+  programmes: Programme[],
+  pointRules?: ScoringPointRules
 ): CategoryIndividualLeaderboardEntry[] {
-  // Only individual programme results (where participantId is set and programme is individual)
-  const publishedResults = results.filter((r) => r.published && r.participantId);
-  const teamMap = new Map(teams.map((t) => [t.id, t]));
+  const rules: ScoringPointRules = pointRules || {
+    firstPlace: 10,
+    secondPlace: 7,
+    thirdPlace: 4,
+    fourthPlace: 2,
+    fifthPlace: 1,
+    groupMultiplier: 1,
+  };
+
   const progMap = new Map(programmes.map((p) => [p.id, p]));
+  const teamMap = new Map(teams.map((t) => [t.id, t]));
+  teams.forEach((t) => {
+    if (t.name) teamMap.set(t.name.toLowerCase().trim(), t);
+    if (t.code) teamMap.set(t.code.toLowerCase().trim(), t);
+  });
+
+  const publishedResults = results.filter((r) => {
+    if (r.published === true || (r.published as any) === 'true' || (r as any).status === 'published') return true;
+    const prog = progMap.get(r.programmeId);
+    return prog?.resultPublished || prog?.status === 'completed';
+  });
 
   // Filter participants belonging to this category (case-insensitive)
   const targetCategory = (categoryName || '').trim().toLowerCase();
@@ -638,9 +749,26 @@ export function calculateCategoryScoreboards(
     return targetCategory === 'all' || pCat === targetCategory;
   });
 
+  const partById = new Map<string, Participant>();
+  const partByChest = new Map<string, Participant>();
+  const partByName = new Map<string, Participant>();
+
+  participants.forEach((p) => {
+    partById.set(p.id, p);
+    partById.set(p.id.toLowerCase().trim(), p);
+    if (p.chestNumber) {
+      partByChest.set(p.chestNumber.toLowerCase().trim(), p);
+      partByChest.set(p.chestNumber.replace(/^#/, '').toLowerCase().trim(), p);
+    }
+    if (p.name) {
+      partByName.set(p.name.toLowerCase().trim(), p);
+    }
+  });
+
   const partStats = new Map<
     string,
     {
+      participant: Participant;
       totalPoints: number;
       totalMarks: number;
       first: number;
@@ -658,6 +786,7 @@ export function calculateCategoryScoreboards(
 
   catParticipants.forEach((p) => {
     partStats.set(p.id, {
+      participant: p,
       totalPoints: 0,
       totalMarks: 0,
       first: 0,
@@ -668,18 +797,54 @@ export function calculateCategoryScoreboards(
   });
 
   publishedResults.forEach((res) => {
-    if (!res.participantId) return;
-    const stats = partStats.get(res.participantId);
-    if (!stats) return;
-
     const prg = progMap.get(res.programmeId);
     // Ensure this is an individual programme (team programme points are NOT counted towards individual participant scores)
     if (prg && (prg.type === 'group' || prg.type === 'team' || prg.programmeType === 'team' || res.isTeamProgramme)) {
       return;
     }
 
-    stats.totalPoints += res.pointsAwarded || 0;
-    stats.totalMarks += res.finalScore || 0;
+    let matchedPart: Participant | undefined;
+    if (res.participantId) {
+      matchedPart =
+        partById.get(res.participantId) ||
+        partById.get(res.participantId.toLowerCase().trim()) ||
+        partByChest.get(res.participantId.toLowerCase().trim()) ||
+        partByName.get(res.participantId.toLowerCase().trim());
+    }
+    if (!matchedPart && res.participantName) {
+      matchedPart = partByName.get(res.participantName.toLowerCase().trim());
+    }
+
+    if (!matchedPart) return;
+
+    let stats = partStats.get(matchedPart.id);
+    if (!stats) {
+      const pCat = (matchedPart.category || '').trim().toLowerCase();
+      if (targetCategory !== 'all' && pCat !== targetCategory) {
+        return;
+      }
+      stats = {
+        participant: matchedPart,
+        totalPoints: 0,
+        totalMarks: 0,
+        first: 0,
+        second: 0,
+        third: 0,
+        resultsList: [],
+      };
+      partStats.set(matchedPart.id, stats);
+    }
+
+    let points = 0;
+    if (res.rank === 1) points = rules.firstPlace ?? 10;
+    else if (res.rank === 2) points = rules.secondPlace ?? 7;
+    else if (res.rank === 3) points = rules.thirdPlace ?? 4;
+    else if (res.rank === 4) points = rules.fourthPlace ?? 2;
+    else if (res.rank === 5) points = rules.fifthPlace ?? 1;
+    else points = res.pointsAwarded || 0;
+
+    stats.totalPoints += (isNaN(points) ? 0 : points);
+    stats.totalMarks += (res.finalScore || 0);
     if (res.rank === 1) stats.first += 1;
     else if (res.rank === 2) stats.second += 1;
     else if (res.rank === 3) stats.third += 1;
@@ -688,32 +853,27 @@ export function calculateCategoryScoreboards(
       programmeId: res.programmeId,
       programmeName: res.programmeName || prg?.name || res.programmeId,
       rank: res.rank,
-      pointsAwarded: res.pointsAwarded,
-      finalScore: res.finalScore,
+      pointsAwarded: points,
+      finalScore: res.finalScore || 0,
     });
   });
 
-  const entries: CategoryIndividualLeaderboardEntry[] = catParticipants.map((p) => {
-    const stats = partStats.get(p.id) || {
-      totalPoints: 0,
-      totalMarks: 0,
-      first: 0,
-      second: 0,
-      third: 0,
-      resultsList: [],
-    };
+  const entries: CategoryIndividualLeaderboardEntry[] = Array.from(partStats.values()).map((s) => {
+    const p = s.participant;
+    const pTeamName = (p as any).teamName;
+    const team = (p.teamId && teamMap.get(p.teamId)) || (pTeamName && teamMap.get(pTeamName.toLowerCase().trim())) || undefined;
     return {
       rank: 0,
       participant: p,
-      team: teamMap.get(p.teamId),
-      category: p.category,
-      totalPoints: stats.totalPoints,
-      totalMarks: Math.round(stats.totalMarks * 10) / 10,
-      programmesParticipated: stats.resultsList.length,
-      firstPlaceCount: stats.first,
-      secondPlaceCount: stats.second,
-      thirdPlaceCount: stats.third,
-      results: stats.resultsList,
+      team,
+      category: p.category || 'General',
+      totalPoints: s.totalPoints,
+      totalMarks: Math.round(s.totalMarks * 10) / 10,
+      programmesParticipated: s.resultsList.length,
+      firstPlaceCount: s.first,
+      secondPlaceCount: s.second,
+      thirdPlaceCount: s.third,
+      results: s.resultsList,
     };
   });
 
