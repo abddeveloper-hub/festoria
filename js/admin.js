@@ -145,7 +145,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     adminTeamsBody.innerHTML = allTeams.map((t, idx) => `
       <tr>
         <td style="font-weight:700;">#${idx + 1}</td>
-        <td style="font-weight:800; color:var(--maroon);">${t.name} <span style="font-size:0.75rem; color:var(--text-muted); font-weight:normal;">(${t.code})</span></td>
+        <td style="font-weight:700; color:var(--text-main);">${t.name} <span style="font-size:0.75rem; color:var(--text-muted); font-weight:normal;">(${t.code})</span></td>
         <td style="font-weight:700;">${t.gold || 0}</td>
         <td style="font-weight:700;">${t.silver || 0}</td>
         <td style="font-weight:700;">${t.bronze || 0}</td>
@@ -165,7 +165,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     adminResultsBody.innerHTML = allResults.slice(0, 15).map((r) => `
       <tr>
         <td style="font-weight:700;">${r.programme_name}</td>
-        <td style="font-weight:800; color:var(--maroon);">${r.rank === 1 ? '🥇 1st' : r.rank === 2 ? '🥈 2nd' : '🥉 3rd'}</td>
+        <td style="font-weight:700; color:var(--text-main);">${r.rank === 1 ? '🥇 1st' : r.rank === 2 ? '🥈 2nd' : '🥉 3rd'}</td>
         <td style="font-weight:700;">${r.entry_name || r.team_name}</td>
         <td>${r.team_name || '-'}</td>
         <td class="points-cell">+${r.points_awarded}</td>
