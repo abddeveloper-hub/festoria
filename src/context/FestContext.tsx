@@ -1308,6 +1308,65 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
         return alignedResult;
       });
 
+      // Ensure BURDA (PRG-177) results are explicitly included if not yet written to remote Firestore
+      const hasBurdaInResults = harmonizedResults.some(
+        (r) => r.programmeId === 'PRG-177' || (r.programmeName && r.programmeName.toUpperCase().includes('BURDA'))
+      );
+      if (!hasBurdaInResults) {
+        const burdaRatified: ApprovedResult[] = [
+          {
+            id: 'RES-PRG-177-TM-2403',
+            festId: activeFestId || 'FEST-04',
+            programmeId: 'PRG-177',
+            programmeName: 'BURDA',
+            category: 'High zone',
+            rank: 1,
+            isTeamProgramme: true,
+            teamId: 'TM-2403',
+            teamName: 'MUKKA',
+            entryName: 'MUKKA',
+            finalScore: 100,
+            pointsAwarded: 10,
+            published: true,
+            publishedAt: '2026-11-22 17:05',
+          },
+          {
+            id: 'RES-PRG-177-TM-8193',
+            festId: activeFestId || 'FEST-04',
+            programmeId: 'PRG-177',
+            programmeName: 'BURDA',
+            category: 'High zone',
+            rank: 2,
+            isTeamProgramme: true,
+            teamId: 'TM-8193',
+            teamName: 'PAKSHIKERE',
+            entryName: 'PAKSHIKERE',
+            finalScore: 90,
+            pointsAwarded: 7,
+            published: true,
+            publishedAt: '2026-11-22 17:05',
+          },
+          {
+            id: 'RES-PRG-177-TM-9639',
+            festId: activeFestId || 'FEST-04',
+            programmeId: 'PRG-177',
+            programmeName: 'BURDA',
+            category: 'High zone',
+            rank: 3,
+            isTeamProgramme: true,
+            teamId: 'TM-9639',
+            teamName: 'GUTHAKAADU',
+            entryName: 'GUTHAKAADU',
+            finalScore: 80,
+            pointsAwarded: 4,
+            published: true,
+            publishedAt: '2026-11-22 17:05',
+          },
+        ];
+        harmonizedResults.push(...burdaRatified);
+        updatedResultsForFirestore.push(...burdaRatified);
+      }
+
       setResults(harmonizedResults);
       if (updatedResultsForFirestore.length > 0) {
         batchUpdateResultsInFirestore(updatedResultsForFirestore).catch(() => {});
@@ -1438,6 +1497,64 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
               published: true,
             };
           });
+
+          // Ensure BURDA is present in real-time stream
+          const hasRemoteBurda = aligned.some(
+            (r) => r.programmeId === 'PRG-177' || (r.programmeName && r.programmeName.toUpperCase().includes('BURDA'))
+          );
+          if (!hasRemoteBurda) {
+            aligned.push(
+              {
+                id: 'RES-PRG-177-TM-2403',
+                festId: activeFestId || 'FEST-04',
+                programmeId: 'PRG-177',
+                programmeName: 'BURDA',
+                category: 'High zone',
+                rank: 1,
+                isTeamProgramme: true,
+                teamId: 'TM-2403',
+                teamName: 'MUKKA',
+                entryName: 'MUKKA',
+                finalScore: 100,
+                pointsAwarded: 10,
+                published: true,
+                publishedAt: '2026-11-22 17:05',
+              },
+              {
+                id: 'RES-PRG-177-TM-8193',
+                festId: activeFestId || 'FEST-04',
+                programmeId: 'PRG-177',
+                programmeName: 'BURDA',
+                category: 'High zone',
+                rank: 2,
+                isTeamProgramme: true,
+                teamId: 'TM-8193',
+                teamName: 'PAKSHIKERE',
+                entryName: 'PAKSHIKERE',
+                finalScore: 90,
+                pointsAwarded: 7,
+                published: true,
+                publishedAt: '2026-11-22 17:05',
+              },
+              {
+                id: 'RES-PRG-177-TM-9639',
+                festId: activeFestId || 'FEST-04',
+                programmeId: 'PRG-177',
+                programmeName: 'BURDA',
+                category: 'High zone',
+                rank: 3,
+                isTeamProgramme: true,
+                teamId: 'TM-9639',
+                teamName: 'GUTHAKAADU',
+                entryName: 'GUTHAKAADU',
+                finalScore: 80,
+                pointsAwarded: 4,
+                published: true,
+                publishedAt: '2026-11-22 17:05',
+              }
+            );
+          }
+
           const remoteMap = new Map(aligned.map((r) => [r.id, r]));
           const localDrafts = prev.filter((r) => !r.published && !remoteMap.has(r.id));
           return [...aligned, ...localDrafts];
