@@ -2,15 +2,286 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/jpeg" href="/festoria-logo.jpg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Festoria — Admin Panel Management Portal</title>
+    <link rel="icon" type="image/jpeg" href="festoria-logo.jpg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Festoria Admin — Results Ratification Portal</title>
+    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Domine:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Domine:wght@600;700;800&family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Pure Stylesheet -->
+    <link rel="stylesheet" href="css/style.css" />
+    <!-- Supabase Official JS SDK CDN (No bundler needed) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+      .auth-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(31, 27, 24, 0.85);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        padding: 20px;
+      }
+      .auth-modal {
+        background: #ffffff;
+        border: 2px solid var(--border-dark);
+        border-radius: 8px;
+        padding: 32px;
+        max-width: 400px;
+        width: 100%;
+        box-shadow: 6px 6px 0px rgba(0, 0, 0, 0.2);
+      }
+      .grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+      }
+      .winner-box {
+        background: var(--bg-alt);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        padding: 14px;
+        margin-bottom: 14px;
+      }
+      @media (max-width: 900px) {
+        .grid-2 {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
   </head>
-  <body class="bg-white text-slate-900 antialiased font-sans">
-    <div id="root"></div>
-    <script type="module" src="/src/admin.tsx"></script>
+  <body>
+
+    <!-- AUTHENTICATION GATE (PASSCODE) -->
+    <div id="admin-auth-gate" class="auth-overlay">
+      <div class="auth-modal">
+        <h3 style="font-family:var(--font-heading); font-size:1.4rem; color:var(--maroon); margin-bottom:8px;">Admin Passcode</h3>
+        <p style="font-size:0.84rem; color:var(--text-muted); margin-bottom:20px;">Enter administrative passcode to unlock results ratification.</p>
+        <form id="passcode-form">
+          <div class="form-group">
+            <label class="form-label">Passcode (Default: fest2026)</label>
+            <input type="password" id="admin-passcode" class="form-control" placeholder="Enter passcode..." required autofocus />
+          </div>
+          <button type="submit" class="btn-primary" style="width: 100%;">Unlock Admin Portal</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- NAVBAR -->
+    <header class="navbar">
+      <div class="container nav-container">
+        <a href="admin.html" class="brand">
+          <img src="festoria-logo.jpg" alt="Logo" class="brand-logo" onerror="this.style.display='none'" />
+          <div class="brand-text">
+            <h1>FESTORIA ADMIN</h1>
+            <p>Control Desk & Ratification Portal</p>
+          </div>
+        </a>
+        <nav class="nav-links">
+          <a href="index.html" class="nav-link">← Public Site</a>
+          <button id="btn-export-backup" class="nav-link" style="background:var(--bg-alt); border:1px solid var(--border-color); cursor:pointer;">💾 Download Backup</button>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ADMIN CONTENT -->
+    <main id="admin-content" class="container" style="padding-top: 32px; padding-bottom: 60px; display: none;">
+
+      <!-- SUPABASE CONFIGURATION CARD -->
+      <section class="section-card" style="margin-bottom: 24px; border-left: 4px solid var(--maroon);">
+        <div class="section-header">
+          <div>
+            <h3 class="section-title">Supabase Database Connection</h3>
+            <p class="section-subtitle">Connect your Supabase project (from Project Settings -> API in your Supabase dashboard)</p>
+          </div>
+        </div>
+        <div style="padding: 20px;">
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Supabase Project URL</label>
+              <input type="url" id="sb-url" class="form-control" placeholder="https://xyzcompany.supabase.co" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Supabase Anon Public Key</label>
+              <input type="text" id="sb-key" class="form-control" placeholder="eyJhbGciOi..." />
+            </div>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
+            <p style="font-size:0.8rem; color:var(--text-muted);">SQL table schema is located in <code>supabase/schema.sql</code>.</p>
+            <button id="btn-save-sb" class="btn-primary" type="button">Save & Connect Supabase</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- TWO-COLUMN WORKSPACE -->
+      <div class="grid-2">
+
+        <!-- COLUMN 1: PUBLISH RESULTS FORM -->
+        <section class="section-card">
+          <div class="section-header">
+            <div>
+              <h3 class="section-title">Ratify & Publish Results</h3>
+              <p class="section-subtitle">Scores are recorded with atomic dual-persistence (Never Lost)</p>
+            </div>
+          </div>
+          <div style="padding: 20px;">
+            <form id="publish-results-form">
+              <div class="form-group">
+                <label class="form-label">Select Programme</label>
+                <select id="select-programme" class="form-control" required>
+                  <option value="">Loading programmes...</option>
+                </select>
+              </div>
+
+              <!-- 1ST PLACE -->
+              <div class="winner-box">
+                <div style="font-weight:700; color:var(--maroon); margin-bottom:8px; font-size:0.85rem;">🥇 1ST PLACE (GOLD)</div>
+                <div class="form-group">
+                  <label class="form-label">Winning House / Team</label>
+                  <select id="first-team" class="form-control" required></select>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                  <div>
+                    <label class="form-label">Judge Score</label>
+                    <input type="number" id="first-score" class="form-control" value="100" min="0" max="100" />
+                  </div>
+                  <div>
+                    <label class="form-label">Points Awarded</label>
+                    <input type="number" id="first-points" class="form-control" value="10" min="1" max="50" />
+                  </div>
+                </div>
+              </div>
+
+              <!-- 2ND PLACE -->
+              <div class="winner-box">
+                <div style="font-weight:700; color:#475569; margin-bottom:8px; font-size:0.85rem;">🥈 2ND PLACE (SILVER)</div>
+                <div class="form-group">
+                  <label class="form-label">House / Team</label>
+                  <select id="second-team" class="form-control"></select>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                  <div>
+                    <label class="form-label">Judge Score</label>
+                    <input type="number" id="second-score" class="form-control" value="90" min="0" max="100" />
+                  </div>
+                  <div>
+                    <label class="form-label">Points Awarded</label>
+                    <input type="number" id="second-points" class="form-control" value="7" min="0" max="50" />
+                  </div>
+                </div>
+              </div>
+
+              <!-- 3RD PLACE -->
+              <div class="winner-box">
+                <div style="font-weight:700; color:#b45309; margin-bottom:8px; font-size:0.85rem;">🥉 3RD PLACE (BRONZE)</div>
+                <div class="form-group">
+                  <label class="form-label">House / Team</label>
+                  <select id="third-team" class="form-control"></select>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                  <div>
+                    <label class="form-label">Judge Score</label>
+                    <input type="number" id="third-score" class="form-control" value="80" min="0" max="100" />
+                  </div>
+                  <div>
+                    <label class="form-label">Points Awarded</label>
+                    <input type="number" id="third-points" class="form-control" value="4" min="0" max="50" />
+                  </div>
+                </div>
+              </div>
+
+              <button type="submit" class="btn-primary" style="width: 100%; padding: 12px; font-size:1rem;">Ratify & Publish Official Results</button>
+            </form>
+          </div>
+        </section>
+
+        <!-- COLUMN 2: STANDINGS & RECENT RATIFICATIONS -->
+        <div>
+          <!-- CURRENT TEAM STANDINGS -->
+          <section class="section-card" style="margin-bottom: 24px;">
+            <div class="section-header">
+              <div>
+                <h3 class="section-title">Active Team Standings</h3>
+                <p class="section-subtitle">Real-time point accumulation</p>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Team</th>
+                    <th>🥇</th>
+                    <th>🥈</th>
+                    <th>🥉</th>
+                    <th style="text-align:right;">Points</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-teams-body">
+                  <!-- Populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- RECENTLY RATIFIED RESULTS -->
+          <section class="section-card" style="margin-bottom: 24px;">
+            <div class="section-header">
+              <div>
+                <h3 class="section-title">Recently Published Results</h3>
+                <p class="section-subtitle">Latest 15 ratified entries</p>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Programme</th>
+                    <th>Rank</th>
+                    <th>Winner</th>
+                    <th>House</th>
+                    <th>Pts</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-results-body">
+                  <!-- Populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- POST ANNOUNCEMENT -->
+          <section class="section-card">
+            <div class="section-header">
+              <div>
+                <h3 class="section-title">Post Official Announcement</h3>
+              </div>
+            </div>
+            <div style="padding: 20px;">
+              <form id="announcement-form">
+                <div class="form-group">
+                  <label class="form-label">Announcement Title</label>
+                  <input type="text" id="ann-title" class="form-control" placeholder="e.g., Results Ratified for BURDA" required />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Message Content</label>
+                  <textarea id="ann-content" class="form-control" rows="3" placeholder="Enter announcement content..." required></textarea>
+                </div>
+                <button type="submit" class="btn-primary" style="width: 100%;">Post Announcement</button>
+              </form>
+            </div>
+          </section>
+
+        </div>
+      </div>
+
+    </main>
+
+    <!-- SCRIPTS -->
+    <script src="js/supabase-config.js"></script>
+    <script src="js/supabase-client.js"></script>
+    <script src="js/admin.js"></script>
   </body>
 </html>

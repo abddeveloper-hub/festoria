@@ -1367,7 +1367,16 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
         updatedResultsForFirestore.push(...burdaRatified);
       }
 
-      setResults(harmonizedResults);
+      // CRITICAL PRESERVATION: Merge remote Firestore results with existing local results so local results NEVER get wiped!
+      setResults((prev) => {
+        const remoteMap = new Map(harmonizedResults.map((r) => [r.id, r]));
+        const localPreserved = prev.filter((r) => !remoteMap.has(r.id));
+        const missingFromRemote = localPreserved.filter((r) => r.published);
+        if (missingFromRemote.length > 0) {
+          batchUpdateResultsInFirestore(missingFromRemote).catch(() => {});
+        }
+        return [...harmonizedResults, ...localPreserved];
+      });
       if (updatedResultsForFirestore.length > 0) {
         batchUpdateResultsInFirestore(updatedResultsForFirestore).catch(() => {});
       }

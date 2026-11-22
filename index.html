@@ -2,15 +2,163 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/jpeg" href="/festoria-logo.jpg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>Festoria — Unified Festival Management Platform</title>
+    <link rel="icon" type="image/jpeg" href="festoria-logo.jpg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Festoria — Official Festival Leaderboards</title>
+    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Domine:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Domine:wght@600;700;800&family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Pure Stylesheet -->
+    <link rel="stylesheet" href="css/style.css" />
+    <!-- Supabase Official JS SDK CDN (No bundler needed) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
-  <body class="bg-white text-slate-900 antialiased font-sans">
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+  <body>
+
+    <!-- NAVBAR -->
+    <header class="navbar">
+      <div class="container nav-container">
+        <a href="index.html" class="brand">
+          <img src="festoria-logo.jpg" alt="Logo" class="brand-logo" onerror="this.style.display='none'" />
+          <div class="brand-text">
+            <h1>FESTORIA</h1>
+            <p>Unified Festival Standings</p>
+          </div>
+        </a>
+        <nav class="nav-links">
+          <a href="index.html" class="nav-link active">Leaderboard</a>
+          <a href="#results" class="nav-link">Results</a>
+          <a href="#announcements" class="nav-link">Announcements</a>
+          <a href="admin.html" class="nav-link btn-admin">Admin Portal →</a>
+        </nav>
+      </div>
+    </header>
+
+    <!-- SUPABASE REAL-TIME STATUS BAR -->
+    <div class="db-status-bar">
+      <div class="container db-status-container">
+        <span class="status-indicator">
+          <span id="db-status-indicator" class="dot dot-amber"></span>
+          <span id="db-status-text">Checking Database Synchronization...</span>
+        </span>
+        <span style="color:var(--text-muted); font-size:0.75rem;">FEST-04 · Official Verified Standings</span>
+      </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <main class="container">
+
+      <!-- HERO BANNER -->
+      <section class="hero">
+        <span class="badge-tag">Championship Standings</span>
+        <h2 class="hero-title">Official Festival Leaderboards</h2>
+        <p class="hero-subtitle">Real-time verified standings for competing houses and top individual student performers.</p>
+      </section>
+
+      <!-- PODIUM GRID (TOP 3 CHAMPIONS) -->
+      <section id="podium-container" class="podium-grid">
+        <!-- Rendered dynamically by js/app.js -->
+        <div style="text-align:center; padding: 40px; grid-column: 1 / -1; color: var(--text-muted);">
+          Loading championship standings...
+        </div>
+      </section>
+
+      <!-- MAIN TABS CONTAINER -->
+      <section class="section-card">
+        <div class="tabs">
+          <button class="tab-btn active" data-target="leaderboard">House Championship Standings</button>
+          <button class="tab-btn" data-target="results">Ratified Programme Results</button>
+        </div>
+
+        <!-- TAB 1: HOUSE LEADERBOARD -->
+        <div id="section-leaderboard">
+          <div class="section-header">
+            <div>
+              <h3 class="section-title">House Championship Standings</h3>
+              <p class="section-subtitle">Cumulative Points from Individual & Team Programmes</p>
+            </div>
+            <span style="font-size:0.75rem; font-weight:700; color:var(--maroon); text-transform:uppercase;">Live Ratified</span>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width: 60px;">Rank</th>
+                  <th>House / Team</th>
+                  <th>Institution</th>
+                  <th style="width: 80px;">🥇 Gold</th>
+                  <th style="width: 80px;">🥈 Silver</th>
+                  <th style="width: 80px;">🥉 Bronze</th>
+                  <th style="width: 140px; text-align:right;">Ratified Points</th>
+                </tr>
+              </thead>
+              <tbody id="leaderboard-body">
+                <!-- Populated dynamically by js/app.js -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- TAB 2: PUBLISHED RESULTS -->
+        <div id="section-results" style="display:none;">
+          <div class="filter-bar">
+            <input type="text" id="programme-search" class="input-search" placeholder="Search programme or competitor name..." />
+            <select id="category-filter" class="select-filter">
+              <option value="all">All Categories</option>
+              <option value="Zero zone">Zero zone</option>
+              <option value="Ground zone">Ground zone</option>
+              <option value="Mid zone">Mid zone</option>
+              <option value="High zone">High zone</option>
+            </select>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Programme</th>
+                  <th style="width: 90px;">Rank</th>
+                  <th>Winner / Competitor</th>
+                  <th>House / Team</th>
+                  <th style="width: 80px;">Score</th>
+                  <th style="width: 100px;">Points</th>
+                </tr>
+              </thead>
+              <tbody id="results-body">
+                <!-- Populated dynamically by js/app.js -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ANNOUNCEMENTS SECTION -->
+      <section id="announcements" class="section-card" style="margin-bottom: 60px;">
+        <div class="section-header">
+          <div>
+            <h3 class="section-title">Official Announcements</h3>
+            <p class="section-subtitle">Live updates from the Fest Control Desk</p>
+          </div>
+        </div>
+        <div id="announcements-list" style="padding: 20px;">
+          <!-- Populated dynamically by js/app.js -->
+        </div>
+      </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer style="border-top:1px solid var(--border-color); background:#fff; padding:24px 0; text-align:center; font-size:0.8rem; color:var(--text-muted);">
+      <div class="container">
+        <p>Festoria Festival Management Platform · Powered by Pure HTML/CSS/JS + Supabase Database</p>
+      </div>
+    </footer>
+
+    <!-- SCRIPTS -->
+    <script src="js/supabase-config.js"></script>
+    <script src="js/supabase-client.js"></script>
+    <script src="js/app.js"></script>
   </body>
 </html>
