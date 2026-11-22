@@ -44,6 +44,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const adminResultsBody = document.getElementById('admin-results-body');
   const announcementForm = document.getElementById('announcement-form');
   const exportBtn = document.getElementById('btn-export-backup');
+  const resetBtn = document.getElementById('btn-reset-data');
+
+  const addTeamForm = document.getElementById('add-team-form');
+  const addProgrammeForm = document.getElementById('add-programme-form');
 
   // State
   let allTeams = [];
@@ -104,25 +108,40 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!progSelect) return;
 
     // Programmes
-    progSelect.innerHTML = '<option value="">-- Choose Programme --</option>' +
-      allProgrammes.map((p) => `
-        <option value="${p.id}">
-          ${p.code ? p.code + ' : ' : ''}${p.name} (${p.category}) ${p.result_published ? '✓ [Published]' : ''}
-        </option>
-      `).join('');
+    if (allProgrammes.length === 0) {
+      progSelect.innerHTML = '<option value="">No programmes yet. Add a programme below.</option>';
+    } else {
+      progSelect.innerHTML = '<option value="">-- Choose Programme --</option>' +
+        allProgrammes.map((p) => `
+          <option value="${p.id}">
+            ${p.code ? p.code + ' : ' : ''}${p.name} (${p.category}) ${p.result_published ? '✓ [Published]' : ''}
+          </option>
+        `).join('');
+    }
 
     // Teams
-    const teamOptions = '<option value="">-- Choose House/Team --</option>' +
-      allTeams.map((t) => `<option value="${t.id}">${t.name} (${t.code})</option>`).join('');
+    if (allTeams.length === 0) {
+      const emptyOpt = '<option value="">No teams yet. Add teams below.</option>';
+      if (firstTeamSelect) firstTeamSelect.innerHTML = emptyOpt;
+      if (secondTeamSelect) secondTeamSelect.innerHTML = emptyOpt;
+      if (thirdTeamSelect) thirdTeamSelect.innerHTML = emptyOpt;
+    } else {
+      const teamOptions = '<option value="">-- Choose House/Team --</option>' +
+        allTeams.map((t) => `<option value="${t.id}">${t.name} (${t.code})</option>`).join('');
 
-    if (firstTeamSelect) firstTeamSelect.innerHTML = teamOptions;
-    if (secondTeamSelect) secondTeamSelect.innerHTML = teamOptions;
-    if (thirdTeamSelect) thirdTeamSelect.innerHTML = teamOptions;
+      if (firstTeamSelect) firstTeamSelect.innerHTML = teamOptions;
+      if (secondTeamSelect) secondTeamSelect.innerHTML = teamOptions;
+      if (thirdTeamSelect) thirdTeamSelect.innerHTML = teamOptions;
+    }
   }
 
   // Render Admin Teams Table
   function renderAdminTeams() {
     if (!adminTeamsBody) return;
+    if (allTeams.length === 0) {
+      adminTeamsBody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:16px; color:var(--text-muted);">No teams added yet. Add a team above.</td></tr>';
+      return;
+    }
     adminTeamsBody.innerHTML = allTeams.map((t, idx) => `
       <tr>
         <td style="font-weight:700;">#${idx + 1}</td>
@@ -139,7 +158,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   function renderAdminResults() {
     if (!adminResultsBody) return;
     if (allResults.length === 0) {
-      adminResultsBody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:16px;">No results published yet.</td></tr>';
+      adminResultsBody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:16px; color:var(--text-muted);">No results published yet.</td></tr>';
       return;
     }
 
@@ -166,17 +185,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const t1Id = firstTeamSelect.value;
       const t1Name = firstTeamSelect.options[firstTeamSelect.selectedIndex]?.text.split(' (')[0] || '';
-      const t1Score = document.getElementById('first-score').value || 10;
+      const t1Score = document.getElementById('first-score').value || 100;
       const t1Points = document.getElementById('first-points').value || 10;
 
       const t2Id = secondTeamSelect.value;
       const t2Name = secondTeamSelect.options[secondTeamSelect.selectedIndex]?.text.split(' (')[0] || '';
-      const t2Score = document.getElementById('second-score').value || 7;
+      const t2Score = document.getElementById('second-score').value || 90;
       const t2Points = document.getElementById('second-points').value || 7;
 
       const t3Id = thirdTeamSelect.value;
       const t3Name = thirdTeamSelect.options[thirdTeamSelect.selectedIndex]?.text.split(' (')[0] || '';
-      const t3Score = document.getElementById('third-score').value || 4;
+      const t3Score = document.getElementById('third-score').value || 80;
       const t3Points = document.getElementById('third-points').value || 4;
 
       if (!t1Id) {
@@ -207,11 +226,52 @@ document.addEventListener('DOMContentLoaded', async () => {
         await loadAdminData();
       } catch (err) {
         console.error('Publish error:', err);
-        showToast('Error publishing results. Checked local storage backup.', 'error');
+        showToast('Error publishing results.', 'error');
       } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Ratify & Publish Official Results';
       }
+    });
+  }
+
+  // Handle Add Team
+  if (addTeamForm) {
+    addTeamForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('new-team-name').value.trim();
+      const code = document.getElementById('new-team-code').value.trim();
+      const inst = document.getElementById('new-team-inst').value.trim();
+
+      if (!name || !code) {
+        showToast('Name and code are required.', 'error');
+        return;
+      }
+
+      await window.FestDB.addTeam(name, code, inst);
+      showToast(`House ${name} added successfully!`, 'success');
+      addTeamForm.reset();
+      await loadAdminData();
+    });
+  }
+
+  // Handle Add Programme
+  if (addProgrammeForm) {
+    addProgrammeForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const code = document.getElementById('new-prog-code').value.trim();
+      const name = document.getElementById('new-prog-name').value.trim();
+      const cat = document.getElementById('new-prog-cat').value;
+      const venue = document.getElementById('new-prog-venue').value.trim();
+
+      if (!code || !name) {
+        showToast('Code and name are required.', 'error');
+        return;
+      }
+
+      await window.FestDB.addProgramme(code, name, cat, venue);
+      showToast(`Programme ${name} added successfully!`, 'success');
+      addProgrammeForm.reset();
+      await loadAdminData();
     });
   }
 
@@ -230,6 +290,18 @@ document.addEventListener('DOMContentLoaded', async () => {
       await window.FestDB.addAnnouncement(title, content);
       showToast('Announcement posted successfully!');
       announcementForm.reset();
+    });
+  }
+
+  // Handle Reset / Clear All Data
+  if (resetBtn) {
+    resetBtn.addEventListener('click', async () => {
+      const confirmReset = window.confirm('Are you sure you want to permanently clear all teams, programmes, results, and announcements?');
+      if (confirmReset) {
+        await window.FestDB.clearAllData();
+        showToast('All festival data has been cleared.', 'warning');
+        await loadAdminData();
+      }
     });
   }
 

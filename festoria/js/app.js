@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   function renderPodium(teams) {
     if (!podiumContainer) return;
     if (teams.length < 3) {
-      podiumContainer.innerHTML = '<p class="text-muted">Awaiting championship standings...</p>';
+      podiumContainer.innerHTML = '<div style="text-align:center; padding:32px; grid-column:1/-1; color:var(--text-muted); font-size:0.95rem;">Awaiting championship standings & team registrations...</div>';
       return;
     }
 

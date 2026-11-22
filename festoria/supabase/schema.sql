@@ -113,32 +113,4 @@ CREATE POLICY "Allow write on participants" ON participants FOR ALL USING (true)
 CREATE POLICY "Allow write on results" ON results FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow write on announcements" ON announcements FOR ALL USING (true) WITH CHECK (true);
 
--- 6. SEED FESTIVAL DATA
-INSERT INTO fests (id, name, tagline, venue, dates, status)
-VALUES ('FEST-04', 'Prathibothsava 2026', 'Celebrating Excellence, Talent, & Unity', 'Central Ground & Auditorium', '2026-11-22', 'active')
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, tagline = EXCLUDED.tagline;
-
--- 7. SEED HOUSES / TEAMS
-INSERT INTO teams (id, fest_id, name, code, institution, points, gold, silver, bronze) VALUES
-('TM-9639', 'FEST-04', 'GUTHAKAADU', '0003', 'MADRASA GUTHAKAADU', 265, 14, 10, 11),
-('TM-2403', 'FEST-04', 'MUKKA', '0001', 'MADRASA MUKKA', 237, 10, 15, 7),
-('TM-8835', 'FEST-04', 'SAAG', '0005', 'MADRASA SAAG', 116, 6, 4, 7),
-('TM-8193', 'FEST-04', 'PAKSHIKERE', '0004', 'MADRASA PAKSHIKERE', 113, 5, 8, 4),
-('TM-8075', 'FEST-04', 'KINNIGOLI', '0006', 'MADRASA KINNIGOLI', 63, 2, 4, 5),
-('TM-6658', 'FEST-04', 'GOLIJARA', '0008', 'MADRASA GOLIJARA', 58, 2, 3, 4),
-('TM-9547', 'FEST-04', 'SASHIHITHLU', '0009', 'MADRASA SASHIHITHLU', 35, 1, 2, 3),
-('TM-1259', 'FEST-04', 'MUKKA URDU', '0002', 'MADRASA MUKKA URDU', 34, 1, 2, 2),
-('TM-5939', 'FEST-04', 'THOKUR', '0007', 'MADRASA THOKUR', 26, 1, 1, 2),
-('TM-0940', 'FEST-04', 'S KODI', '0010', 'MADRASA S KODI', 10, 0, 1, 1)
-ON CONFLICT (id) DO UPDATE SET
-  name = EXCLUDED.name,
-  code = EXCLUDED.code,
-  points = EXCLUDED.points,
-  gold = EXCLUDED.gold,
-  silver = EXCLUDED.silver,
-  bronze = EXCLUDED.bronze;
-
--- 8. INITIAL ANNOUNCEMENT
-INSERT INTO announcements (id, fest_id, title, content, category, is_public, author, created_at) VALUES
-('ANN-001', 'FEST-04', 'Welcome to Prathibothsava 2026', 'Official competition results are verified and published live here.', 'results', true, 'Festival Committee', '2026-11-22 09:00')
-ON CONFLICT (id) DO NOTHING;
+-- Schema setup complete. Ready for new festival data.

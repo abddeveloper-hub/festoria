@@ -1,118 +1,36 @@
 // ==============================================================================
 // Festoria — Pure JavaScript Supabase Client & Resilient Data Layer
+// Clean Slate (Zero Pre-loaded Data)
 // ==============================================================================
 
 (function () {
   let client = null;
 
-  // Initial seed data for offline / initial state (Prathibothsava 2026)
-  const DEFAULT_TEAMS = [
-    { id: 'TM-9639', fest_id: 'FEST-04', name: 'GUTHAKAADU', code: '0003', institution: 'MADRASA GUTHAKAADU', points: 265, gold: 14, silver: 10, bronze: 11 },
-    { id: 'TM-2403', fest_id: 'FEST-04', name: 'MUKKA', code: '0001', institution: 'MADRASA MUKKA', points: 237, gold: 10, silver: 15, bronze: 7 },
-    { id: 'TM-8835', fest_id: 'FEST-04', name: 'SAAG', code: '0005', institution: 'MADRASA SAAG', points: 116, gold: 6, silver: 4, bronze: 7 },
-    { id: 'TM-8193', fest_id: 'FEST-04', name: 'PAKSHIKERE', code: '0004', institution: 'MADRASA PAKSHIKERE', points: 113, gold: 5, silver: 8, bronze: 4 },
-    { id: 'TM-8075', fest_id: 'FEST-04', name: 'KINNIGOLI', code: '0006', institution: 'MADRASA KINNIGOLI', points: 63, gold: 2, silver: 4, bronze: 5 },
-    { id: 'TM-6658', fest_id: 'FEST-04', name: 'GOLIJARA', code: '0008', institution: 'MADRASA GOLIJARA', points: 58, gold: 2, silver: 3, bronze: 4 },
-    { id: 'TM-9547', fest_id: 'FEST-04', name: 'SASHIHITHLU', code: '0009', institution: 'MADRASA SASHIHITHLU', points: 35, gold: 1, silver: 2, bronze: 3 },
-    { id: 'TM-1259', fest_id: 'FEST-04', name: 'MUKKA URDU', code: '0002', institution: 'MADRASA MUKKA URDU', points: 34, gold: 1, silver: 2, bronze: 2 },
-    { id: 'TM-5939', fest_id: 'FEST-04', name: 'THOKUR', code: '0007', institution: 'MADRASA THOKUR', points: 26, gold: 1, silver: 1, bronze: 2 },
-    { id: 'TM-0940', fest_id: 'FEST-04', name: 'S KODI', code: '0010', institution: 'MADRASA S KODI', points: 10, gold: 0, silver: 1, bronze: 1 }
-  ];
-
-  const DEFAULT_PROGRAMMES = [
-    { id: 'PRG-101', code: 'LOZ-01', name: 'QURAN RECITATION', category: 'Zero zone', status: 'completed', result_published: true, venue: 'Auditorium Hall A' },
-    { id: 'PRG-102', code: 'LOZ-02', name: 'ISLAMIC SONG', category: 'Zero zone', status: 'completed', result_published: true, venue: 'Main Stage' },
-    { id: 'PRG-103', code: 'LOZ-03', name: 'SPEECH KANNADA', category: 'Zero zone', status: 'completed', result_published: true, venue: 'Auditorium Hall B' },
-    { id: 'PRG-104', code: 'LOZ-04', name: 'SPEECH ENGLISH', category: 'Zero zone', status: 'completed', result_published: true, venue: 'Auditorium Hall B' },
-    { id: 'PRG-105', code: 'LOZ-05', name: 'PENCIL DRAWING', category: 'Zero zone', status: 'completed', result_published: true, venue: 'Hall C' },
-    { id: 'PRG-106', code: 'LOZ-06', name: 'WATER COLOR', category: 'Zero zone', status: 'completed', result_published: true, venue: 'Hall C' },
-    { id: 'PRG-107', code: 'LOZ-07', name: 'MEMORY TEST', category: 'Zero zone', status: 'completed', result_published: true, venue: 'Auditorium Hall A' },
-    { id: 'PRG-108', code: 'LOZ-08', name: 'ARABIC HANDWRITING', category: 'Zero zone', status: 'completed', result_published: true, venue: 'Hall C' },
-    { id: 'PRG-110', code: 'GRZ-01', name: 'QURAN TILAWAT', category: 'Ground zone', status: 'completed', result_published: true, venue: 'Main Stage' },
-    { id: 'PRG-111', code: 'GRZ-02', name: 'NASHEED', category: 'Ground zone', status: 'completed', result_published: true, venue: 'Main Stage' },
-    { id: 'PRG-112', code: 'GRZ-03', name: 'ELOCUTION URDU', category: 'Ground zone', status: 'completed', result_published: true, venue: 'Hall B' },
-    { id: 'PRG-114', code: 'GRZ-05', name: 'SONG KANNADA', category: 'Ground zone', status: 'completed', result_published: true, venue: 'Main Stage' },
-    { id: 'PRG-117', code: 'GRZ-08', name: 'ARABIC READING', category: 'Ground zone', status: 'completed', result_published: true, venue: 'Hall A' },
-    { id: 'PRG-118', code: 'GRZ-09', name: 'QUIZ', category: 'Ground zone', status: 'completed', result_published: true, venue: 'Auditorium' },
-    { id: 'PRG-126', code: 'MIZ-02', name: 'ELOCUTION KANNADA', category: 'Mid zone', status: 'completed', result_published: true, venue: 'Hall B' },
-    { id: 'PRG-129', code: 'MIZ-05', name: 'ELOCUTION MALAYALAM', category: 'Mid zone', status: 'completed', result_published: true, venue: 'Hall B' },
-    { id: 'PRG-130', code: 'MIZ-06', name: 'ELOCUTION ARABIC', category: 'Mid zone', status: 'completed', result_published: true, venue: 'Hall B' },
-    { id: 'PRG-132', code: 'MIZ-08', name: 'SONG MALAYALAM', category: 'Mid zone', status: 'completed', result_published: true, venue: 'Main Stage' },
-    { id: 'PRG-136', code: 'MIZ-012', name: 'QUIZ', category: 'Mid zone', status: 'completed', result_published: true, venue: 'Auditorium' },
-    { id: 'PRG-148', code: 'MIZ-023', name: 'GROUP SONG', category: 'Mid zone', status: 'completed', result_published: true, venue: 'Main Stage' },
-    { id: 'PRG-150', code: 'HIZ-02', name: 'GROUP SONG', category: 'High zone', status: 'completed', result_published: true, venue: 'Main Stage' },
-    { id: 'PRG-177', code: 'HIZ-023', name: 'BURDA', category: 'High zone', status: 'completed', result_published: true, venue: 'Main Stage' }
-  ];
-
-  const DEFAULT_RESULTS = [
-    {
-      id: 'RES-BURDA-1',
-      fest_id: 'FEST-04',
-      programme_id: 'PRG-177',
-      programme_name: 'BURDA',
-      category: 'High zone',
-      rank: 1,
-      entry_name: 'MUKKA',
-      team_id: 'TM-2403',
-      team_name: 'MUKKA',
-      final_score: 100,
-      points_awarded: 10,
-      published: true,
-      published_at: '2026-11-22 17:05'
-    },
-    {
-      id: 'RES-BURDA-2',
-      fest_id: 'FEST-04',
-      programme_id: 'PRG-177',
-      programme_name: 'BURDA',
-      category: 'High zone',
-      rank: 2,
-      entry_name: 'PAKSHIKERE',
-      team_id: 'TM-8193',
-      team_name: 'PAKSHIKERE',
-      final_score: 90,
-      points_awarded: 7,
-      published: true,
-      published_at: '2026-11-22 17:05'
-    },
-    {
-      id: 'RES-BURDA-3',
-      fest_id: 'FEST-04',
-      programme_id: 'PRG-177',
-      programme_name: 'BURDA',
-      category: 'High zone',
-      rank: 3,
-      entry_name: 'GUTHAKAADU',
-      team_id: 'TM-9639',
-      team_name: 'GUTHAKAADU',
-      final_score: 80,
-      points_awarded: 4,
-      published: true,
-      published_at: '2026-11-22 17:05'
+  // Enforce clean slate on first load of clean version
+  function ensureCleanSlate() {
+    if (localStorage.getItem('festoria_clean_reset_v2') !== 'true') {
+      localStorage.setItem('festoria_teams', '[]');
+      localStorage.setItem('festoria_programmes', '[]');
+      localStorage.setItem('festoria_results', '[]');
+      localStorage.setItem('festoria_announcements', '[]');
+      localStorage.setItem('festoria_clean_reset_v2', 'true');
     }
-  ];
+  }
 
-  // Initialize LocalStorage with default seeds if empty
+  // Initialize LocalStorage if empty
   function initLocalStorage() {
+    ensureCleanSlate();
     if (!localStorage.getItem('festoria_teams')) {
-      localStorage.setItem('festoria_teams', JSON.stringify(DEFAULT_TEAMS));
+      localStorage.setItem('festoria_teams', '[]');
     }
     if (!localStorage.getItem('festoria_programmes')) {
-      localStorage.setItem('festoria_programmes', JSON.stringify(DEFAULT_PROGRAMMES));
+      localStorage.setItem('festoria_programmes', '[]');
     }
     if (!localStorage.getItem('festoria_results')) {
-      localStorage.setItem('festoria_results', JSON.stringify(DEFAULT_RESULTS));
+      localStorage.setItem('festoria_results', '[]');
     }
     if (!localStorage.getItem('festoria_announcements')) {
-      localStorage.setItem('festoria_announcements', JSON.stringify([
-        {
-          id: 'ANN-001',
-          title: 'Official Results Ratified: BURDA',
-          content: '1st: MUKKA (10 pts), 2nd: PAKSHIKERE (7 pts), 3rd: GUTHAKAADU (4 pts)',
-          created_at: '2026-11-22 17:05',
-          author: 'Fest Admin'
-        }
-      ]));
+      localStorage.setItem('festoria_announcements', '[]');
     }
   }
 
@@ -142,6 +60,29 @@
       return Boolean(getClient());
     },
 
+    // Completely wipe all local data
+    clearAllData: async function () {
+      localStorage.setItem('festoria_teams', '[]');
+      localStorage.setItem('festoria_programmes', '[]');
+      localStorage.setItem('festoria_results', '[]');
+      localStorage.setItem('festoria_announcements', '[]');
+
+      const sb = getClient();
+      if (sb) {
+        try {
+          const fid = window.SUPABASE_CONFIG.festId;
+          await sb.from('results').delete().eq('fest_id', fid);
+          await sb.from('announcements').delete().eq('fest_id', fid);
+          await sb.from('programmes').delete().eq('fest_id', fid);
+          await sb.from('teams').delete().eq('fest_id', fid);
+          console.log('[Supabase] Cleared all data from Supabase tables for fest', fid);
+        } catch (e) {
+          console.warn('[Supabase] Clear error:', e);
+        }
+      }
+      return true;
+    },
+
     // Fetch Teams
     getTeams: async function () {
       const sb = getClient();
@@ -152,7 +93,7 @@
             .select('*')
             .eq('fest_id', window.SUPABASE_CONFIG.festId)
             .order('points', { ascending: false });
-          if (!error && data && data.length > 0) {
+          if (!error && Array.isArray(data)) {
             localStorage.setItem('festoria_teams', JSON.stringify(data));
             return data;
           }
@@ -161,6 +102,52 @@
         }
       }
       return JSON.parse(localStorage.getItem('festoria_teams') || '[]');
+    },
+
+    // Add New Team
+    addTeam: async function (name, code, institution) {
+      const newTeam = {
+        id: `TM-${Date.now().toString().slice(-4)}`,
+        fest_id: window.SUPABASE_CONFIG.festId,
+        name: name.trim().toUpperCase(),
+        code: code.trim(),
+        institution: institution ? institution.trim() : '',
+        points: 0,
+        gold: 0,
+        silver: 0,
+        bronze: 0
+      };
+
+      const teams = JSON.parse(localStorage.getItem('festoria_teams') || '[]');
+      teams.push(newTeam);
+      localStorage.setItem('festoria_teams', JSON.stringify(teams));
+
+      const sb = getClient();
+      if (sb) {
+        try {
+          await sb.from('teams').insert([newTeam]);
+        } catch (e) {
+          console.warn('[Supabase] Error adding team:', e);
+        }
+      }
+      return newTeam;
+    },
+
+    // Delete Team
+    deleteTeam: async function (teamId) {
+      let teams = JSON.parse(localStorage.getItem('festoria_teams') || '[]');
+      teams = teams.filter((t) => t.id !== teamId);
+      localStorage.setItem('festoria_teams', JSON.stringify(teams));
+
+      const sb = getClient();
+      if (sb) {
+        try {
+          await sb.from('teams').delete().eq('id', teamId);
+        } catch (e) {
+          console.warn('[Supabase] Error deleting team:', e);
+        }
+      }
+      return true;
     },
 
     // Fetch Programmes
@@ -173,7 +160,7 @@
             .select('*')
             .eq('fest_id', window.SUPABASE_CONFIG.festId)
             .order('name');
-          if (!error && data && data.length > 0) {
+          if (!error && Array.isArray(data)) {
             localStorage.setItem('festoria_programmes', JSON.stringify(data));
             return data;
           }
@@ -182,6 +169,51 @@
         }
       }
       return JSON.parse(localStorage.getItem('festoria_programmes') || '[]');
+    },
+
+    // Add New Programme
+    addProgramme: async function (code, name, category, venue) {
+      const newProg = {
+        id: `PRG-${Date.now().toString().slice(-4)}`,
+        fest_id: window.SUPABASE_CONFIG.festId,
+        code: code.trim().toUpperCase(),
+        name: name.trim().toUpperCase(),
+        category: category.trim(),
+        venue: venue ? venue.trim() : 'Main Stage',
+        status: 'scheduled',
+        result_published: false
+      };
+
+      const progs = JSON.parse(localStorage.getItem('festoria_programmes') || '[]');
+      progs.push(newProg);
+      localStorage.setItem('festoria_programmes', JSON.stringify(progs));
+
+      const sb = getClient();
+      if (sb) {
+        try {
+          await sb.from('programmes').insert([newProg]);
+        } catch (e) {
+          console.warn('[Supabase] Error adding programme:', e);
+        }
+      }
+      return newProg;
+    },
+
+    // Delete Programme
+    deleteProgramme: async function (progId) {
+      let progs = JSON.parse(localStorage.getItem('festoria_programmes') || '[]');
+      progs = progs.filter((p) => p.id !== progId);
+      localStorage.setItem('festoria_programmes', JSON.stringify(progs));
+
+      const sb = getClient();
+      if (sb) {
+        try {
+          await sb.from('programmes').delete().eq('id', progId);
+        } catch (e) {
+          console.warn('[Supabase] Error deleting programme:', e);
+        }
+      }
+      return true;
     },
 
     // Fetch Results
@@ -194,7 +226,7 @@
             .select('*')
             .eq('fest_id', window.SUPABASE_CONFIG.festId)
             .order('created_at', { ascending: false });
-          if (!error && data && data.length > 0) {
+          if (!error && Array.isArray(data)) {
             localStorage.setItem('festoria_results', JSON.stringify(data));
             return data;
           }
@@ -215,7 +247,7 @@
             .select('*')
             .eq('fest_id', window.SUPABASE_CONFIG.festId)
             .order('created_at', { ascending: false });
-          if (!error && data && data.length > 0) {
+          if (!error && Array.isArray(data)) {
             localStorage.setItem('festoria_announcements', JSON.stringify(data));
             return data;
           }
@@ -228,7 +260,6 @@
 
     // Ratify and Publish Programme Results (Atomic, never wiped)
     publishResults: async function (programmeId, winners) {
-      // winners: array of { rank, teamId, entryName, score, points }
       const now = new Date().toISOString().replace('T', ' ').slice(0, 16);
       const programmes = await this.getProgrammes();
       const prog = programmes.find((p) => p.id === programmeId) || { name: 'Programme', category: 'General' };
@@ -290,13 +321,9 @@
       const sb = getClient();
       if (sb) {
         try {
-          // Delete existing results for programme
           await sb.from('results').delete().eq('programme_id', programmeId);
-          // Insert new results
           await sb.from('results').insert(newResults);
-          // Update programme status
           await sb.from('programmes').update({ status: 'completed', result_published: true, published_at: now }).eq('id', programmeId);
-          // Update team totals
           for (const t of updatedTeams) {
             await sb.from('teams').update({ points: t.points, gold: t.gold, silver: t.silver, bronze: t.bronze }).eq('id', t.id);
           }
