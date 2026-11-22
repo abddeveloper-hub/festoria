@@ -1,0 +1,1 @@
+import{B as e,H as t,V as n,r,t as i}from"./App-vY5Xnygl.js";var a=t(n(),1),o=e(),s=r();window.location.pathname.includes(`admin`);try{localStorage.removeItem(`festflow_scores`),localStorage.removeItem(`festflow_results`)}catch{}(0,o.createRoot)(document.getElementById(`root`)).render((0,s.jsx)(a.StrictMode,{children:(0,s.jsx)(i,{initialTab:`dashboard`})}));
