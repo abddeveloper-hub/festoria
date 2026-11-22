@@ -52,6 +52,28 @@ export const PublicPage: React.FC = () => {
     return null;
   }, []);
 
+  // Determine the festival to display:
+  // If targeted via URL (/f/:id, ?fest=:id, #/f/:id), use that.
+  // Otherwise, default to published or active fest (FEST-04) so mobile visitors immediately see live scores,
+  // unless explicitly requesting ?home=true or ?portal=home.
+  const effectiveFestId = useMemo(() => {
+    if (targetedFestId) return targetedFestId;
+
+    if (typeof window !== 'undefined') {
+      const search = new URLSearchParams(window.location.search);
+      if (search.get('home') === 'true' || search.get('landing') === 'true') {
+        return null;
+      }
+    }
+
+    const published = fests.find((f) => f.publicPagePublished);
+    if (published) return published.id;
+    if (activeFestId && activeFestId !== 'FEST-01') return activeFestId;
+    const fest04 = fests.find((f) => f.id === 'FEST-04');
+    if (fest04) return fest04.id;
+    return activeFestId || 'FEST-04';
+  }, [targetedFestId, fests, activeFestId]);
+
   // If an invitation token is accessed, render the secure token validation and claim page
   if (isInviteRoute) {
     return (
@@ -61,15 +83,15 @@ export const PublicPage: React.FC = () => {
     );
   }
 
-  // If a specific fest is targeted (/f/{festId}), render that fest's public page with admin-managed media
-  if (targetedFestId) {
+  // Render the festival's public page with live leaderboards and results
+  if (effectiveFestId) {
     return (
       <Suspense fallback={<PublicPageLoadingFallback />}>
-        <PublicFestPage festId={targetedFestId} />
+        <PublicFestPage festId={effectiveFestId} />
       </Suspense>
     );
   }
 
-  // Otherwise, render the Central Festoria Homepage (STRICTLY NO PHOTOS, NO VIDEOS, pure modern typography and vector styling)
+  // Otherwise, render the Central Festoria Homepage (when ?home=true is requested)
   return <FestoriaHomePage />;
 };

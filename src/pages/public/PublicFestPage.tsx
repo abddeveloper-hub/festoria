@@ -96,9 +96,16 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
   // Media carousel slide index
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
 
-  const targetFestId = propFestId || activeFestId || 'FEST-01';
+  const targetFestId = propFestId || (activeFestId && activeFestId !== 'FEST-01' ? activeFestId : 'FEST-04');
   const fest = fests.find((f) => f.id === targetFestId);
   const festName = fest ? `${fest.name} ${fest.edition || ''}`.trim() : (settings.festName || 'Festoria 2026');
+
+  // Synchronize global active fest context with target festival
+  useEffect(() => {
+    if (targetFestId && activeFestId !== targetFestId) {
+      setActiveFestId(targetFestId);
+    }
+  }, [targetFestId, activeFestId, setActiveFestId]);
 
   const [pageData, setPageData] = useState<FestPublicPageData>(
     previewData || getDefaultFestPublicPage(targetFestId, festName)

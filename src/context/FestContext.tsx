@@ -1100,7 +1100,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       if (!force && !isStaffOrAdmin && typeof window !== 'undefined') {
         const lastSync = Number(localStorage.getItem('festoria_last_fs_sync') || sessionStorage.getItem('festoria_last_fs_sync') || 0);
         const timeSinceSync = Date.now() - lastSync;
-        const hasExistingData = programmes.length > 0 && (results.length > 0 || teams.length > 0);
+        const hasExistingData = programmes.length > 0 && results.length >= 50 && teams.length > 0;
         if (lastSync > 0 && timeSinceSync < PUBLIC_CACHE_TTL_MS && hasExistingData) {
           // Serve from local memory / localStorage / IndexedDB cache — 0 Firestore reads!
           setFirebaseStatus({
