@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useFest } from '../context/FestContext';
 import {
   Participant,
@@ -78,6 +78,8 @@ export const IndividualScoresPage: React.FC = () => {
     settings,
     activeFestId,
     addToast,
+    dashboardFilters,
+    setDashboardFilters,
   } = useFest();
 
   // Primary Tabs
@@ -107,12 +109,16 @@ export const IndividualScoresPage: React.FC = () => {
     });
   }, [programmes]);
 
-  // Set default programme for programme view
-  useMemo(() => {
-    if (!selectedProgrammeId && individualProgrammes.length > 0) {
+  // Set default programme for programme view and support navigation filters
+  useEffect(() => {
+    if (dashboardFilters?.programmeId && dashboardFilters.programmeId !== 'all') {
+      setSelectedProgrammeId(dashboardFilters.programmeId);
+      setActiveTab('programmes');
+      setDashboardFilters((prev) => ({ ...prev, programmeId: 'all' }));
+    } else if (!selectedProgrammeId && individualProgrammes.length > 0) {
       setSelectedProgrammeId(individualProgrammes[0].id);
     }
-  }, [individualProgrammes, selectedProgrammeId]);
+  }, [individualProgrammes, selectedProgrammeId, dashboardFilters?.programmeId, setDashboardFilters]);
 
   // Extract all categories present
   const allCategories = useMemo(() => {

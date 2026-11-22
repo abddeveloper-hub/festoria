@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useFest } from '../context/FestContext';
 import {
   ScoreSubmission,
@@ -46,6 +46,7 @@ export const ScoresPage: React.FC = () => {
     results,
     currentUser,
     submitOrUpdateScore,
+    submitScoresBatch,
     updateScoreStatus,
     deleteScore,
     publishProgrammeResults,
@@ -55,6 +56,8 @@ export const ScoresPage: React.FC = () => {
     assignments,
     hasPermission,
     addToast,
+    dashboardFilters,
+    setDashboardFilters,
   } = useFest();
 
   // Primary Tabs:
@@ -107,6 +110,7 @@ export const ScoresPage: React.FC = () => {
         );
       }
     }
+    // Fallback: If no specific programmes are assigned to this judge yet
     return [...programmes].sort((a, b) =>
       (a.code || '').localeCompare(b.code || '', undefined, { numeric: true, sensitivity: 'base' }) ||
       (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' })
@@ -115,8 +119,16 @@ export const ScoresPage: React.FC = () => {
 
   // Selected Programme for Scoring Sheet
   const [selectedProgrammeId, setSelectedProgrammeId] = useState<string>(
-    () => scorableProgrammes[0]?.id || programmes[0]?.id || ''
+    () => (dashboardFilters?.programmeId && dashboardFilters.programmeId !== 'all') ? dashboardFilters.programmeId : (scorableProgrammes[0]?.id || programmes[0]?.id || '')
   );
+
+  // Sync selectedProgrammeId if dashboardFilters has a programmeId set from navigation
+  useEffect(() => {
+    if (dashboardFilters?.programmeId && dashboardFilters.programmeId !== 'all' && dashboardFilters.programmeId !== selectedProgrammeId) {
+      setSelectedProgrammeId(dashboardFilters.programmeId);
+      setDashboardFilters((prev) => ({ ...prev, programmeId: 'all' }));
+    }
+  }, [dashboardFilters?.programmeId, selectedProgrammeId, setDashboardFilters]);
 
   // Keep selectedProgrammeId valid if programmes change
   useEffect(() => {
@@ -302,7 +314,13 @@ export const ScoresPage: React.FC = () => {
     >
   >({});
 
-  // Sync existing scores into sheet whenever programme or judge changes
+  // Track the last loaded event & judge so switching events loads cleanly, while background/sync updates merge safely
+  const lastLoadedProgJudgeRef = useRef<{ progId: string; judgeId: string }>({
+    progId: '',
+    judgeId: '',
+  });
+
+  // Sync existing scores into sheet whenever programme, judge, or remote scores update
   useEffect(() => {
     if (!selectedProgrammeId) return;
 
@@ -342,13 +360,41 @@ export const ScoresPage: React.FC = () => {
       };
     });
 
-    setSheetMarks(initialMarks);
+    const isDifferentEventOrJudge =
+      lastLoadedProgJudgeRef.current.progId !== selectedProgrammeId ||
+      lastLoadedProgJudgeRef.current.judgeId !== sheetJudgeId;
+
+    if (isDifferentEventOrJudge) {
+      lastLoadedProgJudgeRef.current = { progId: selectedProgrammeId, judgeId: sheetJudgeId };
+      setSheetMarks(initialMarks);
+    } else {
+      // Safe non-destructive merge:
+      // Never wipe out contestant marks that the user is actively entering/editing!
+      setSheetMarks((prev) => {
+        const merged: typeof prev = { ...prev };
+        Object.entries(initialMarks).forEach(([k, dbScore]) => {
+          if (!merged[k]) {
+            merged[k] = dbScore;
+          } else if (merged[k].isSaved) {
+            // Already marked saved locally: update with authoritative DB score
+            merged[k] = dbScore;
+          } else {
+            // Unsaved edits in progress: preserve entered marks & connect existingScoreId
+            merged[k] = {
+              ...merged[k],
+              existingScoreId: dbScore.existingScoreId || merged[k].existingScoreId,
+            };
+          }
+        });
+        return merged;
+      });
+    }
   }, [selectedProgrammeId, sheetJudgeId, scores, isTeamProg]);
 
   // Handle total score input change (Simple mode)
   const handleQuickTotalChange = (key: string, valStr: string) => {
-    const rawVal = valStr === '' ? 0 : parseInt(valStr, 10);
-    const val = isNaN(rawVal) ? 0 : Math.max(0, Math.min(maxTotalMarks, rawVal));
+    const rawVal = valStr === '' ? 0 : parseFloat(valStr);
+    const val = isNaN(rawVal) ? 0 : Math.max(0, Math.min(maxTotalMarks, Math.round(rawVal * 10) / 10));
 
     setSheetMarks((prev) => {
       const current = prev[key] || {
@@ -364,12 +410,12 @@ export const ScoresPage: React.FC = () => {
         let remaining = val;
         criteriaList.forEach((c, idx) => {
           if (idx === criteriaList.length - 1) {
-            updatedCriteria[c.id] = Math.max(0, Math.min(c.maxMarks, remaining));
+            updatedCriteria[c.id] = Math.max(0, Math.min(c.maxMarks, Math.round(remaining * 10) / 10));
           } else {
-            const portion = Math.round((c.maxMarks / maxTotalMarks) * val);
+            const portion = Math.round(((c.maxMarks / maxTotalMarks) * val) * 10) / 10;
             const clamped = Math.max(0, Math.min(c.maxMarks, portion));
             updatedCriteria[c.id] = clamped;
-            remaining -= clamped;
+            remaining = Math.round((remaining - clamped) * 10) / 10;
           }
         });
       }
@@ -393,8 +439,8 @@ export const ScoresPage: React.FC = () => {
     valStr: string,
     critMax: number
   ) => {
-    const rawVal = valStr === '' ? 0 : parseInt(valStr, 10);
-    const val = isNaN(rawVal) ? 0 : Math.max(0, Math.min(critMax, rawVal));
+    const rawVal = valStr === '' ? 0 : parseFloat(valStr);
+    const val = isNaN(rawVal) ? 0 : Math.max(0, Math.min(critMax, Math.round(rawVal * 10) / 10));
 
     setSheetMarks((prev) => {
       const current = prev[key] || {
@@ -442,8 +488,8 @@ export const ScoresPage: React.FC = () => {
     });
   };
 
-  // Save all entered scores to state & database
-  const handleSaveAllScores = (silent = false) => {
+  // Save all entered scores to state & database in one atomic batch
+  const handleSaveAllScores = (silent = false): number => {
     if (!activeProgramme) {
       if (!silent) addToast('warning', 'No Event Selected', 'Please select a competition event.');
       return 0;
@@ -454,7 +500,8 @@ export const ScoresPage: React.FC = () => {
       name: currentUser.name || 'Official Fest Judge',
     };
 
-    let savedCount = 0;
+    const batchPayload: Array<Omit<ScoreSubmission, 'id' | 'submittedAt' | 'revisionHistory'> & { id?: string }> = [];
+    const compKeyMap: string[] = [];
 
     competitors.forEach((comp) => {
       const data = sheetMarks[comp.key];
@@ -469,7 +516,7 @@ export const ScoresPage: React.FC = () => {
         maxMarks: crit.maxMarks,
       }));
 
-      submitOrUpdateScore({
+      batchPayload.push({
         id: data.existingScoreId,
         programmeId: activeProgramme.id,
         judgeId: effectiveJudgeId,
@@ -483,32 +530,44 @@ export const ScoresPage: React.FC = () => {
         notes: data.notes || '',
         status: 'submitted',
       });
-
-      savedCount++;
+      compKeyMap.push(comp.key);
     });
 
-    // Mark all as saved locally
+    if (batchPayload.length === 0) {
+      if (!silent) {
+        addToast('info', 'No Entries to Save', 'Enter marks for at least one contestant before saving.');
+      }
+      return 0;
+    }
+
+    // Save all scores in a single batch write (collision-proof, no missing contestants)
+    const savedScores = submitScoresBatch(batchPayload);
+
+    // Link generated/saved score IDs to sheetMarks immediately and mark as saved
     setSheetMarks((prev) => {
       const next = { ...prev };
-      Object.keys(next).forEach((k) => {
-        if (next[k]) next[k] = { ...next[k], isSaved: true };
+      compKeyMap.forEach((key, idx) => {
+        const saved = savedScores[idx];
+        if (next[key]) {
+          next[key] = {
+            ...next[key],
+            isSaved: true,
+            existingScoreId: saved?.id || next[key].existingScoreId,
+          };
+        }
       });
       return next;
     });
 
     if (!silent) {
-      if (savedCount > 0) {
-        addToast(
-          'success',
-          'Scores Saved Successfully',
-          `Saved evaluations for ${savedCount} contestant${savedCount === 1 ? '' : 's'}. You can now publish official results.`
-        );
-      } else {
-        addToast('info', 'No Entries to Save', 'Enter marks for at least one contestant before saving.');
-      }
+      addToast(
+        'success',
+        'Scores Saved Successfully',
+        `Saved evaluations for ${batchPayload.length} contestant${batchPayload.length === 1 ? '' : 's'}. You can now publish official results.`
+      );
     }
 
-    return savedCount;
+    return batchPayload.length;
   };
 
   // Live Rankings & Podium Calculation

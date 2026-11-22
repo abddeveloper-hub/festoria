@@ -226,7 +226,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               <div>
                 <h2 className="text-xl font-bold text-slate-900 tracking-tight">Fest Admin Console</h2>
                 <p className="text-xs text-slate-600 mt-1">
-                  Reserved for authorized Fest Administrators. Please sign in with your registered credentials.
+                  Fest Admin Access Required. Reserved for authorized Fest Administrators. Please sign in with your registered credentials.
                 </p>
               </div>
 

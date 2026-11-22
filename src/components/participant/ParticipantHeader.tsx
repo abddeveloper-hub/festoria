@@ -4,14 +4,10 @@ import { ParticipantNavigationTab } from '../../types';
 import {
   Menu,
   Bell,
-  Sparkles,
-  Phone,
   ShieldCheck,
   LogOut,
   ChevronDown,
-  User,
-  Users,
-  Building
+  User
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -26,7 +22,6 @@ export const ParticipantHeader: React.FC<HeaderProps> = ({ onMobileMenuToggle })
     teams,
     settings,
     platformNotifications,
-    switchPortal,
     logout,
   } = useFest();
 

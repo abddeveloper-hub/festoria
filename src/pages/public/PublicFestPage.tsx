@@ -154,13 +154,14 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
   }>({ days: 0, hours: 0, minutes: 0, seconds: 0, status: 'upcoming' });
 
   useEffect(() => {
-    const startStr = fest?.startDate || settings.startDate || '2027-01-08';
-    const endStr = fest?.endDate || settings.endDate || '2027-01-10';
+    const todayStr = new Date().toISOString().split('T')[0];
+    const startStr = fest?.startDate || settings.startDate || todayStr;
+    const endStr = fest?.endDate || settings.endDate || todayStr;
 
     const updateCountdown = () => {
       const now = new Date().getTime();
-      const startDate = new Date(startStr).getTime();
-      const endDate = new Date(`${endStr}T23:59:59`).getTime();
+      const startDate = new Date(startStr.includes('T') ? startStr : `${startStr}T00:00:00`).getTime();
+      const endDate = new Date(endStr.includes('T') ? endStr : `${endStr}T23:59:59`).getTime();
 
       if (isNaN(startDate)) {
         setCountdown({ days: 0, hours: 0, minutes: 0, seconds: 0, status: 'upcoming' });
@@ -1273,7 +1274,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                         : 'font-mono font-black text-3xl sm:text-4xl text-[#0f172a]'
                     }`}
                   >
-                    {publishedResults.length > 0 ? publishedResults.length : 6}
+                    {new Set(programmes.map((p) => p.venue).filter(Boolean)).size || 4}
                   </span>
                   <h4
                     className={`mt-2 ${
@@ -2992,15 +2993,11 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
               </p>
             </div>
 
-            {/* Quick Metrics */}
+            {/* Quick Metrics: Highlight Published Results */}
             <div className="flex items-center gap-3">
-              <div className={`px-4 py-2 text-center ${isVarsity ? 'bg-[#f7f3ed] border border-[#1c1c18] rounded-none' : 'bg-[#f0fdfa] border border-[#ccfbf1] rounded-2xl'}`}>
-                <span className={`text-[10px] font-semibold uppercase tracking-wider block ${isVarsity ? 'font-anton text-[#534345]' : 'text-[#0f766e]'}`}>Events Published</span>
-                <span className={`font-black text-lg ${isVarsity ? 'font-anton text-[#1c1c18]' : 'font-mono text-[#0f172a]'}`}>{new Set(publishedResults.map(r => r.programmeId)).size}</span>
-              </div>
-              <div className={`px-4 py-2 text-center ${isVarsity ? 'bg-[#ffd9de]/30 border border-[#782f40] rounded-none' : 'bg-amber-50/70 border border-amber-200 rounded-2xl'}`}>
-                <span className={`text-[10px] font-semibold uppercase tracking-wider block ${isVarsity ? 'font-anton text-[#5b192a]' : 'text-amber-800'}`}>Total Winners</span>
-                <span className={`font-black text-lg ${isVarsity ? 'font-anton text-[#5b192a]' : 'font-mono text-amber-900'}`}>{publishedResults.length}</span>
+              <div className={`px-4 py-2 text-center ${isVarsity ? 'bg-[#f7f3ed] border-2 border-[#1c1c18] rounded-none shadow-[2px_2px_0px_#1c1c18]' : 'bg-[#f0fdfa] border border-[#99f6e4] rounded-2xl shadow-xs'}`}>
+                <span className={`text-[10px] font-bold uppercase tracking-wider block ${isVarsity ? 'font-anton text-[#534345]' : 'text-[#0f766e]'}`}>Published Results</span>
+                <span className={`font-black text-lg sm:text-xl ${isVarsity ? 'font-anton text-[#1c1c18]' : 'font-mono text-[#0f766e]'}`}>{new Set(publishedResults.map(r => r.programmeId)).size} Events</span>
               </div>
             </div>
           </div>
@@ -4292,7 +4289,7 @@ export const PublicFestPage: React.FC<PublicFestPageProps> = ({
                       { id: 'overview', label: 'Festival Overview', icon: Sparkles, badge: null },
                       { id: 'leaderboard', label: 'Leaderboard & Standings', icon: Trophy, badge: 'Live' },
                       { id: 'student_search', label: 'Student Directory & Chest #', icon: Search, badge: `${festParticipants.length}` },
-                      { id: 'results', label: 'Official Published Results', icon: Award, badge: `${publishedResults.length}` },
+                      { id: 'results', label: 'Official Published Results', icon: Award, badge: `${new Set(publishedResults.map(r => r.programmeId)).size} Events` },
                       { id: 'schedule', label: 'Timetable & Stage Schedule', icon: Calendar, badge: `${publishedProgrammes.length}` },
                       { id: 'teams', label: 'Houses & Competing Teams', icon: Users, badge: `${teams.length}` },
                       ...(allPhotos.length > 0 ? [{ id: 'gallery', label: 'Official Photo Gallery', icon: ImageIcon, badge: `${allPhotos.length}` }] : []),

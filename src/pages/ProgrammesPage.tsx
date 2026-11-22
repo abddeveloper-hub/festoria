@@ -196,7 +196,7 @@ export const ProgrammesPage: React.FC = () => {
 
     venue: 'Auditorium Hall A',
     stage: 'Stage 1 (Main Hall)',
-    date: '2026-11-06',
+    date: new Date().toISOString().split('T')[0],
     startTime: '10:00',
     endTime: '12:00',
     maxCapacity: 15,

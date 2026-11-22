@@ -860,6 +860,40 @@ export async function saveScoreToFirestore(score: ScoreSubmission): Promise<void
   }
 }
 
+/**
+ * Atomically saves or updates an array of scores in a single batch write to avoid
+ * race conditions, multiple onSnapshot triggers, or intermediate missing data.
+ */
+export async function saveScoresBatchToFirestore(scoresList: ScoreSubmission[]): Promise<void> {
+  if (!scoresList || scoresList.length === 0) return;
+
+  if (!isFirebaseConfigured) {
+    const scores = StorageService.getScoreSubmissions();
+    const map = new Map(scores.map((s) => [s.id, s]));
+    scoresList.forEach((s) => map.set(s.id, s));
+    StorageService.saveScoreSubmissions(Array.from(map.values()));
+    return;
+  }
+
+  const firestore = db;
+  if (firestore) {
+    try {
+      const batch = writeBatch(firestore);
+      scoresList.forEach((score) => {
+        const ref = doc(firestore, 'scores', score.id);
+        batch.set(ref, cleanFirestoreData({
+          ...score,
+          festId: (score as any).festId,
+          updatedAt: serverTimestamp()
+        }), { merge: true });
+      });
+      await batch.commit();
+    } catch (e) {
+      console.warn('[Firestore] saveScoresBatchToFirestore error:', e);
+    }
+  }
+}
+
 export async function fetchResults(festId?: string): Promise<ApprovedResult[]> {
   if (isFirebaseConfigured && db) {
     try {
@@ -962,6 +996,57 @@ export async function deleteProgrammeResultsFromFirestore(programmeId: string): 
       }
     } catch (e) {
       console.warn('[Firestore] deleteProgrammeResultsFromFirestore error:', e);
+    }
+  }
+}
+
+/**
+ * Atomically synchronizes programme results in Firestore:
+ * Deletes any stale/previous results for this programme whose IDs are not in newResults,
+ * and sets all new results with their clean IDs in a single atomic batch.
+ */
+export async function syncProgrammeResultsInFirestore(
+  programmeId: string,
+  newResults: ApprovedResult[]
+): Promise<void> {
+  if (!isFirebaseConfigured) {
+    const all = StorageService.getApprovedResults().filter((r) => r.programmeId !== programmeId);
+    StorageService.saveApprovedResults([...all, ...newResults]);
+    return;
+  }
+
+  const firestore = db;
+  if (firestore) {
+    try {
+      const batch = writeBatch(firestore);
+      const newIds = new Set(newResults.map((r) => r.id));
+
+      // 1. Delete old results for this programme that are not in newIds
+      const q = query(collection(firestore, 'results'), where('programmeId', '==', programmeId));
+      const snap = await getDocs(q);
+      snap.docs.forEach((d) => {
+        if (!newIds.has(d.id)) {
+          batch.delete(d.ref);
+        }
+      });
+
+      // 2. Set new/updated results
+      newResults.forEach((res) => {
+        const ref = doc(firestore, 'results', res.id);
+        batch.set(
+          ref,
+          cleanFirestoreData({
+            ...res,
+            festId: res.festId,
+            updatedAt: serverTimestamp(),
+          }),
+          { merge: true }
+        );
+      });
+
+      await batch.commit();
+    } catch (e) {
+      console.warn('[Firestore] syncProgrammeResultsInFirestore error:', e);
     }
   }
 }

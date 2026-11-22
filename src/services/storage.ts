@@ -586,7 +586,8 @@ export function calculateLeaderboard(
     if (
       i > 0 &&
       entries[i].totalPoints === entries[i - 1].totalPoints &&
-      entries[i].firstPlaceCount === entries[i - 1].firstPlaceCount
+      entries[i].firstPlaceCount === entries[i - 1].firstPlaceCount &&
+      entries[i].secondPlaceCount === entries[i - 1].secondPlaceCount
     ) {
       entries[i].rank = entries[i - 1].rank;
     } else {

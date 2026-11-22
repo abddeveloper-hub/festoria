@@ -51,7 +51,7 @@ export const SchedulePage: React.FC = () => {
     programmeId: programmes[0]?.id || '',
     venue: 'Auditorium Hall A',
     stage: 'Stage 1 (Main Hall)',
-    date: '2026-11-06',
+    date: new Date().toISOString().split('T')[0],
     startTime: '10:00',
     endTime: '12:00',
     status: 'scheduled' as ProgrammeStatus,

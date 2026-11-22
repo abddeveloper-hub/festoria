@@ -73,8 +73,10 @@ import {
   saveProgrammeToFirestore,
   deleteProgrammeFromFirestore,
   saveScoreToFirestore,
+  saveScoresBatchToFirestore,
   deleteScoreFromFirestore,
   saveResultToFirestore,
+  syncProgrammeResultsInFirestore,
   deleteResultFromFirestore,
   deleteProgrammeResultsFromFirestore,
   saveTeamLeaderInvitation,
@@ -302,6 +304,7 @@ interface FestContextType {
   duplicateProgramme: (id: string) => void;
 
   submitOrUpdateScore: (score: Omit<ScoreSubmission, 'id' | 'submittedAt' | 'revisionHistory'> & { id?: string }) => void;
+  submitScoresBatch: (scores: Array<Omit<ScoreSubmission, 'id' | 'submittedAt' | 'revisionHistory'> & { id?: string }>) => ScoreSubmission[];
   updateScoreStatus: (id: string, newStatus: ScoreStatus, notes?: string) => void;
   deleteScore: (scoreId: string) => void;
   publishProgrammeResults: (programmeId: string) => void;
@@ -2186,57 +2189,98 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     addToast('success', 'Programme Duplicated', `Created draft clone ${cloned.name}.`);
   };
 
-  // Score Management
+  // Batch Score Submission & Calibration (Atomic, collision-free, handles multi-contestant saves)
+  const submitScoresBatch = (
+    scoresPayload: Array<Omit<ScoreSubmission, 'id' | 'submittedAt' | 'revisionHistory'> & { id?: string }>
+  ): ScoreSubmission[] => {
+    if (!scoresPayload || scoresPayload.length === 0) return [];
+    const now = new Date().toISOString().replace('T', ' ').slice(0, 16);
+
+    // Existing scores indexed by id for quick resolution
+    const existingById = new Map<string, ScoreSubmission>();
+    scores.forEach((s) => existingById.set(s.id, s));
+
+    const processedScores: ScoreSubmission[] = [];
+
+    scoresPayload.forEach((data, index) => {
+      const totalScore = data.scores.reduce((sum, item) => sum + item.marksObtained, 0);
+
+      // Check if target score exists either by explicit id or by matching (programmeId, judgeId, competitor)
+      let matchedScore = data.id ? existingById.get(data.id) : undefined;
+      if (!matchedScore) {
+        matchedScore = scores.find((s) => {
+          if (s.programmeId !== data.programmeId || s.judgeId !== data.judgeId) return false;
+          if (data.participantId && s.participantId === data.participantId) return true;
+          if (data.teamEntryId && s.teamEntryId === data.teamEntryId) return true;
+          if (!data.participantId && !data.teamEntryId && data.teamId && s.teamId === data.teamId) return true;
+          return false;
+        });
+      }
+
+      if (matchedScore) {
+        // Update existing score with audit revision entry
+        const revision = {
+          revisedBy: currentUser.name,
+          revisedAt: now,
+          previousTotal: matchedScore.totalScore,
+          reason: data.notes || 'Score calibration update',
+        };
+        const updated: ScoreSubmission = {
+          ...matchedScore,
+          ...data,
+          id: matchedScore.id,
+          totalScore,
+          revisionHistory: [revision, ...(matchedScore.revisionHistory || [])],
+        };
+        processedScores.push(updated);
+      } else {
+        // Create new score with a guaranteed unique, collision-proof ID
+        const compIdentifier = data.participantId || data.teamEntryId || data.teamId || `comp${index}`;
+        const cleanComp = String(compIdentifier).replace(/[^a-zA-Z0-9_-]/g, '');
+        const uniqueRand = `${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 7)}`;
+        const newId = data.id || `SC-${data.programmeId}-${cleanComp}-${uniqueRand}`;
+
+        const newScore: ScoreSubmission = {
+          ...data,
+          festId: (data as any).festId || activeFestId,
+          id: newId,
+          totalScore,
+          submittedAt: now,
+          revisionHistory: [],
+        };
+        processedScores.push(newScore);
+      }
+    });
+
+    // Update React state in a single atomic update
+    setScores((prev) => {
+      const map = new Map(prev.map((s) => [s.id, s]));
+      processedScores.forEach((s) => map.set(s.id, s));
+      return Array.from(map.values());
+    });
+
+    // Persist to Firestore in a single atomic batch write
+    saveScoresBatchToFirestore(processedScores);
+
+    const firstProgId = scoresPayload[0]?.programmeId || '';
+    logActivity('SUBMIT_SCORES', 'score', firstProgId, `Recorded evaluation marks for ${processedScores.length} contestants.`);
+
+    return processedScores;
+  };
+
+  // Single Score Submission (Delegates to submitScoresBatch for collision safety)
   const submitOrUpdateScore = (
     data: Omit<ScoreSubmission, 'id' | 'submittedAt' | 'revisionHistory'> & { id?: string }
   ) => {
-    const now = new Date().toISOString().replace('T', ' ').slice(0, 16);
-    const totalScore = data.scores.reduce((sum, item) => sum + item.marksObtained, 0);
-
-    if (data.id) {
-      // Update existing
-      let updatedScoreObj: ScoreSubmission | undefined;
-      setScores((prev) =>
-        prev.map((s) => {
-          if (s.id === data.id) {
-            const revision = {
-              revisedBy: currentUser.name,
-              revisedAt: now,
-              previousTotal: s.totalScore,
-              reason: data.notes || 'Score calibration update',
-            };
-            const updated: ScoreSubmission = {
-              ...s,
-              ...data,
-              totalScore,
-              revisionHistory: [revision, ...(s.revisionHistory || [])],
-            };
-            updatedScoreObj = updated;
-            return updated;
-          }
-          return s;
-        })
-      );
-      if (updatedScoreObj) {
-        saveScoreToFirestore(updatedScoreObj);
+    const results = submitScoresBatch([data]);
+    if (results.length > 0) {
+      if (data.id) {
+        logActivity('UPDATE_SCORE', 'score', data.id, `Revised score for programme ${data.programmeId} by ${currentUser.name}.`);
+        addToast('success', 'Score Updated', 'Score entry saved with audit revision.');
+      } else {
+        logActivity('SUBMIT_SCORE', 'score', results[0].id, `Submitted score entry for ${data.programmeId} (${results[0].totalScore} marks).`);
+        addToast('success', 'Score Submitted', 'Score recorded successfully.');
       }
-      logActivity('UPDATE_SCORE', 'score', data.id, `Revised score for programme ${data.programmeId} by ${currentUser.name}.`);
-      addToast('success', 'Score Updated', 'Score entry saved with audit revision.');
-    } else {
-      // Create new
-      const newId = `SC-${Date.now().toString().slice(-4)}`;
-      const newScore: ScoreSubmission = {
-        ...data,
-        festId: (data as any).festId || activeFestId,
-        id: newId,
-        totalScore,
-        submittedAt: now,
-        revisionHistory: [],
-      };
-      setScores((prev) => [newScore, ...prev]);
-      saveScoreToFirestore(newScore);
-      logActivity('SUBMIT_SCORE', 'score', newId, `Submitted score entry for ${data.programmeId} (${totalScore} marks).`);
-      addToast('success', 'Score Submitted', 'Score recorded successfully.');
     }
   };
 
@@ -2281,6 +2325,19 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
 
     const isTeamProgramme = programme.type === 'group' || programme.type === 'team' || programme.programmeType === 'team';
 
+    // Protect against duplicate scores from the same judge: retain only the latest submission per (judge, competitor)
+    const latestScoresPerJudgeComp = new Map<string, ScoreSubmission>();
+    progScores.forEach((s) => {
+      const compKey = isTeamProgramme
+        ? (s.teamEntryId || s.teamId || s.id)
+        : (s.participantId || s.teamId || s.id);
+      const judgeCompKey = `${s.judgeId || 'default'}_${compKey}`;
+      const existing = latestScoresPerJudgeComp.get(judgeCompKey);
+      if (!existing || new Date(s.submittedAt || 0).getTime() >= new Date(existing.submittedAt || 0).getTime()) {
+        latestScoresPerJudgeComp.set(judgeCompKey, s);
+      }
+    });
+
     // Consolidate scores per competitor:
     // For individual: key is participantId
     // For team: key is teamEntryId || teamId
@@ -2296,7 +2353,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       }
     >();
 
-    progScores.forEach((s) => {
+    latestScoresPerJudgeComp.forEach((s) => {
       let key = '';
       if (isTeamProgramme) {
         key = s.teamEntryId || s.teamId || s.id;
@@ -2340,23 +2397,41 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     const multiplier = isTeamProgramme ? (pointRules.groupMultiplier || 2) : 1;
     const now = new Date().toISOString().replace('T', ' ').slice(0, 16);
 
+    let prevRank = 1;
     const newResults: ApprovedResult[] = sortedEntries.map((item, idx) => {
-      const rank = idx + 1;
+      let rank = idx + 1;
+      if (idx > 0 && item.finalScore === sortedEntries[idx - 1].finalScore) {
+        rank = prevRank;
+      } else {
+        rank = idx + 1;
+        prevRank = rank;
+      }
+
       let basePoints = 0;
-      if (rank === 1) basePoints = pointRules.firstPlace;
-      else if (rank === 2) basePoints = pointRules.secondPlace;
-      else if (rank === 3) basePoints = pointRules.thirdPlace;
-      else if (rank === 4) basePoints = pointRules.fourthPlace;
-      else if (rank === 5) basePoints = pointRules.fifthPlace;
+      if (item.finalScore > 0) {
+        if (rank === 1) basePoints = pointRules.firstPlace;
+        else if (rank === 2) basePoints = pointRules.secondPlace;
+        else if (rank === 3) basePoints = pointRules.thirdPlace;
+        else if (rank === 4) basePoints = pointRules.fourthPlace;
+        else if (rank === 5) basePoints = pointRules.fifthPlace;
+      }
 
       const teamObj = teams.find((t) => t.id === item.teamId);
       const participantObj = item.participantId ? participants.find((p) => p.id === item.participantId) : undefined;
       const entryObj = item.teamEntryId ? teamProgrammeEntries.find((e) => e.id === item.teamEntryId) : undefined;
 
+      // Unique, collision-proof ID per competitor in this programme (ties won't collide or overwrite each other!)
+      const competitorKey = isTeamProgramme
+        ? (item.teamEntryId || item.teamId || `team-${idx + 1}`)
+        : (item.participantId || `part-${idx + 1}`);
+      const cleanCompKey = String(competitorKey).replace(/[^a-zA-Z0-9_-]/g, '');
+      const resultId = `RES-${programmeId}-${cleanCompKey}`;
+
       const resObj: ApprovedResult = {
-        id: `RES-${programmeId}-${rank}`,
+        id: resultId,
         festId: programme.festId || activeFestId,
         programmeId,
+        programmeName: programme.name,
         rank,
         isTeamProgramme,
         participantId: isTeamProgramme ? undefined : item.participantId,
@@ -2372,11 +2447,13 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
         publishedAt: now,
       };
 
-      saveResultToFirestore(resObj);
       return resObj;
     });
 
-    // Remove old results for this programme and append newly calculated ones
+    // Atomically sync results in Firestore (removes stale results for this programme and saves new ones)
+    syncProgrammeResultsInFirestore(programmeId, newResults);
+
+    // Remove old results for this programme and append newly calculated ones in state
     setResults((prev) => [...prev.filter((r) => r.programmeId !== programmeId), ...newResults]);
 
     // Mark programme as completed and resultPublished = true
@@ -2396,9 +2473,9 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       prev.map((s) => (s.programmeId === programmeId ? { ...s, status: 'published' } : s))
     );
 
-    // Create an announcement automatically
+    // Create an announcement automatically with unique ID
     const announcement: Announcement = {
-      id: `ANN-${Date.now().toString().slice(-4)}`,
+      id: `ANN-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       title: `Official Results Ratified: ${programme.name}`,
       content: `The results for ${programme.name} (${programme.category}) have been approved and published. Leaderboard points have been updated!`,
       category: 'results',
@@ -2505,7 +2582,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
       addToast('error', 'Duplicate Team Code', `Team code "${data.code}" already exists in this festival.`);
       return false;
     }
-    const newId = `TM-${Date.now().toString().slice(-4)}`;
+    const newId = `TM-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     const newTeam: Team = {
       ...data,
       festId: festTarget,
@@ -2542,7 +2619,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
   // Schedule Slot Management
   const addScheduleSlot = (slot: Omit<ScheduleSlot, 'id'>) => {
     const targetFest = slot.festId || activeFestId;
-    const newId = `SCH-${Date.now().toString().slice(-4)}`;
+    const newId = `SCH-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     const newSlot: ScheduleSlot = { ...slot, festId: targetFest, id: newId };
     setScheduleSlots((prev) => [...prev, newSlot]);
     if (slot.programmeId) {
@@ -2732,7 +2809,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
   };
 
   const addAnnouncement = (data: Omit<Announcement, 'id' | 'createdAt' | 'author'>) => {
-    const newId = `ANN-${Date.now().toString().slice(-4)}`;
+    const newId = `ANN-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     const newAnn: Announcement = {
       ...data,
       id: newId,
@@ -3639,7 +3716,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
     }
 
     const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
-    const id = `ASG-${Date.now().toString().slice(-4)}`;
+    const id = `ASG-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     const newAsg: ProgrammeAssignment = {
       ...data,
       id,
@@ -5122,6 +5199,7 @@ export const FestProvider: React.FC<{ children: ReactNode; initialTab?: Navigati
         deleteProgramme,
         duplicateProgramme,
         submitOrUpdateScore,
+        submitScoresBatch,
         updateScoreStatus,
         deleteScore,
         publishProgrammeResults,
